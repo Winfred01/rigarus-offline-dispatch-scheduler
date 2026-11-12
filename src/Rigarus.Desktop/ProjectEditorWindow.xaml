@@ -1,0 +1,119 @@
+<Window x:Class="Rigarus.Desktop.ProjectEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{Binding Title}" AutomationProperties.AutomationId="ProjectEditor"
+        Width="640" Height="560" MinWidth="580" MinHeight="450"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
+        Background="White" Foreground="#182B36" FontFamily="Segoe UI" FontSize="13"
+        FocusManager.FocusedElement="{Binding ElementName=JobNumberInput}">
+    <Window.Resources>
+        <ResourceDictionary Source="ProjectControls.xaml" />
+    </Window.Resources>
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <TextBlock Text="{Binding Title}" FontSize="23" FontWeight="SemiBold" Margin="0,0,0,18" />
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="0,0,10,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <Label Content="_Job #" Target="{Binding ElementName=JobNumberInput}" Padding="0,0,0,4" />
+                        <TextBox x:Name="JobNumberInput" Style="{StaticResource ProjectInput}"
+                                 AutomationProperties.AutomationId="DraftJobNumber"
+                                 Text="{Binding JobNumber, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <Label Content="Site _ID" Target="{Binding ElementName=SiteIdInput}" Padding="0,0,0,4" />
+                        <TextBox x:Name="SiteIdInput" Style="{StaticResource ProjectInput}"
+                                 AutomationProperties.AutomationId="DraftSiteId"
+                                 Text="{Binding SiteId, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                </Grid>
+                <Label Content="Site _name" Target="{Binding ElementName=SiteNameInput}" Padding="0,0,0,4" Margin="0,12,0,0" />
+                <TextBox x:Name="SiteNameInput" Style="{StaticResource ProjectInput}"
+                         AutomationProperties.AutomationId="DraftSiteName"
+                         Text="{Binding SiteName, UpdateSourceTrigger=PropertyChanged}" />
+                <DockPanel Margin="0,20,0,8">
+                    <Button DockPanel.Dock="Right" Content="_Add work item" Style="{StaticResource ProjectButton}"
+                            AutomationProperties.AutomationId="AddWorkItem" Click="AddWorkItem_Click" />
+                    <TextBlock Text="Work items" FontWeight="SemiBold" FontSize="16" VerticalAlignment="Center" />
+                </DockPanel>
+                <Grid Margin="0,2,0,4" TextElement.Foreground="{StaticResource Muted}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="86" />
+                        <ColumnDefinition Width="135" />
+                        <ColumnDefinition Width="72" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Type" />
+                    <TextBlock Grid.Column="1" Text="Crews" />
+                    <TextBlock Grid.Column="2" Text="Estimated half-days" />
+                </Grid>
+                <TextBlock Text="No work items yet." Foreground="{StaticResource Muted}" Margin="0,8,0,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding WorkItems.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <ItemsControl ItemsSource="{Binding WorkItems}" AutomationProperties.AutomationId="DraftWorkItems">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="86" />
+                                    <ColumnDefinition Width="135" />
+                                    <ColumnDefinition Width="72" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Margin="0,0,12,0" VerticalContentAlignment="Center"
+                                          AutomationProperties.Name="Work item type" AutomationProperties.AutomationId="DraftWorkItemType"
+                                          ItemsSource="{Binding DataContext.WorkItemTypes, RelativeSource={RelativeSource AncestorType=Window}}"
+                                          SelectedItem="{Binding Type}" />
+                                <TextBox Grid.Column="1" Margin="0,0,12,0" Style="{StaticResource ProjectInput}"
+                                         AutomationProperties.Name="Required crew count" AutomationProperties.AutomationId="DraftCrewCount"
+                                         Text="{Binding CrewCount, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBox Grid.Column="2" Margin="0,0,12,0" Style="{StaticResource ProjectInput}"
+                                         AutomationProperties.Name="Estimated half-days" AutomationProperties.AutomationId="DraftHalfDays"
+                                         Text="{Binding HalfDays, UpdateSourceTrigger=PropertyChanged}" />
+                                <Button Grid.Column="3" Content="Remove" Style="{StaticResource ProjectButton}"
+                                        Visibility="{Binding CanRemove, Converter={StaticResource ShowWhenTrue}}"
+                                        Click="RemoveDraft_Click" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+        <Border Grid.Row="2" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="0,12,0,0" Margin="0,12,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding Error}" Foreground="{StaticResource ErrorInk}" Margin="0,0,12,0"
+                           TextWrapping="Wrap" VerticalAlignment="Center"
+                           AutomationProperties.AutomationId="ProjectEditorError" AutomationProperties.LiveSetting="Assertive" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="Cancel" IsCancel="True" Style="{StaticResource ProjectButton}" />
+                    <Button Content="_Save project" IsDefault="True" Margin="8,0,0,0"
+                            Style="{StaticResource ProjectPrimaryButton}" Click="Save_Click"
+                            AutomationProperties.AutomationId="SaveProject" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

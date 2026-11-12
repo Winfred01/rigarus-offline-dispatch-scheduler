@@ -7,7 +7,7 @@ using Rigarus.Infrastructure;
 
 namespace Rigarus.Desktop;
 
-internal sealed class MainWindowViewModel(DemoWorkspace workspace, LocalDiagnosticLog log) : INotifyPropertyChanged
+internal sealed class MainWindowViewModel(DemoWorkspace workspace, LocalDiagnosticLog log, ProjectMasterViewModel projects) : INotifyPropertyChanged
 {
     private string status = "";
 
@@ -16,6 +16,7 @@ internal sealed class MainWindowViewModel(DemoWorkspace workspace, LocalDiagnost
     public string ProjectLabel { get; private set; } = "Sample unavailable";
     public string Note { get; set; } = "";
     public bool CanEdit { get; private set; }
+    public ProjectMasterViewModel Projects => projects;
 
     public string Status
     {
@@ -63,6 +64,6 @@ internal sealed class MainWindowViewModel(DemoWorkspace workspace, LocalDiagnost
         }
     }
 
-    private static bool IsStorageError(Exception error) =>
+    internal static bool IsStorageError(Exception error) =>
         error is IOException or UnauthorizedAccessException or SqliteException or DbUpdateException or InvalidOperationException;
 }

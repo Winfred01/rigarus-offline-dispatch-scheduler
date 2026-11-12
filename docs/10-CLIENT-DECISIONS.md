@@ -10,6 +10,8 @@ Source for this draft is the November 2026 project plan and delivery playbook. C
 | Confirmed | Pause releases crew time; resuming requires approval. Operator enters remaining work. | Delivery playbook |
 | Confirmed | Default recommendation ordering is earliest finish, with earliest start available. | Delivery playbook |
 | Proposed | AM/PM granularity | Demo B |
+| Open | Whether Site ID is required. Project Master currently follows the required field in the Issue #6 schema. | Demo A |
+| Open | Accepted Job # format and non-ASCII case rules. Current uniqueness follows SQLite ASCII `NOCASE`. | Demo A |
 | Proposed | Check an approved driver during each actual work period | Demo D |
 | Open | Qualification criteria, crew sizes and foreman replacement rules | Demo D |
 | Open | Who approves weekend work and who records the decision | Demo E |

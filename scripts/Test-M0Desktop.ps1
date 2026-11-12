@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$Executable,
-    [switch]$RequireOffline
+    [switch]$RequireOffline,
+    [switch]$IncludeProjects
 )
 
 $ErrorActionPreference = 'Stop'
@@ -64,6 +65,10 @@ function Close-Demo($Window, [System.Diagnostics.Process]$Process) {
     }
 }
 
+if ($IncludeProjects) {
+    . (Join-Path $PSScriptRoot 'ProjectMasterSmoke.ps1')
+}
+
 $root = Join-Path ([System.IO.Path]::GetTempPath()) ('rigarus-m0-smoke-' + [guid]::NewGuid().ToString('N'))
 $process = $null
 try {
@@ -106,8 +111,22 @@ try {
     if ($value.Current.Value -ne $newNote) {
         throw 'The saved note was missing after restarting.'
     }
+    if ($IncludeProjects) {
+        Test-ProjectMaster $window $process
+        Close-Demo $window $process
+        $process.Dispose()
+        $process = $null
+
+        $process = Start-Demo
+        $window = Get-DemoWindow $process
+        $note = Get-Control $window 'DemoNote'
+        if ($note.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).Current.Value -ne $newNote) {
+            throw 'Project Master changes did not preserve the demo note.'
+        }
+        Test-ProjectMasterAfterRestart $window
+    }
     Close-Demo $window $process
-    Write-Host 'PASS: WPF launched twice, migrated SQLite, loaded the fixture, and retained the saved note.'
+    Write-Host 'PASS: WPF launched, migrated SQLite, loaded the fixture, and retained the saved note after restart.'
     if ($RequireOffline) {
         Write-Host 'PASS: Windows reported no active network adapter before launch.'
     }

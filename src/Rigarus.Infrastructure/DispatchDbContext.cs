@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Rigarus.Domain;
 
@@ -8,6 +9,21 @@ internal sealed class DispatchDbContext(DbContextOptions<DispatchDbContext> opti
     internal DbSet<DemoProject> DemoProjects => Set<DemoProject>();
     internal DbSet<Project> Projects => Set<Project>();
     internal DbSet<WorkItem> WorkItems => Set<WorkItem>();
+
+    internal static DispatchDbContext Open(LocalStoragePaths paths)
+    {
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = paths.DatabasePath,
+            ForeignKeys = true,
+            DefaultTimeout = 5,
+            Pooling = false
+        };
+        var options = new DbContextOptionsBuilder<DispatchDbContext>()
+            .UseSqlite(connectionString.ToString())
+            .Options;
+        return new DispatchDbContext(options);
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

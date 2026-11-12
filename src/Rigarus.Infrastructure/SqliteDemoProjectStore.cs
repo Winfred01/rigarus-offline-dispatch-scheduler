@@ -1,4 +1,3 @@
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Rigarus.Application;
 using Rigarus.Domain;
@@ -37,20 +36,5 @@ public sealed class SqliteDemoProjectStore(LocalStoragePaths paths) : IDemoProje
         database.SaveChanges();
     }
 
-    internal DispatchDbContext CreateContext()
-    {
-        var connectionString = new SqliteConnectionStringBuilder
-        {
-            DataSource = paths.DatabasePath,
-            ForeignKeys = true,
-            DefaultTimeout = 5,
-            Pooling = false
-        };
-
-        var options = new DbContextOptionsBuilder<DispatchDbContext>()
-            .UseSqlite(connectionString.ToString())
-            .Options;
-
-        return new DispatchDbContext(options);
-    }
+    internal DispatchDbContext CreateContext() => DispatchDbContext.Open(paths);
 }
