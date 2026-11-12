@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0-windows</TargetFramework>
+        <OutputType>WinExe</OutputType>
+        <UseWPF>true</UseWPF>
+        <Version>0.0.1</Version>
+        <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="../Rigarus.Application/Rigarus.Application.csproj" />
+        <ProjectReference Include="../Rigarus.Infrastructure/Rigarus.Infrastructure.csproj" />
+    </ItemGroup>
+</Project>

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="../Rigarus.Application/Rigarus.Application.csproj" />
+        <ProjectReference Include="../Rigarus.Domain/Rigarus.Domain.csproj" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.15" />
+    </ItemGroup>
+</Project>

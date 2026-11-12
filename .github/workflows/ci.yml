@@ -1,0 +1,35 @@
+name: Windows CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Restore, build and test
+    runs-on: windows-2025
+    timeout-minutes: 15
+    env:
+      NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Scan tracked paths and secrets
+        run: ./scripts/Test-RepositoryPrivacy.ps1
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+      - run: dotnet restore Rigarus.sln --locked-mode
+      - run: dotnet format whitespace Rigarus.sln --verify-no-changes --no-restore
+      - run: dotnet build Rigarus.sln -c Release --no-restore
+      - run: dotnet test Rigarus.sln -c Release --no-build --no-restore

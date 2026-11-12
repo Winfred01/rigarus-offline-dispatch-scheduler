@@ -1,0 +1,58 @@
+<Window x:Class="Rigarus.Desktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:domain="clr-namespace:Rigarus.Domain;assembly=Rigarus.Domain"
+        Title="Rigarus Offline Dispatch Scheduler"
+        Width="900" Height="590" MinWidth="760" MinHeight="540"
+        Background="#F4F6F8" Foreground="#182B36" FontFamily="Segoe UI"
+        WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="195" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Border Background="#182B36" Padding="18,24">
+            <StackPanel>
+                <TextBlock Text="Rigarus Dispatch" Foreground="White" FontSize="17" FontWeight="SemiBold" />
+                <ListBox Margin="0,26,0,0" SelectedIndex="0" Background="#182B36" BorderThickness="0"
+                         AutomationProperties.Name="Navigation">
+                    <ListBoxItem Padding="8" Content="Dashboard" />
+                    <ListBoxItem Padding="8" Content="Projects" Foreground="White" IsEnabled="False" />
+                    <ListBoxItem Padding="8" Content="Crews &amp; Employees" Foreground="White" IsEnabled="False" />
+                    <ListBoxItem Padding="8" Content="Rigs" Foreground="White" IsEnabled="False" />
+                    <ListBoxItem Padding="8" Content="Weekly Schedule" Foreground="White" IsEnabled="False" />
+                </ListBox>
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="32,28">
+                <TextBlock Text="Rigarus Offline Dispatch Scheduler" FontSize="24"
+                           FontWeight="SemiBold" TextWrapping="Wrap" />
+                <Border Margin="0,10,0,20" Padding="8,4" HorizontalAlignment="Left"
+                        Background="#E0EEE7" CornerRadius="4">
+                    <TextBlock Text="Demo Mode" Foreground="#20553A" FontWeight="SemiBold" AutomationProperties.AutomationId="DemoMode" />
+                </Border>
+
+                <Border Background="White" BorderBrush="#D2DBE1" BorderThickness="1" CornerRadius="6" Padding="20">
+                    <StackPanel>
+                        <TextBlock Text="Synthetic project" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding ProjectLabel, Mode=OneWay}" Margin="0,6,0,12"
+                                   AutomationProperties.AutomationId="ProjectLabel" />
+                        <Label Content="_Demo note" Target="{Binding ElementName=NoteInput}" Padding="0,0,0,6" />
+                        <TextBox x:Name="NoteInput" Padding="8" MinHeight="36"
+                                 MaxLength="{x:Static domain:DemoProject.MaximumNoteLength}"
+                                 IsEnabled="{Binding CanEdit}" AutomationProperties.AutomationId="DemoNote"
+                                 Text="{Binding Note, UpdateSourceTrigger=PropertyChanged}" />
+                        <Button Content="_Save note" Padding="14,7" HorizontalAlignment="Left" Margin="0,12,0,0"
+                                IsEnabled="{Binding CanEdit}" Click="SaveNote_Click"
+                                AutomationProperties.AutomationId="SaveNote" />
+                        <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Margin="0,12,0,0"
+                                   AutomationProperties.AutomationId="DemoStatus" AutomationProperties.LiveSetting="Polite" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>

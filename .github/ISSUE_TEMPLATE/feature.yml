@@ -1,0 +1,17 @@
+name: Feature or technical task
+description: One verifiable slice
+title: "[Milestone] "
+body:
+  - type: textarea
+    id: scope
+    attributes:
+      label: Outcome and scope
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria and synthetic examples
+      description: Link the applicable decision or plan. Use fictional examples.
+    validations:
+      required: true
