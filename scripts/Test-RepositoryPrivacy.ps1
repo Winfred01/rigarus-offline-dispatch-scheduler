@@ -26,3 +26,6 @@ switch ($LASTEXITCODE) {
     1 { Write-Host "Privacy scan passed for $($files.Count) staged paths." }
     default { throw 'The staged content scan could not run.' }
 }
+
+# Git grep returns 1 for no matches. Report successful validation to the caller.
+exit 0
