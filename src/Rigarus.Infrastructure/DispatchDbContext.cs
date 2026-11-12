@@ -6,14 +6,48 @@ namespace Rigarus.Infrastructure;
 internal sealed class DispatchDbContext(DbContextOptions<DispatchDbContext> options) : DbContext(options)
 {
     internal DbSet<DemoProject> DemoProjects => Set<DemoProject>();
+    internal DbSet<Project> Projects => Set<Project>();
+    internal DbSet<WorkItem> WorkItems => Set<WorkItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        var project = modelBuilder.Entity<DemoProject>();
-        project.ToTable("DemoProjects", table => table.HasCheckConstraint("CK_DemoProjects_NoteLength", "length(Note) <= 200"));
+        var demo = modelBuilder.Entity<DemoProject>();
+        demo.ToTable("DemoProjects", table => table.HasCheckConstraint("CK_DemoProjects_NoteLength", "length(Note) <= 200"));
+        demo.HasKey(item => item.Id);
+        demo.Property(item => item.Id).ValueGeneratedNever();
+        demo.HasIndex(item => item.JobNumber).IsUnique();
+        demo.Property(item => item.Note).HasMaxLength(DemoProject.MaximumNoteLength);
+
+        var project = modelBuilder.Entity<Project>();
+        project.ToTable("Projects", table =>
+        {
+            table.HasCheckConstraint("CK_Projects_JobNumber", "length(JobNumber) > 0 AND JobNumber = trim(JobNumber)");
+            table.HasCheckConstraint("CK_Projects_SiteId", "length(trim(SiteId)) > 0");
+            table.HasCheckConstraint("CK_Projects_SiteName", "length(trim(SiteName)) > 0");
+        });
         project.HasKey(item => item.Id);
-        project.Property(item => item.Id).ValueGeneratedNever();
+        project.Property(item => item.JobNumber).IsRequired().UseCollation("NOCASE");
+        project.Property(item => item.SiteId).IsRequired();
+        project.Property(item => item.SiteName).IsRequired();
         project.HasIndex(item => item.JobNumber).IsUnique();
-        project.Property(item => item.Note).HasMaxLength(DemoProject.MaximumNoteLength);
+        project.HasMany(item => item.WorkItems)
+            .WithOne()
+            .HasForeignKey(item => item.ProjectId)
+            .OnDelete(DeleteBehavior.Restrict);
+        project.Navigation(item => item.WorkItems).UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        var workItem = modelBuilder.Entity<WorkItem>();
+        workItem.ToTable("WorkItems", table =>
+        {
+            table.HasCheckConstraint("CK_WorkItems_Type", "Type IN ('Small', 'Civil', 'Tower', 'Other')");
+            table.HasCheckConstraint("CK_WorkItems_RequiredCrewCount",
+                "typeof(RequiredCrewCount) = 'integer' AND RequiredCrewCount BETWEEN 1 AND 2147483647");
+            table.HasCheckConstraint("CK_WorkItems_EstimatedHalfDays",
+                "typeof(EstimatedHalfDays) = 'integer' AND EstimatedHalfDays BETWEEN 1 AND 2147483647");
+        });
+        workItem.HasKey(item => item.Id);
+        workItem.Property(item => item.Type).HasConversion<string>();
+        workItem.Property(item => item.RequiredCrewCount);
+        workItem.Property(item => item.EstimatedHalfDays);
     }
 }

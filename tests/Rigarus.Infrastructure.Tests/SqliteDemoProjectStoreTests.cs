@@ -1,4 +1,7 @@
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Rigarus.Application;
 using Rigarus.Domain;
 
@@ -6,6 +9,7 @@ namespace Rigarus.Infrastructure.Tests;
 
 public sealed class SqliteDemoProjectStoreTests : IDisposable
 {
+    private const string InitialMigration = "20261112045924_InitialDemo";
     private readonly string root = Path.Combine(Path.GetTempPath(), "rigarus-m0-tests", Guid.NewGuid().ToString("N"));
 
     [Fact]
@@ -20,7 +24,50 @@ public sealed class SqliteDemoProjectStoreTests : IDisposable
         Assert.Equal("DEMO-001", store.Read().JobNumber);
         Assert.Equal("wal", Scalar("PRAGMA journal_mode;"));
         Assert.Equal(1L, Scalar("SELECT count(*) FROM DemoProjects;"));
-        Assert.Equal(1L, Scalar("SELECT count(*) FROM __EFMigrationsHistory;"));
+        using var database = store.CreateContext();
+        Assert.Contains(InitialMigration, database.Database.GetAppliedMigrations());
+        Assert.Empty(database.Database.GetPendingMigrations());
+    }
+
+    [Fact]
+    public void UpgradesM0DatabaseInPlaceAndPreservesTheEditedDemoFixture()
+    {
+        var paths = new LocalStoragePaths(root);
+        Directory.CreateDirectory(Path.GetDirectoryName(paths.DatabasePath)!);
+        var store = new SqliteDemoProjectStore(paths);
+        using (var legacy = store.CreateContext())
+        {
+            legacy.GetService<IMigrator>().Migrate(InitialMigration);
+            Assert.Equal(InitialMigration, Assert.Single(legacy.Database.GetAppliedMigrations()));
+        }
+
+        const string note = "Saved in M0 before upgrading";
+        new DemoWorkspace(store).SaveNote(note);
+        var before = store.Read();
+
+        store.Initialize();
+        store.Initialize();
+        using (var upgraded = store.CreateContext())
+        {
+            var applied = upgraded.Database.GetAppliedMigrations().ToArray();
+            Assert.Contains(InitialMigration, applied);
+            Assert.Single(applied, name => name.EndsWith("_AddProjectsAndWorkItems", StringComparison.Ordinal));
+            Assert.Empty(upgraded.Database.GetPendingMigrations());
+            Assert.Empty(upgraded.Projects);
+            Assert.Empty(upgraded.WorkItems);
+
+            var project = new Project("JOB-017", "S-017", "Example Hill");
+            project.AddWorkItem(WorkItemType.Tower, 1, 1);
+            upgraded.Projects.Add(project);
+            upgraded.SaveChanges();
+        }
+
+        using var reopened = store.CreateContext();
+        var fixture = Assert.Single(reopened.DemoProjects.AsNoTracking());
+        Assert.Equal((before.Id, "DEMO-001", before.SiteName, note),
+            (fixture.Id, fixture.JobNumber, fixture.SiteName, fixture.Note));
+        Assert.Equal("JOB-017", Assert.Single(reopened.Projects.AsNoTracking()).JobNumber);
+        Assert.Equal(WorkItemType.Tower, Assert.Single(reopened.WorkItems.AsNoTracking()).Type);
     }
 
     [Fact]
