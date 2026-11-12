@@ -1,0 +1,1 @@
+"""Rigarus desktop backend."""

@@ -33,3 +33,23 @@ jobs:
       - run: dotnet format whitespace Rigarus.sln --verify-no-changes --no-restore
       - run: dotnet build Rigarus.sln -c Release --no-restore
       - run: dotnet test Rigarus.sln -c Release --no-build --no-restore
+
+  backend:
+    name: Check the Python backend
+    runs-on: windows-2025
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: src/Rigarus.Backend
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - run: python -m pip install uv==0.10.12
+      - run: uv sync --locked
+      - run: uv run --locked ruff check
+      - run: uv run --locked ruff format --check
+      - run: uv run --locked python -m unittest discover -s tests -v

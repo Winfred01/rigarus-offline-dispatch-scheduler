@@ -1,5 +1,13 @@
 # Architecture
 
+## Tauri migration
+
+The planned shell uses Tauri with a React/TypeScript UI and a bundled Python FastAPI sidecar. `Rigarus.Backend` separates the ASGI routes, note validation, and SQLite storage. Its app factory receives the database path from the caller so tests can use isolated files. Startup must complete schema initialization before serving requests.
+
+The sidecar still needs launch and shutdown supervision, a local-only transport, startup error reporting, and packaging with the Python runtime. The new UI needs to port the current demo and Project Master workflows before replacing the legacy desktop. The existing Project Master remains available in WPF.
+
+## WPF baseline
+
 | Project | Responsibility | Dependencies |
 | --- | --- | --- |
 | Rigarus.Domain | Project master data, work item requirements, and demo note validation | .NET |

@@ -2,7 +2,7 @@
 
 Windows 11 x64 first, with one local operator and an English desktop interface. The application needs no network, account or service during use.
 
-## Build on Windows
+## Current Windows desktop build
 
 Install the .NET 10 SDK. Run from the repository root in PowerShell.
 
@@ -22,3 +22,19 @@ See the [desktop verification walkthrough](docs/05-DEMO-ACCEPTANCE.md), [archite
 ## Development
 
 Read [AGENTS.md](AGENTS.md) and the [project plan](docs/00-PROJECT-PLAN.md) before starting an Issue. Use synthetic data for development and tests. Personnel and fleet management, scheduling, imports, exports, backup and install/upgrade workflows are future milestones.
+
+## Tauri migration in progress
+
+The replacement desktop stack uses Tauri, React/TypeScript and a Python FastAPI sidecar. The Python milestone so far covers demo note persistence and opens the existing SQLite schema. The WPF build above remains the runnable desktop during the migration.
+
+Use Python 3.13 and uv 0.10.12 on Windows to verify the backend from the repository root.
+
+```powershell
+Set-Location src/Rigarus.Backend
+uv sync --locked
+uv run --locked ruff check
+uv run --locked ruff format --check
+uv run --locked python -m unittest discover -s tests -v
+```
+
+The tests use temporary synthetic SQLite files and an in-process ASGI client. Tauri packaging, sidecar lifecycle and the clean Windows offline GUI walkthrough are pending.

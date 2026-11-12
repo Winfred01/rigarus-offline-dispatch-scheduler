@@ -4,7 +4,7 @@ Repository-safe summary of the November 2026 project plan. The source planning d
 
 ## Scope
 
-A native Windows 11 x64-first desktop scheduler for one operator. Use WPF with .NET 10 LTS, EF Core SQLite, local attachments and an independent C# scheduling core. Validate any supported Windows 10 edition on the target device. The UI is English. The product supports a full-year view and a rolling 3–5 month planning window. Development may use GitHub and NuGet. Operation, reporting, data storage and recovery stay local.
+A native Windows 11 x64-first desktop scheduler for one operator. The owner selected Tauri, React/TypeScript and Python FastAPI for the desktop migration in [Issue #42](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/issues/42). Use local SQLite, local attachments and an independent scheduling domain. The WPF/.NET and EF Core baseline provides existing behavior and database compatibility requirements. Validate any supported Windows 10 edition on the target device. The UI is English. The product supports a full-year view and a rolling 3–5 month planning window. Development can use online dependencies and CI. Operation, reporting, data storage and recovery stay local.
 
 Option C gives the operator explainable proposals to preview and approve. Preserve operator locks, explicit publication, recorded approvals, resource constraints and history. Scheduling proposals must leave the database unchanged until explicitly applied in a transaction. The scheduling model and business rules belong to later milestones.
 
