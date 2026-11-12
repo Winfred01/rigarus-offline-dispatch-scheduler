@@ -2,7 +2,10 @@ namespace Rigarus.Domain;
 
 public sealed class WorkItem
 {
-    internal WorkItem(WorkItemType type, int requiredCrewCount, int estimatedHalfDays)
+    internal WorkItem(WorkItemType type, int requiredCrewCount, int estimatedHalfDays) =>
+        ChangeRequirements(type, requiredCrewCount, estimatedHalfDays);
+
+    public void ChangeRequirements(WorkItemType type, int requiredCrewCount, int estimatedHalfDays)
     {
         if (!Enum.IsDefined(type))
         {
@@ -19,7 +22,7 @@ public sealed class WorkItem
 
     public int Id { get; private set; }
     public int ProjectId { get; private set; }
-    public WorkItemType Type { get; }
-    public int RequiredCrewCount { get; }
-    public int EstimatedHalfDays { get; }
+    public WorkItemType Type { get; private set; }
+    public int RequiredCrewCount { get; private set; }
+    public int EstimatedHalfDays { get; private set; }
 }
