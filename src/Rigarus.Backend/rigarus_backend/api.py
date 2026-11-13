@@ -13,15 +13,20 @@ class DemoNote(BaseModel):
     note: str
 
 
-def create_app(database_path: Path) -> FastAPI:
+def create_app(database_path: Path, *, database_initialized: bool = False) -> FastAPI:
     store = DemoStore(database_path)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
-        initialize_database(database_path)
+        if not database_initialized:
+            initialize_database(database_path)
         yield
 
     app = FastAPI(lifespan=lifespan, openapi_url=None)
+
+    @app.get("/health")
+    def health() -> dict[str, str]:
+        return {"status": "ready"}
 
     @app.get("/demo")
     def read_demo() -> DemoProject:
