@@ -9,12 +9,13 @@ if ($LASTEXITCODE -ne 0 -or $files.Count -eq 0) {
 
 $allowedRoot = '^(?:\.editorconfig|\.gitattributes|\.gitignore|README\.md|AGENTS\.md|Directory\.Build\.props|Rigarus\.sln|global\.json)$'
 $allowedSource = '^(?:src|tests)/[A-Za-z0-9_.-]+/(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+\.(?:cs|xaml|csproj|json)$'
+$allowedBackend = '^src/Rigarus\.Backend/(?:pyproject\.toml|uv\.lock|tests/fixtures/legacy_ef_schema\.sql|(?:rigarus_backend|tests)/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.py)$'
 $allowedDocs = '^(?:docs/|samples/synthetic-only/)(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+\.md$'
 $allowedAutomation = '^(?:\.github/(?:workflows/ci\.yml|pull_request_template\.md|ISSUE_TEMPLATE/(?:config\.yml|feature\.yml|bug\.yml))|\.config/dotnet-tools\.json|scripts/[A-Za-z0-9_.-]+\.ps1)$'
 foreach ($file in $files) {
     if ($file -match '(?i)(RIGARUS_OFFLINE_WINDOWS_PROJECT_PLAN|RIGARUS_DEVELOPMENT_DEMO_DELIVERY_PLAYBOOK|chat[-_ ]?export|/(?:data|attachments|logs|backups|imports|exports|bin|obj)/)' -or
         ($file -cnotmatch $allowedRoot -and $file -cnotmatch $allowedSource -and
-         $file -cnotmatch $allowedDocs -and $file -cnotmatch $allowedAutomation)) {
+         $file -cnotmatch $allowedBackend -and $file -cnotmatch $allowedDocs -and $file -cnotmatch $allowedAutomation)) {
         throw "Unexpected staged path: $file"
     }
 }

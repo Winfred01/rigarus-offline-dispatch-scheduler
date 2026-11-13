@@ -8,6 +8,9 @@
 TestResults/
 artifacts/
 releases/
+.venv/
+__pycache__/
+.ruff_cache/
 *.user
 *.suo
 .env
