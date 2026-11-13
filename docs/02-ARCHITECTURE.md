@@ -2,11 +2,11 @@
 
 ## Tauri migration
 
-The planned shell uses Tauri with a React/TypeScript UI and a bundled Python FastAPI sidecar. `Rigarus.Backend` separates the ASGI routes, note validation, and SQLite storage. Its app factory receives the database path from the caller so tests can use isolated files. Startup must complete schema initialization before serving requests.
+The preview shell uses Tauri with a React/TypeScript UI and a bundled Python FastAPI sidecar. `Rigarus.Backend` separates the ASGI routes, note validation, and SQLite storage. Its app factory receives the database path from the caller so tests can use isolated files. Startup must complete schema initialization before serving requests.
 
 The Python sidecar binds IPv4 loopback on a port assigned by Windows. Its parent starts it with the database path and supplies a fresh 32-byte token as 64 lowercase hex digits followed by a newline over stdin. After SQLite initialization and HTTP startup, the sidecar writes a JSON readiness line with `event` set to `ready` and the assigned `port` on stdout. Requests require the token in the Authorization header and the expected loopback Host. The sidecar exits when the parent closes the input pipe. If initialization fails, it exits with an actionable stderr message.
 
-The Tauri integration must own the process and keep its token and port in Rust. The React UI will use typed Tauri commands for demo operations. Closing the desktop must close the input pipe and wait for process exit. The replacement UI still needs to port the current demo and Project Master workflows before replacing the WPF desktop.
+Rust owns the sidecar process, token, and port. React invokes the Rust commands to read the demo project and save a note. Rust resolves the sidecar from bundled resources and opens the existing `%LOCALAPPDATA%\RigarusDispatch\data\rigarus.db` path. The desktop shows database startup errors with a retry action. At exit it closes the input pipe and waits for process exit, terminating the child if the grace period expires. The Project Master UI remains available in WPF during the migration. Close one desktop before launching the other.
 
 ## WPF baseline
 

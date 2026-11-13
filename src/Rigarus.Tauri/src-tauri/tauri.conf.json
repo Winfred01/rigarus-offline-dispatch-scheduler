@@ -1,0 +1,34 @@
+{
+  "productName": "Rigarus Dispatch",
+  "version": "0.1.0",
+  "identifier": "com.rigarus.dispatch",
+  "build": {
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Rigarus Offline Dispatch Scheduler",
+        "width": 1000,
+        "height": 660,
+        "minWidth": 480,
+        "minHeight": 420
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; frame-src 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": ["icons/icon.ico"],
+    "resources": {
+      "../../../artifacts/sidecar/Rigarus.Sidecar/": "sidecar/"
+    },
+    "windows": {
+      "webviewInstallMode": { "type": "offlineInstaller" }
+    }
+  }
+}

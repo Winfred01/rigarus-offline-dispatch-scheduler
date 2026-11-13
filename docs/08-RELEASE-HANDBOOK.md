@@ -30,4 +30,20 @@ finally {
 }
 ```
 
-The `Rigarus.Sidecar` output directory contains the executable and its bundled Python runtime. Keep the directory together. The tests start the packaged process with a temporary synthetic SQLite database and exercise its local access boundary, startup failure hint, note persistence and exit after the parent closes stdin. Record these as sidecar process tests. The clean Windows offline installer and full desktop acceptance checks remain pending.
+The `Rigarus.Sidecar` output directory contains the executable and its bundled Python runtime. Keep the directory together. The tests start the packaged process with a temporary synthetic SQLite database and exercise its local access boundary, startup failure hint, note persistence and exit after the parent closes stdin. Record these as sidecar process tests.
+
+## Tauri desktop preview
+
+On a Windows x64 development machine, use Node.js 22.12 or newer in the 22.x line, Rust 1.95.0 with the MSVC x64 target, the C++ build tools with a Windows SDK, Python 3.13, uv 0.10.12, and WebView2. Run from the repository root.
+
+```powershell
+./scripts/Build-RigarusSidecar.ps1
+Set-Location src/Rigarus.Tauri
+npm ci
+npm run format
+cargo fmt --manifest-path src-tauri/Cargo.toml --check
+npm run tauri -- build -- --locked
+Get-FileHash 'src-tauri/target/release/bundle/nsis/Rigarus Dispatch_0.1.0_x64-setup.exe' -Algorithm SHA256
+```
+
+The NSIS installer embeds the WebView2 offline installer and includes the Python sidecar resources. Building requires access to dependency registries and bundle tools. The operator's desktop preview uses the included Python runtime. Run the [Tauri verification walkthrough](05-DEMO-ACCEPTANCE.md#tauri-demo-note-engineering-check) on a clean Windows 11 x64 machine before marking the offline installer criterion complete.
