@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState, type SubmitEvent } from "react";
 import { createRoot } from "react-dom/client";
+import { ProjectMaster } from "./projects";
 import "./styles.css";
 
 type DemoProject = {
@@ -11,7 +12,7 @@ type DemoProject = {
 
 const maximumLength = 200;
 
-function DemoDashboard() {
+function DemoDashboard({ active }: { active: boolean }) {
   const [project, setProject] = useState<DemoProject>();
   const [note, setNote] = useState("");
   const [working, setWorking] = useState(true);
@@ -55,14 +56,8 @@ function DemoDashboard() {
 
   return (
     <>
-      <header className="app-header">
-        <div className="frame header-content">
-          <strong>Rigarus Dispatch</strong>
-          <span className="mode">Demo mode</span>
-        </div>
-      </header>
       <main className="frame">
-        <h1>Dispatch dashboard</h1>
+        {active && <h1>Dispatch dashboard</h1>}
         <section aria-labelledby="project-title">
           <div className="project">
             <h2 id="project-title">Synthetic project</h2>
@@ -122,4 +117,40 @@ function DemoDashboard() {
   );
 }
 
-createRoot(document.getElementById("root")!).render(<DemoDashboard />);
+function App() {
+  const [page, setPage] = useState<"dashboard" | "projects">("dashboard");
+  return (
+    <>
+      <header className="app-header">
+        <div className="frame header-content">
+          <strong>Rigarus Dispatch</strong>
+          <nav aria-label="Workspace">
+            <button
+              className="nav-button"
+              aria-current={page === "dashboard" ? "page" : undefined}
+              onClick={() => setPage("dashboard")}
+            >
+              Dashboard
+            </button>
+            <button
+              className="nav-button"
+              aria-current={page === "projects" ? "page" : undefined}
+              onClick={() => setPage("projects")}
+            >
+              Projects
+            </button>
+          </nav>
+          <span className="mode">Demo mode</span>
+        </div>
+      </header>
+      <div hidden={page !== "dashboard"}>
+        <DemoDashboard active={page === "dashboard"} />
+      </div>
+      <div hidden={page !== "projects"}>
+        {page === "projects" && <ProjectMaster />}
+      </div>
+    </>
+  );
+}
+
+createRoot(document.getElementById("root")!).render(<App />);

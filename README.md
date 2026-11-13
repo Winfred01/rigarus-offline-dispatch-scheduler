@@ -25,7 +25,7 @@ Read [AGENTS.md](AGENTS.md) and the [project plan](docs/00-PROJECT-PLAN.md) befo
 
 ## Tauri migration in progress
 
-The Tauri desktop preview uses React/TypeScript and a bundled Python FastAPI sidecar. It supports demo note save and reopen on the existing SQLite schema. Use the WPF desktop for the Project Master workflow during the migration.
+The Tauri desktop preview uses React/TypeScript and a bundled Python FastAPI sidecar. It supports demo note save and reopen, and the Project Master backlog, search, detail, creation and editing on the existing SQLite schema.
 
 Use Python 3.13 and uv 0.10.12 on Windows to verify the backend from the repository root.
 

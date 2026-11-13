@@ -1,6 +1,8 @@
 use crate::DemoProject;
 use reqwest::blocking::{Client, RequestBuilder};
 use serde::Deserialize;
+use serde::de::DeserializeOwned;
+use serde_json::Value;
 use std::{
     fmt::Write as _,
     io::{BufRead, BufReader, Write},
@@ -124,17 +126,45 @@ impl Sidecar {
         )
     }
 
+    pub fn search_projects(&self, term: &str) -> Result<Value, String> {
+        let mut url = reqwest::Url::parse(&self.url("/projects"))
+            .map_err(|_| SERVICE_UNAVAILABLE.to_string())?;
+        url.query_pairs_mut().append_pair("term", term);
+        self.send(self.client.get(url))
+    }
+
+    pub fn read_project(&self, id: i32) -> Result<Value, String> {
+        self.send(self.client.get(self.url(&format!("/projects/{id}"))))
+    }
+
+    pub fn save_project(&self, id: Option<i32>, project: &Value) -> Result<Value, String> {
+        let request = match id {
+            Some(id) => self.client.put(self.url(&format!("/projects/{id}"))),
+            None => self.client.post(self.url("/projects")),
+        };
+        self.send(request.json(project))
+    }
+
     fn url(&self, path: &str) -> String {
         format!("http://127.0.0.1:{}{path}", self.port)
     }
 
-    fn send(&self, request: RequestBuilder) -> Result<DemoProject, String> {
-        request
+    fn send<T: DeserializeOwned>(&self, request: RequestBuilder) -> Result<T, String> {
+        let response = request
             .bearer_auth(&self.token)
             .send()
-            .and_then(reqwest::blocking::Response::error_for_status)
-            .and_then(reqwest::blocking::Response::json)
-            .map_err(|_| SERVICE_UNAVAILABLE.into())
+            .map_err(|_| SERVICE_UNAVAILABLE.to_string())?;
+        if response.status().is_success() {
+            return response.json().map_err(|_| SERVICE_UNAVAILABLE.into());
+        }
+        #[derive(Deserialize)]
+        struct ApiError {
+            detail: String,
+        }
+        Err(response
+            .json::<ApiError>()
+            .map(|error| error.detail)
+            .unwrap_or_else(|_| SERVICE_UNAVAILABLE.into()))
     }
 }
 
