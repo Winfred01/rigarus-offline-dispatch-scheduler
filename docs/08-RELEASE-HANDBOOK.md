@@ -47,3 +47,23 @@ Get-FileHash 'src-tauri/target/release/bundle/nsis/Rigarus Dispatch_0.1.0_x64-se
 ```
 
 The NSIS installer embeds the WebView2 offline installer and includes the Python sidecar resources. Building requires access to dependency registries and bundle tools. The operator's desktop preview uses the included Python runtime. Run the [Tauri verification walkthrough](05-DEMO-ACCEPTANCE.md#tauri-demo-note-engineering-check) on a clean Windows 11 x64 machine before marking the offline installer criterion complete.
+
+### Offline acceptance kit
+
+Download the `rigarus-windows-x64-offline-acceptance` artifact from the successful Windows CI run for the commit under review. Pull request and manually dispatched runs retain the artifact for seven days in the private repository. It contains the installer, its build commit and SHA-256, and the two test scripts.
+
+To assemble the same kit locally after a build, run from the repository root and use the commit used to build the installer.
+
+```powershell
+./scripts/New-TauriAcceptanceKit.ps1 `
+    -Installer 'src/Rigarus.Tauri/src-tauri/target/release/bundle/nsis/Rigarus Dispatch_0.1.0_x64-setup.exe' `
+    -Commit (git rev-parse HEAD) -OutputDirectory artifacts/offline-acceptance
+```
+
+Copy only the kit into a fresh Windows 11 x64 test PC or disposable VM. Disconnect its network adapters before installation. In Windows Sandbox, use a `.wsb` file with `<Networking>Disable</Networking>` and map only the kit folder read-only. Run from an interactive desktop using Windows PowerShell.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -File .\Test-TauriOfflineInstall.ps1
+```
+
+Record the script output with the engineering evidence. It verifies the installer hash, checks for common developer tools, records WebView2 versions before and after installation, and runs the demo and Project Master smoke tests against the installed app. Record whether WebView2 was present on the clean image. A run with WebView2 already present exercises offline app installation and use. A run on a clean image without WebView2 also exercises the bundled runtime installation. Discard the disposable test image after recording the result.
