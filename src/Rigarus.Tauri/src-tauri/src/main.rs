@@ -3,6 +3,7 @@
 mod sidecar;
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sidecar::Sidecar;
 use std::{path::PathBuf, sync::Mutex};
 use tauri::{Manager, State};
@@ -16,6 +17,37 @@ struct DemoProject {
 
 #[tauri::command]
 async fn read_demo(app: tauri::AppHandle) -> Result<DemoProject, String> {
+    with_sidecar(app, Sidecar::read_demo).await
+}
+
+#[tauri::command]
+async fn save_demo_note(app: tauri::AppHandle, note: String) -> Result<DemoProject, String> {
+    with_sidecar(app, move |service| service.save_note(&note)).await
+}
+
+#[tauri::command]
+async fn search_projects(app: tauri::AppHandle, term: String) -> Result<Value, String> {
+    with_sidecar(app, move |service| service.search_projects(&term)).await
+}
+
+#[tauri::command]
+async fn read_project(app: tauri::AppHandle, id: i32) -> Result<Value, String> {
+    with_sidecar(app, move |service| service.read_project(id)).await
+}
+
+#[tauri::command]
+async fn save_project(
+    app: tauri::AppHandle,
+    id: Option<i32>,
+    project: Value,
+) -> Result<Value, String> {
+    with_sidecar(app, move |service| service.save_project(id, &project)).await
+}
+
+async fn with_sidecar<T: Send + 'static>(
+    app: tauri::AppHandle,
+    operation: impl FnOnce(&Sidecar) -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<Mutex<Option<Sidecar>>>();
         let mut slot = state.lock().map_err(|_| "Reopen Rigarus to retry.")?;
@@ -32,23 +64,10 @@ async fn read_demo(app: tauri::AppHandle) -> Result<DemoProject, String> {
                 .map_err(|_| "Unable to locate the local service. Reinstall Rigarus.")?;
             *slot = Some(Sidecar::start(executable, database_path(&app)?)?);
         }
-        slot.as_ref().unwrap().read_demo()
+        operation(slot.as_ref().expect("The sidecar started successfully."))
     })
     .await
     .map_err(|_| "Unable to start the local service. Reopen Rigarus to retry.")?
-}
-
-#[tauri::command]
-async fn save_demo_note(app: tauri::AppHandle, note: String) -> Result<DemoProject, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let state = app.state::<Mutex<Option<Sidecar>>>();
-        let slot = state.lock().map_err(|_| "Reopen Rigarus to retry.")?;
-        slot.as_ref()
-            .ok_or("The local service is unavailable. Reopen Rigarus to retry.")?
-            .save_note(&note)
-    })
-    .await
-    .map_err(|_| "Unable to save the local demo note. Reopen Rigarus to retry.")?
 }
 
 fn database_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -72,7 +91,13 @@ fn stop_sidecar(state: State<'_, Mutex<Option<Sidecar>>>) {
 fn main() {
     tauri::Builder::default()
         .manage(Mutex::<Option<Sidecar>>::new(None))
-        .invoke_handler(tauri::generate_handler![read_demo, save_demo_note])
+        .invoke_handler(tauri::generate_handler![
+            read_demo,
+            save_demo_note,
+            search_projects,
+            read_project,
+            save_project
+        ])
         .build(tauri::generate_context!())
         .expect("Unable to start the Rigarus desktop.")
         .run(|app, event| {

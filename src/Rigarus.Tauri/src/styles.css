@@ -147,6 +147,150 @@ button:disabled {
   color: #8a2b27;
 }
 
+nav,
+.page-heading,
+.search-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.page-heading {
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.page-heading :is(h1, h2) {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.nav-button,
+.secondary-button {
+  background: transparent;
+  color: #182b36;
+}
+
+.nav-button[aria-current],
+.nav-button:not(:disabled):hover,
+.secondary-button:not(:disabled):hover {
+  background: #e9eef1;
+  color: #182b36;
+}
+
+.secondary-button {
+  border-color: #8195a2;
+}
+
+.project-search,
+.project-editor {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.project-master :is(input, select) {
+  font: inherit;
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid #8195a2;
+  border-radius: 6px;
+  background: white;
+  color: inherit;
+}
+
+.search-controls {
+  margin-top: 6px;
+}
+
+.search-controls input {
+  flex: 1 1 180px;
+}
+
+.project-status {
+  color: #526674;
+  font-size: 14px;
+}
+
+.project-table {
+  overflow: auto;
+  max-height: 300px;
+}
+
+.project-table table {
+  width: 100%;
+  min-width: 325px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.project-table :is(th, td):nth-child(2) {
+  white-space: nowrap;
+}
+
+.project-table :is(th, td) {
+  padding: 7px 10px;
+  border-bottom: 1px solid #d2dbe1;
+  overflow-wrap: anywhere;
+}
+
+.project-table :is(th, td):last-child,
+.project-table :is(th, td):nth-child(2) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.project-table thead th {
+  position: sticky;
+  top: 0;
+  background: white;
+  font-size: 14px;
+}
+
+.job-link,
+.job-link:not(:disabled):hover {
+  background: transparent;
+  color: #205853;
+  text-align: left;
+  text-decoration: underline;
+  padding: 3px;
+  overflow-wrap: anywhere;
+}
+
+.job-link[aria-current] {
+  font-weight: 700;
+}
+
+.project-detail {
+  margin-top: 16px;
+}
+
+.project-editor fieldset {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.project-fields,
+.project-editor .work-item {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 165px), 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.project-editor .work-item {
+  border: 1px solid #d2dbe1;
+  padding: 10px 12px 12px;
+  margin-bottom: 12px;
+}
+
+.project-editor :is(input, select) {
+  margin-top: 4px;
+}
+
 @media (max-width: 520px) {
   .frame {
     width: calc(100% - 32px);
