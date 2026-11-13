@@ -25,7 +25,7 @@ Read [AGENTS.md](AGENTS.md) and the [project plan](docs/00-PROJECT-PLAN.md) befo
 
 ## Tauri migration in progress
 
-The replacement desktop stack uses Tauri, React/TypeScript and a Python FastAPI sidecar. The Python milestone so far covers demo note persistence and opens the existing SQLite schema. The WPF build above remains the runnable desktop during the migration.
+The replacement desktop stack uses Tauri, React/TypeScript and a Python FastAPI sidecar. The packaged sidecar supports authenticated loopback demo note persistence on the existing SQLite schema. The WPF build above remains the runnable desktop during the migration.
 
 Use Python 3.13 and uv 0.10.12 on Windows to verify the backend from the repository root.
 
@@ -37,4 +37,4 @@ uv run --locked ruff format --check
 uv run --locked python -m unittest discover -s tests -v
 ```
 
-The tests use temporary synthetic SQLite files and an in-process ASGI client. Tauri packaging, sidecar lifecycle and the clean Windows offline GUI walkthrough are pending.
+The tests use temporary synthetic SQLite files, an in-process ASGI client, and child-process loopback HTTP. See the [Windows sidecar packaging checks](docs/08-RELEASE-HANDBOOK.md#local-python-sidecar-engineering-package). Tauri integration and the clean Windows offline GUI walkthrough are pending.
