@@ -1,0 +1,158 @@
+:root {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  color: #182b36;
+  background: #edf2f5;
+  font-synthesis: none;
+  line-height: 1.5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.frame {
+  width: min(calc(100% - 48px), 1100px);
+  margin-inline: auto;
+}
+
+.app-header {
+  background: #fff;
+  border-bottom: 1px solid #d2dbe1;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 56px;
+}
+
+.mode {
+  color: #205853;
+  font-size: 14px;
+}
+
+main {
+  padding-block: 30px;
+}
+
+h1 {
+  font-size: 26px;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+
+section {
+  background: #fff;
+  border: 1px solid #d2dbe1;
+  border-radius: 6px;
+  padding: 24px;
+}
+
+h2 {
+  font-size: 18px;
+  margin: 0 0 12px;
+}
+
+dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 36px;
+  margin: 0;
+}
+
+dt,
+#note-limit,
+.actions span {
+  color: #526674;
+  font-size: 14px;
+}
+
+dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+form {
+  border-top: 1px solid #d2dbe1;
+  margin-top: 20px;
+  padding-top: 16px;
+}
+
+.field-label,
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.field-label {
+  justify-content: space-between;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+textarea,
+button {
+  font: inherit;
+  border-radius: 6px;
+}
+
+textarea {
+  display: block;
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  padding: 10px;
+  border: 1px solid #8195a2;
+  color: inherit;
+  background: #fff;
+}
+
+.actions {
+  margin-top: 12px;
+}
+
+button {
+  padding: 7px 14px;
+  border: 1px solid transparent;
+  background: #205853;
+  color: #fff;
+  cursor: pointer;
+}
+
+button:not(:disabled):hover {
+  background: #174440;
+}
+
+button:disabled {
+  color: #526674;
+  background: #e9eef1;
+  cursor: default;
+}
+
+:focus-visible {
+  outline: 2px solid #205853;
+  outline-offset: 3px;
+}
+
+.error {
+  margin-bottom: 0;
+  color: #8a2b27;
+}
+
+@media (max-width: 520px) {
+  .frame {
+    width: calc(100% - 32px);
+  }
+
+  section {
+    padding: 16px;
+  }
+}

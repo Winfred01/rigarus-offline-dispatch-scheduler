@@ -11,6 +11,10 @@ releases/
 .venv/
 __pycache__/
 .ruff_cache/
+node_modules/
+/src/Rigarus.Tauri/dist/
+/src/Rigarus.Tauri/src-tauri/gen/
+/src/Rigarus.Tauri/src-tauri/target/
 *.user
 *.suo
 .env
