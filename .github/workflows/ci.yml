@@ -94,3 +94,19 @@ jobs:
         env:
           RUSTUP_TOOLCHAIN: '1.95.0'
         run: npm run tauri -- build -- --locked
+      - name: Assemble the offline acceptance kit
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        working-directory: .
+        run: |
+          $installer = @(Get-ChildItem -LiteralPath 'src/Rigarus.Tauri/src-tauri/target/release/bundle/nsis' -Filter '*_x64-setup.exe')
+          if ($installer.Count -ne 1) { throw 'Expected exactly one x64 installer.' }
+          ./scripts/New-TauriAcceptanceKit.ps1 -Installer $installer[0].FullName -Commit $env:GITHUB_SHA -OutputDirectory artifacts/offline-acceptance
+      - name: Save the private offline acceptance kit
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: rigarus-windows-x64-offline-acceptance
+          path: artifacts/offline-acceptance/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
