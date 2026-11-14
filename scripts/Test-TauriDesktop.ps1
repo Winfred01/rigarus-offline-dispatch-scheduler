@@ -38,7 +38,8 @@ function Wait-For([string]$Description, [scriptblock]$Probe) {
 function Find-Control($Window, $Property, [string]$Value) {
     $condition = New-Object Windows.Automation.PropertyCondition($Property, $Value)
     Wait-For $Value {
-        $Window.FindFirst([Windows.Automation.TreeScope]::Descendants, $condition)
+        $Window.FindAll([Windows.Automation.TreeScope]::Descendants, $condition) |
+            Select-Object -First 1
     }
 }
 
