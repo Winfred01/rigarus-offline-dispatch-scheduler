@@ -24,6 +24,9 @@ jobs:
           persist-credentials: false
       - name: Scan tracked paths and secrets
         run: ./scripts/Test-RepositoryPrivacy.ps1
+      - name: Test offline acceptance wait and failure handling
+        shell: powershell
+        run: ./scripts/Test-TauriAcceptanceHarness.ps1
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
