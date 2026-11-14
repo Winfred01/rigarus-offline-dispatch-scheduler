@@ -82,7 +82,14 @@ function Close-Dashboard($Process) {
 function Get-Sidecar($Process) {
     $child = Get-CimInstance -ClassName Win32_Process -OperationTimeoutSec 5 -Filter "ParentProcessId = $($Process.Id) AND Name = 'Rigarus.Sidecar.exe'" |
         Select-Object -First 1
-    if ($child) { Get-Process -Id $child.ProcessId -ErrorAction SilentlyContinue }
+    if ($child) {
+        $observed = Get-Process -Id $child.ProcessId -ErrorAction SilentlyContinue
+        if ($observed) {
+            # Retain the handle so HasExited and ExitCode remain observable after shutdown.
+            $null = $observed.Handle
+            $observed
+        }
+    }
 }
 
 function Invoke-Button($Window, [string]$Label) {

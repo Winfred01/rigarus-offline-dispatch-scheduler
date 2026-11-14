@@ -9,7 +9,6 @@ function Get-AcceptanceLogPath([string]$Path) {
     $Path
 }
 
-
 function Get-AcceptanceWaits([string]$Profile, [System.Collections.IDictionary]$Overrides) {
     $waits = if ($Profile -eq 'SlowVm') {
         @{ InstallTimeoutSeconds = 900; GuiTimeoutSeconds = 150; ExitTimeoutSeconds = 60 }
@@ -70,19 +69,19 @@ function Wait-AcceptanceProcess([Diagnostics.Process]$Process, [string]$Phase, [
     Write-AcceptanceEvent 'PASS' $Phase $Timer $TimeoutSeconds (Get-AcceptanceProcessState $Process)
 }
 
-function Wait-AcceptanceProbe([string]$Phase, [int]$TimeoutSeconds, [scriptblock]$Probe, [scriptblock]$State,
+function Wait-AcceptanceProbe([string]$Phase, [int]$TimeoutSeconds, [scriptblock]$Check, [scriptblock]$DescribeState,
     [Diagnostics.Stopwatch]$Timer = [Diagnostics.Stopwatch]::StartNew()) {
     $limitMs = $TimeoutSeconds * 1000
     do {
-        $result = & $Probe
+        $result = & $Check
         $remaining = $limitMs - $Timer.ElapsedMilliseconds
         if ($result -and $remaining -ge 0) {
-            Write-AcceptanceEvent 'PASS' $Phase $Timer $TimeoutSeconds (& $State)
+            Write-AcceptanceEvent 'PASS' $Phase $Timer $TimeoutSeconds (& $DescribeState)
             return $result
         }
         if ($remaining -gt 0) { Start-Sleep -Milliseconds ([int][Math]::Min(150, $remaining)) }
     } while ($Timer.ElapsedMilliseconds -lt $limitMs)
-    Stop-Acceptance 'TIMEOUT' $Phase $Timer $TimeoutSeconds (& $State)
+    Stop-Acceptance 'TIMEOUT' $Phase $Timer $TimeoutSeconds (& $DescribeState)
 }
 
 function Stop-AcceptanceProcess([Diagnostics.Process]$Process, [string]$Phase, [int]$TimeoutSeconds) {

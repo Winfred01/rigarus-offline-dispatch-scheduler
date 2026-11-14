@@ -66,7 +66,6 @@ Copy only the kit into a fresh Windows 11 x64 test PC or disposable VM. Disconne
 powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -File .\Test-TauriOfflineInstall.ps1
 ```
 
-
 Use the slow VM profile when CPU or disk emulation makes the default waits too short.
 
 ```powershell

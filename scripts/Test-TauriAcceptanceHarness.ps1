@@ -43,6 +43,14 @@ try {
         Wait-AcceptanceProbe 'gui-ready' 1 { $false } { 'process=running window=False target=synthetic-window' }
     } 2 '^status=TIMEOUT phase=gui-ready elapsedMs=\d+ limitSeconds=1 state=process=running window=False target=synthetic-window$'
 
+    # The desktop wrapper passes a nested probe that calls the caller's original scriptblock.
+    function Test-GuiWrapper([scriptblock]$Probe) {
+        Wait-AcceptanceProbe 'gui-ready' 1 { & $Probe } { 'process=running window=True' } | Out-Null
+    }
+    Assert-Result {
+        Test-GuiWrapper { $true }
+    } 0 '^status=PASS phase=gui-ready elapsedMs=\d+ limitSeconds=1 state=process=running window=True$'
+
     $sidecar = Start-Process -FilePath $env:ComSpec -ArgumentList '/d /c exit 9' -WindowStyle Hidden -PassThru
     try {
         if (-not $sidecar.WaitForExit(15000)) { throw 'Synthetic sidecar did not exit.' }
