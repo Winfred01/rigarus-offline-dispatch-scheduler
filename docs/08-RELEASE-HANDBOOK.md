@@ -46,7 +46,7 @@ npm run tauri -- build -- --locked
 Get-FileHash 'src-tauri/target/release/bundle/nsis/Rigarus Dispatch_0.1.0_x64-setup.exe' -Algorithm SHA256
 ```
 
-The NSIS installer embeds the WebView2 offline installer and includes the Python sidecar resources. Building requires access to dependency registries and bundle tools. The operator's desktop preview uses the included Python runtime. Run the [Tauri verification walkthrough](05-DEMO-ACCEPTANCE.md#tauri-demo-note-engineering-check) on a clean Windows 11 x64 machine before marking the offline installer criterion complete.
+The NSIS installer embeds the Microsoft Evergreen WebView2 Standalone Installer and includes the Python sidecar, Python runtime and SQLite. The Tauri setup checks for an existing registered WebView2 runtime and runs the embedded installer when needed. The .NET SDK and other development tools are used only to build or test the project. Run the [Tauri verification walkthrough](05-DEMO-ACCEPTANCE.md#tauri-demo-note-engineering-check) on a clean Windows 11 x64 machine.
 
 ### Offline acceptance kit
 

@@ -22,7 +22,7 @@ if ([Net.NetworkInformation.NetworkInterface]::GetIsNetworkAvailable()) {
 }
 
 # Windows app execution aliases alone do not indicate a Python installation.
-$toolCommands = @('node.exe', 'cargo.exe', 'rustc.exe', 'cl.exe', 'python.exe', 'py.exe')
+$toolCommands = @('node.exe', 'cargo.exe', 'rustc.exe', 'cl.exe', 'python.exe', 'py.exe', 'uv.exe')
 $tools = @(Get-Command -Name $toolCommands -CommandType Application -All -ErrorAction SilentlyContinue |
     Where-Object Source -NotLike "$env:LOCALAPPDATA\Microsoft\WindowsApps\*" |
     Select-Object -ExpandProperty Name -Unique)
@@ -44,6 +44,12 @@ $developerApps = @($installedApps.DisplayName | Where-Object {
 if ($developerApps.Count) {
     throw "Use a clean test environment. Developer tooling found in installed apps: $($developerApps -join ', ')."
 }
+$dotnet = Get-Command dotnet.exe -CommandType Application -ErrorAction SilentlyContinue
+if ($dotnet) {
+    $sdks = @(& $dotnet.Source --list-sdks)
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to check for installed .NET SDKs.' }
+    if ($sdks.Count) { throw 'Use a clean test environment without a .NET SDK.' }
+}
 
 function Get-WebView2Version {
     $client = '{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
@@ -61,7 +67,7 @@ Write-Output "Commit: $($manifest.commit)"
 Write-Output "Installer SHA-256: $hash"
 Write-Output "Windows: $($os.Caption) $($os.Version) x64"
 Write-Output 'Network: no active adapter before install'
-Write-Output 'Developer tools: none found on PATH or in installed apps'
+Write-Output 'Developer tools: no common toolchain commands, installed developer apps, or .NET SDKs detected'
 Write-Output "WebView2 before install: $(Get-WebView2Version)"
 
 $destination = Join-Path $env:LOCALAPPDATA ('Rigarus Offline Test ' + [Guid]::NewGuid().ToString('N'))
