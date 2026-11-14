@@ -2,38 +2,44 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Executable,
     [switch]$RequireOffline,
-    [switch]$IncludeProjects
+    [switch]$IncludeProjects,
+    [ValidateSet('Default', 'SlowVm')]
+    [string]$Profile = 'Default',
+    [ValidateRange(1, 300)]
+    [int]$GuiTimeoutSeconds,
+    [ValidateRange(1, 180)]
+    [int]$ExitTimeoutSeconds,
+    [string]$DiagnosticLog
 )
 
 $ErrorActionPreference = 'Stop'
-Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
-$Executable = (Resolve-Path -LiteralPath $Executable).Path
-if ($RequireOffline -and [Net.NetworkInformation.NetworkInterface]::GetIsNetworkAvailable()) {
-    throw 'An active network adapter is present. Disconnect from the network and rerun.'
-}
+. (Join-Path $PSScriptRoot 'TauriAcceptanceSupport.ps1')
+$waits = Get-AcceptanceWaits $Profile $PSBoundParameters
+$acceptanceLog = Get-AcceptanceLogPath $DiagnosticLog
 
 function Wait-For([string]$Description, [scriptblock]$Probe) {
     $timer = [Diagnostics.Stopwatch]::StartNew()
-    do {
-        $result = & $Probe
-        if ($result) { return $result }
-        Start-Sleep -Milliseconds 150
-    } while ($timer.Elapsed.TotalSeconds -lt 30)
-    throw "Timed out waiting for $Description."
+    # Descriptions are fixed synthetic test labels, never text read from the desktop.
+    $target = $Description -replace '[^a-zA-Z0-9_-]', '_'
+    Write-AcceptanceEvent 'START' 'gui-ready' $timer $waits.GuiTimeoutSeconds "target=$target"
+    Wait-AcceptanceProbe 'gui-ready' $waits.GuiTimeoutSeconds {
+        if ($process.HasExited) {
+            Stop-Acceptance 'FAIL' 'gui-ready' $timer $waits.GuiTimeoutSeconds (Get-AcceptanceProcessState $process)
+        }
+        if ($sidecar) { Assert-AcceptanceSidecar $sidecar $timer }
+        & $Probe
+    } {
+        $state = Get-AcceptanceProcessState $process
+        $hasWindow = $process.MainWindowHandle -ne [IntPtr]::Zero
+        "$state target=$target window=$hasWindow"
+    } $timer
 }
 
 function Find-Control($Window, $Property, [string]$Value) {
     $condition = New-Object Windows.Automation.PropertyCondition($Property, $Value)
-    try {
-        Wait-For $Value {
-            $Window.FindAll([Windows.Automation.TreeScope]::Descendants, $condition) |
-                Select-Object -First 1
-        }
-    }
-    catch {
-        $visibleNames = $Window.FindAll([Windows.Automation.TreeScope]::Descendants, [Windows.Automation.Condition]::TrueCondition) |
-            ForEach-Object { $_.Current.Name } | Where-Object { $_ }
-        throw "$($_.Exception.Message) Visible controls: $($visibleNames -join ', ')"
+    Wait-For $Value {
+        $Window.FindAll([Windows.Automation.TreeScope]::Descendants, $condition) |
+            Select-Object -First 1
     }
 }
 
@@ -59,14 +65,32 @@ function Get-DashboardWindow($Process) {
 }
 
 function Close-Dashboard($Process) {
-    if (-not $Process.CloseMainWindow() -or -not $Process.WaitForExit(12000)) {
-        throw 'The Tauri window did not close cleanly.'
+    $timer = [Diagnostics.Stopwatch]::StartNew()
+    if ($sidecar) { Assert-AcceptanceSidecar $sidecar $timer }
+    Write-AcceptanceEvent 'START' 'desktop-exit' $timer $waits.ExitTimeoutSeconds (Get-AcceptanceProcessState $Process)
+    if (-not $Process.CloseMainWindow()) {
+        Stop-Acceptance 'FAIL' 'desktop-exit' $timer $waits.ExitTimeoutSeconds ((Get-AcceptanceProcessState $Process) + ' closeRequested=false')
     }
-    if ($Process.ExitCode -ne 0) { throw "Unexpected desktop exit code $($Process.ExitCode)." }
+    Wait-AcceptanceProcess $Process 'desktop-exit' $waits.ExitTimeoutSeconds $timer
+    if ($sidecar) {
+        Write-AcceptanceEvent 'START' 'sidecar-exit' $timer $waits.ExitTimeoutSeconds (Get-AcceptanceProcessState $sidecar)
+        Wait-AcceptanceProbe 'sidecar-exit' $waits.ExitTimeoutSeconds { $sidecar.HasExited } {
+            Get-AcceptanceProcessState $sidecar
+        } $timer | Out-Null
+    }
 }
 
 function Get-Sidecar($Process) {
-    Get-CimInstance -ClassName Win32_Process -Filter "ParentProcessId = $($Process.Id) AND Name = 'Rigarus.Sidecar.exe'"
+    $child = Get-CimInstance -ClassName Win32_Process -OperationTimeoutSec 5 -Filter "ParentProcessId = $($Process.Id) AND Name = 'Rigarus.Sidecar.exe'" |
+        Select-Object -First 1
+    if ($child) {
+        $observed = Get-Process -Id $child.ProcessId -ErrorAction SilentlyContinue
+        if ($observed) {
+            # Retain the handle so HasExited and ExitCode remain observable after shutdown.
+            $null = $observed.Handle
+            $observed
+        }
+    }
 }
 
 function Invoke-Button($Window, [string]$Label) {
@@ -115,51 +139,73 @@ function Test-Projects($Window) {
     Find-Control $Window $name 'No projects match your search.' | Out-Null
 }
 
-$temp = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
-$runRoot = Join-Path $temp ('rigarus-tauri-smoke-' + [Guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $runRoot | Out-Null
-$root = $runRoot
-$name = [Windows.Automation.AutomationElement]::NameProperty
-$automationId = [Windows.Automation.AutomationElement]::AutomationIdProperty
-$valuePattern = [Windows.Automation.ValuePattern]::Pattern
+Write-Host "Diagnostic log: $acceptanceLog"
+Write-AcceptanceEvent 'INFO' 'gui-configuration' $null 0 "profile=$Profile guiSeconds=$($waits.GuiTimeoutSeconds) exitSeconds=$($waits.ExitTimeoutSeconds)"
+$timer = [Diagnostics.Stopwatch]::StartNew()
 $process = $null
+$sidecar = $null
+$runRoot = $null
+$exitCode = 0
+$phase = 'desktop-launch'
 try {
+    if ($RequireOffline -and [Net.NetworkInformation.NetworkInterface]::GetIsNetworkAvailable()) {
+        Stop-Acceptance 'BLOCKED' 'environment' $timer 0 'activeNetworkAdapter=true'
+    }
+    Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+    $Executable = (Resolve-Path -LiteralPath $Executable).Path
+    $runRoot = Join-Path ([IO.Path]::GetTempPath()) ('rigarus-tauri-smoke-' + [Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $runRoot | Out-Null
+    $root = $runRoot
+    $name = [Windows.Automation.AutomationElement]::NameProperty
+    $automationId = [Windows.Automation.AutomationElement]::AutomationIdProperty
+    $valuePattern = [Windows.Automation.ValuePattern]::Pattern
+
     $process = Start-Dashboard
+    Write-AcceptanceEvent 'START' $phase $timer 0 (Get-AcceptanceProcessState $process)
+    $phase = 'desktop-functional-checks'
     $window = Get-DashboardWindow $process
     Find-Control $window $name 'DEMO-001' | Out-Null
+    $sidecar = Wait-For 'sidecar-process' { Get-Sidecar $process }
     $note = (Find-Control $window $automationId 'demo-note').GetCurrentPattern($valuePattern)
-    if ($note.Current.Value -ne 'Synthetic sample for M0.') { throw 'Initial note did not load.' }
-    $firstSidecar = Wait-For 'the local sidecar process' { Get-Sidecar $process }
+    if ($note.Current.Value -ne 'Synthetic sample for M0.') {
+        Stop-Acceptance 'FAIL' 'initial-note' $timer 0 'fixtureMismatch=true'
+    }
 
     $newNote = 'Saved and reopened in the Tauri smoke test.'
     $note.SetValue($newNote)
-    $save = Find-Control $window $name 'Save note'
-    Wait-For 'Save note to be enabled' { $save.Current.IsEnabled } | Out-Null
-    $save.GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke()
+    Invoke-Button $window 'Save note'
     Find-Control $window $name 'Note saved.' | Out-Null
     if ($IncludeProjects) { Test-Projects $window }
     Close-Dashboard $process
-    if (Get-Process -Id $firstSidecar.ProcessId -ErrorAction SilentlyContinue) {
-        throw 'The sidecar remained running after closing the Tauri window.'
-    }
     $process.Dispose()
+    $process = $null
+    $sidecar.Dispose()
+    $sidecar = $null
 
     $process = Start-Dashboard
+    Write-AcceptanceEvent 'START' 'desktop-reopen' $timer 0 (Get-AcceptanceProcessState $process)
     $window = Get-DashboardWindow $process
+    Find-Control $window $name 'DEMO-001' | Out-Null
+    $sidecar = Wait-For 'sidecar-process' { Get-Sidecar $process }
     $note = (Find-Control $window $automationId 'demo-note').GetCurrentPattern($valuePattern)
-    if ($note.Current.Value -ne $newNote) { throw 'Saved note did not survive a desktop restart.' }
+    if ($note.Current.Value -ne $newNote) {
+        Stop-Acceptance 'FAIL' 'note-reopen' $timer 0 'savedNoteMismatch=true'
+    }
     if ($IncludeProjects) {
         Invoke-Button $window 'Projects'
         Find-Control $window $name ("DEMO-26001 {0} Edited synthetic yard" -f [char]0x00B7) | Out-Null
         Find-Control $window $name 'Small' | Out-Null
-        Write-Host 'PASS: Tauri Project Master created, validated, edited, searched and reopened a synthetic project with a work item.'
+        Write-AcceptanceEvent 'PASS' 'project-master' $timer 0 'syntheticProjectAndWorkItem=reopened'
     }
     Close-Dashboard $process
-
-    # A file at the expected directory path induces a synthetic startup failure.
     $process.Dispose()
     $process = $null
-    $root = Join-Path $root 'startup-failure'
+    $sidecar.Dispose()
+    $sidecar = $null
+
+    # A file at the expected directory path induces a synthetic startup failure.
+    $phase = 'startup-error'
+    $root = Join-Path $runRoot 'startup-failure'
     New-Item -ItemType Directory -Path $root | Out-Null
     New-Item -ItemType File -Path (Join-Path $root 'data') | Out-Null
     $process = Start-Dashboard
@@ -167,20 +213,14 @@ try {
     Find-Control $window $name 'Unable to open the local database. Check folder permissions and close other Rigarus windows.' | Out-Null
     Find-Control $window $name 'Retry' | Out-Null
     Close-Dashboard $process
-    if ($RequireOffline) { Write-Host 'PASS: Windows reported no active network adapter before launch.' }
-    Write-Host 'PASS: Tauri saved and reopened a synthetic note, stopped the sidecar, and displayed an actionable startup error.'
+    Write-AcceptanceEvent 'PASS' 'desktop-smoke' $timer 0 'note=reopened sidecar=exited startupError=displayed'
 }
+catch { $exitCode = Get-AcceptanceExitCode $_ $phase $timer }
 finally {
-    if ($process) {
-        if (-not $process.HasExited) {
-            $process.Kill()
-            $process.WaitForExit()
-        }
-        $process.Dispose()
-    }
-    $resolved = [IO.Path]::GetFullPath($runRoot)
-    if ($resolved.StartsWith($temp + 'rigarus-tauri-smoke-', [StringComparison]::OrdinalIgnoreCase) -and
-        (Test-Path -LiteralPath $resolved -PathType Container)) {
-        Remove-Item -LiteralPath $resolved -Recurse -Force
+    Stop-AcceptanceProcess $process 'desktop-cleanup' $waits.ExitTimeoutSeconds
+    Stop-AcceptanceProcess $sidecar 'sidecar-cleanup' $waits.ExitTimeoutSeconds
+    if ($runRoot -and (Test-Path -LiteralPath $runRoot -PathType Container)) {
+        Remove-Item -LiteralPath $runRoot -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
+exit $exitCode

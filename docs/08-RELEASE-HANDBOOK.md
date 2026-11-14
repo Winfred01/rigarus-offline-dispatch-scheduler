@@ -50,7 +50,7 @@ The NSIS installer embeds the Microsoft Evergreen WebView2 Standalone Installer 
 
 ### Offline acceptance kit
 
-Download the `rigarus-windows-x64-offline-acceptance` artifact from the successful Windows CI run for the commit under review. Pull request and manually dispatched runs retain the artifact for seven days in the private repository. It contains the installer, its build commit and SHA-256, and the two test scripts.
+Download the `rigarus-windows-x64-offline-acceptance` artifact from the successful Windows CI run for the commit under review. Pull request and manually dispatched runs retain the artifact for seven days in the private repository. It contains the installer, its build commit and SHA-256, the two test scripts and their shared support script.
 
 To assemble the same kit locally after a build, run from the repository root and use the commit used to build the installer.
 
@@ -65,5 +65,28 @@ Copy only the kit into a fresh Windows 11 x64 test PC or disposable VM. Disconne
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -File .\Test-TauriOfflineInstall.ps1
 ```
+
+Use the slow VM profile when CPU or disk emulation makes the default waits too short.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -File .\Test-TauriOfflineInstall.ps1 -Profile SlowVm
+```
+
+| Parameter | Default | SlowVm | Allowed seconds |
+| --- | ---: | ---: | ---: |
+| `-InstallTimeoutSeconds` | 300 | 900 | 1 to 1800 |
+| `-GuiTimeoutSeconds` | 30 | 150 | 1 to 300 |
+| `-ExitTimeoutSeconds` | 12 | 60 | 1 to 180 |
+
+Explicit numeric arguments override the selected profile. The GUI limit applies to each readiness check. The exit limit covers desktop and sidecar shutdown together. The installer script also caps the entire GUI subprocess at the smaller of 45 minutes or 60 GUI waits plus eight exit waits. When running the desktop script directly from an interactive Windows PowerShell desktop, it accepts the same GUI and exit options. The profile changes test waits only. Application startup limits and functional checks still apply.
+
+Each run writes a local diagnostic log with the effective waits, phase, elapsed milliseconds, process ID and exit code where available, fixed GUI check labels, and WebView2 versions before and after installation. The default path is a unique file in the Windows temp directory. Set `-DiagnosticLog` to save to an existing directory, and use a new filename for each run. Keep raw logs local and share reviewed evidence only. The diagnostic entries exclude control values, command lines, profile paths, and raw application or installer output.
+
+| Exit code | Status | Meaning |
+| ---: | --- | --- |
+| 0 | PASS | The required checks completed. |
+| 1 | FAIL | A check failed, such as a hash mismatch, nonzero setup exit, absent WebView2 after setup or a sidecar that exited during use. |
+| 2 | TIMEOUT | A phase exceeded its wait limit. Record the phase and process state. If setup is still running, it may finish after the harness returns. Use a fresh disposable image for a retry. |
+| 3 | BLOCKED | The test environment did not meet a prerequisite, such as having an active network adapter. |
 
 Record the script output with the engineering evidence. It verifies the installer hash, checks for common developer tools, records WebView2 versions before and after installation, and runs the demo and Project Master smoke tests against the installed app. Record whether WebView2 was present on the clean image. A run with WebView2 already present exercises offline app installation and use. A run on a clean image without WebView2 also exercises the bundled runtime installation. Discard the disposable test image after recording the result.
