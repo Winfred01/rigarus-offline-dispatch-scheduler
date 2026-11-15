@@ -3,6 +3,7 @@ param(
     [string]$Executable,
     [switch]$RequireOffline,
     [switch]$IncludeProjects,
+    [switch]$IncludeCrews,
     [ValidateSet('Default', 'SlowVm')]
     [string]$Profile = 'Default',
     [ValidateRange(1, 300)]
@@ -139,6 +140,25 @@ function Test-Projects($Window) {
     Find-Control $Window $name 'No projects match your search.' | Out-Null
 }
 
+function Test-Crews($Window) {
+    Invoke-Button $Window 'Crews'
+    Invoke-Button $Window 'New crew'
+    Set-Field $Window 'crew-name' 'Synthetic Civil 01'
+    Invoke-Button $Window 'Save crew'
+    Find-Control $Window $name 'Crew saved.' | Out-Null
+    Invoke-Button $Window 'Edit Synthetic Civil 01'
+    Set-Field $Window 'crew-name' 'Synthetic Civil 02'
+    Invoke-Button $Window 'Save crew'
+    Find-Control $Window $name 'Edit Synthetic Civil 02' | Out-Null
+    Set-Field $Window 'crew-search' 'unknown-crew'
+    Invoke-Button $Window 'Search'
+    Find-Control $Window $name 'No crews match your search.' | Out-Null
+    Set-Field $Window 'crew-search' 'civil 02'
+    Invoke-Button $Window 'Search'
+    Find-Control $Window $name 'Edit Synthetic Civil 02' | Out-Null
+}
+
+
 Write-Host "Diagnostic log: $acceptanceLog"
 Write-AcceptanceEvent 'INFO' 'gui-configuration' $null 0 "profile=$Profile guiSeconds=$($waits.GuiTimeoutSeconds) exitSeconds=$($waits.ExitTimeoutSeconds)"
 $timer = [Diagnostics.Stopwatch]::StartNew()
@@ -176,6 +196,7 @@ try {
     Invoke-Button $window 'Save note'
     Find-Control $window $name 'Note saved.' | Out-Null
     if ($IncludeProjects) { Test-Projects $window }
+    if ($IncludeCrews) { Test-Crews $window }
     Close-Dashboard $process
     $process.Dispose()
     $process = $null
@@ -196,6 +217,11 @@ try {
         Find-Control $window $name ("DEMO-26001 {0} Edited synthetic yard" -f [char]0x00B7) | Out-Null
         Find-Control $window $name 'Small' | Out-Null
         Write-AcceptanceEvent 'PASS' 'project-master' $timer 0 'syntheticProjectAndWorkItem=reopened'
+    }
+    if ($IncludeCrews) {
+        Invoke-Button $window 'Crews'
+        Find-Control $window $name 'Edit Synthetic Civil 02' | Out-Null
+        Write-AcceptanceEvent 'PASS' 'crew-roster' $timer 0 'syntheticCrew=reopened'
     }
     Close-Dashboard $process
     $process.Dispose()

@@ -6,6 +6,7 @@ from .domain import DemoProject, validate_note
 
 INITIAL_DEMO = "20261112045924_InitialDemo"
 PROJECT_MASTER = "20261112072258_AddProjectsAndWorkItems"
+CREW_ROSTER = "20261115031137_AddCrewRoster"
 EF_VERSION = "10.0.15"
 
 # Keep the on-disk format compatible with the two released EF Core migrations.
@@ -39,6 +40,17 @@ CREATE_PROJECT_MASTER = (
     "CREATE UNIQUE INDEX IX_Projects_JobNumber ON Projects (JobNumber)",
     "CREATE INDEX IX_WorkItems_ProjectId ON WorkItems (ProjectId)",
 )
+
+
+PROJECT_TABLES = {"__EFMigrationsHistory", "DemoProjects", "Projects", "WorkItems"}
+CREATE_CREWS = """
+    CREATE TABLE Crews (
+        Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        Name TEXT NOT NULL CHECK (length(trim(Name)) BETWEEN 1 AND 100),
+        Type TEXT NOT NULL CHECK (Type IN ('Civil', 'Tower')),
+        Active INTEGER NOT NULL CHECK (Active IN (0, 1))
+    )
+"""
 
 
 class UnsupportedDatabaseError(RuntimeError):
@@ -90,12 +102,17 @@ def initialize_database(path: Path) -> None:
                 for statement in CREATE_PROJECT_MASTER:
                     connection.execute(statement)
                 record_migration(connection, PROJECT_MASTER)
-            elif history != (INITIAL_DEMO, PROJECT_MASTER) or tables != {
-                "__EFMigrationsHistory",
-                "DemoProjects",
-                "Projects",
-                "WorkItems",
-            }:
+                history = (INITIAL_DEMO, PROJECT_MASTER)
+                tables = PROJECT_TABLES
+
+            if history == (INITIAL_DEMO, PROJECT_MASTER) and tables == PROJECT_TABLES:
+                connection.execute(CREATE_CREWS)
+                record_migration(
+                    connection, CREW_ROSTER, product_version="Rigarus 0.1.0"
+                )
+            elif history != (INITIAL_DEMO, PROJECT_MASTER, CREW_ROSTER) or tables != (
+                PROJECT_TABLES | {"Crews"}
+            ):
                 raise UnsupportedDatabaseError(
                     "This Rigarus database has an unsupported schema. Open it with a compatible version."
                 )
@@ -107,6 +124,8 @@ def initialize_database(path: Path) -> None:
             connection.execute(
                 "SELECT Id, ProjectId, Type, RequiredCrewCount, EstimatedHalfDays FROM WorkItems LIMIT 0"
             )
+
+            connection.execute("SELECT Id, Name, Type, Active FROM Crews LIMIT 0")
 
         mode = connection.execute("PRAGMA journal_mode = WAL").fetchone()
         if mode != ("wal",):
@@ -145,10 +164,15 @@ def create_demo_schema(connection: sqlite3.Connection) -> None:
     record_migration(connection, INITIAL_DEMO)
 
 
-def record_migration(connection: sqlite3.Connection, migration_id: str) -> None:
+def record_migration(
+    connection: sqlite3.Connection,
+    migration_id: str,
+    *,
+    product_version: str = EF_VERSION,
+) -> None:
     connection.execute(
         "INSERT INTO __EFMigrationsHistory (MigrationId, ProductVersion) VALUES (?, ?)",
-        (migration_id, EF_VERSION),
+        (migration_id, product_version),
     )
 
 
