@@ -1,5 +1,7 @@
 # Rigarus Offline Dispatch Scheduler
 
+English · [简体中文](docs/README.zh-CN.md)
+
 Windows 11 x64 first, with one local operator and an English desktop interface. The application needs no network, account or service during use.
 
 ## Install on Windows 11 x64
