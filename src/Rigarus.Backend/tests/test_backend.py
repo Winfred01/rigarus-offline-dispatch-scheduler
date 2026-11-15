@@ -11,6 +11,7 @@ from rigarus_backend.storage import UnsupportedDatabaseError, initialize_databas
 
 INITIAL = "20261112045924_InitialDemo"
 PROJECTS = "20261112072258_AddProjectsAndWorkItems"
+CREWS = "20261115031137_AddCrewRoster"
 
 
 class BackendTests(unittest.TestCase):
@@ -68,7 +69,7 @@ class BackendTests(unittest.TestCase):
             )
 
         with closing(sqlite3.connect(self.database)) as connection:
-            self.assertEqual(self.migration_ids(connection), [INITIAL, PROJECTS])
+            self.assertEqual(self.migration_ids(connection), [INITIAL, PROJECTS, CREWS])
             self.assertEqual(
                 connection.execute("PRAGMA journal_mode").fetchone(), ("wal",)
             )
@@ -99,7 +100,7 @@ class BackendTests(unittest.TestCase):
             )
 
         with closing(sqlite3.connect(self.database)) as connection:
-            self.assertEqual(self.migration_ids(connection), [INITIAL, PROJECTS])
+            self.assertEqual(self.migration_ids(connection), [INITIAL, PROJECTS, CREWS])
             connection.execute("PRAGMA foreign_keys = ON")
             connection.execute(
                 "INSERT INTO Projects VALUES (7, 'Job-007', '0004', 'Example Site')"
@@ -127,7 +128,7 @@ class BackendTests(unittest.TestCase):
             )
 
         with closing(sqlite3.connect(self.database)) as connection:
-            self.assertEqual(self.migration_ids(connection), [INITIAL, PROJECTS])
+            self.assertEqual(self.migration_ids(connection), [INITIAL, PROJECTS, CREWS])
             self.assertEqual(
                 connection.execute("SELECT * FROM Projects").fetchall(),
                 [(32, "00123", "0042", "Synthetic site")],
@@ -164,7 +165,7 @@ class BackendTests(unittest.TestCase):
 
         initialize_database(self.database)
         with closing(sqlite3.connect(self.database)) as connection:
-            self.assertEqual(self.migration_ids(connection), [INITIAL, PROJECTS])
+            self.assertEqual(self.migration_ids(connection), [INITIAL, PROJECTS, CREWS])
 
     def test_unknown_database_is_rejected_without_adding_schema(self):
         self.database.parent.mkdir()

@@ -44,6 +44,16 @@ async fn save_project(
     with_sidecar(app, move |service| service.save_project(id, &project)).await
 }
 
+#[tauri::command]
+async fn search_crews(app: tauri::AppHandle, term: String) -> Result<Value, String> {
+    with_sidecar(app, move |service| service.search_crews(&term)).await
+}
+
+#[tauri::command]
+async fn save_crew(app: tauri::AppHandle, id: Option<i64>, crew: Value) -> Result<Value, String> {
+    with_sidecar(app, move |service| service.save_crew(id, &crew)).await
+}
+
 async fn with_sidecar<T: Send + 'static>(
     app: tauri::AppHandle,
     operation: impl FnOnce(&Sidecar) -> Result<T, String> + Send + 'static,
@@ -96,7 +106,9 @@ fn main() {
             save_demo_note,
             search_projects,
             read_project,
-            save_project
+            save_project,
+            search_crews,
+            save_crew
         ])
         .build(tauri::generate_context!())
         .expect("Unable to start the Rigarus desktop.")

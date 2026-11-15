@@ -127,8 +127,16 @@ impl Sidecar {
     }
 
     pub fn search_projects(&self, term: &str) -> Result<Value, String> {
-        let mut url = reqwest::Url::parse(&self.url("/projects"))
-            .map_err(|_| SERVICE_UNAVAILABLE.to_string())?;
+        self.search("/projects", term)
+    }
+
+    pub fn search_crews(&self, term: &str) -> Result<Value, String> {
+        self.search("/crews", term)
+    }
+
+    fn search(&self, path: &str, term: &str) -> Result<Value, String> {
+        let mut url =
+            reqwest::Url::parse(&self.url(path)).map_err(|_| SERVICE_UNAVAILABLE.to_string())?;
         url.query_pairs_mut().append_pair("term", term);
         self.send(self.client.get(url))
     }
@@ -143,6 +151,14 @@ impl Sidecar {
             None => self.client.post(self.url("/projects")),
         };
         self.send(request.json(project))
+    }
+
+    pub fn save_crew(&self, id: Option<i64>, crew: &Value) -> Result<Value, String> {
+        let request = match id {
+            Some(id) => self.client.put(self.url(&format!("/crews/{id}"))),
+            None => self.client.post(self.url("/crews")),
+        };
+        self.send(request.json(crew))
     }
 
     fn url(&self, path: &str) -> String {
