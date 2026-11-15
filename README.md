@@ -2,46 +2,33 @@
 
 English · [简体中文](docs/README.zh-CN.md)
 
-Windows 11 x64 first, with one local operator and an English desktop interface. The application needs no network, account or service during use.
+Rigarus is a Windows desktop dispatch tool for one local operator. The current engineering preview targets Windows 11 x64 and has an English interface. It uses Tauri, React and TypeScript, a bundled Python FastAPI sidecar, and local SQLite. Installation and daily use can run offline without an account or external service.
 
 ## Install on Windows 11 x64
 
-1. Copy `Rigarus-Dispatch-x64-setup.exe` to the computer where you want to use Rigarus.
-2. Double-click the installer and follow the prompts.
-3. Select **Run Rigarus Dispatch** at the end of setup or open it later from the Start menu.
+1. Obtain `Rigarus-Dispatch-x64-setup.exe` through the approved distribution channel. Repository members can get an internal test installer from the [private Windows CI acceptance kit](docs/08-RELEASE-HANDBOOK.md#offline-acceptance-kit).
+2. Copy the installer to the target PC, double-click it, and follow the prompts. Setup includes the Python runtime, SQLite, and Microsoft's offline WebView2 installer. It uses the bundled WebView2 installer if Windows has no registered runtime.
+3. Select **Run Rigarus Dispatch** at the end of setup or open **Rigarus Dispatch** from the Start menu.
 
-The installer includes the Python runtime, SQLite, and Microsoft's WebView2 offline installer. Setup uses the included WebView2 installer if Windows has no registered runtime. Operators do not need to install Python, Node.js, Rust, .NET, or Visual Studio. Internet access is unnecessary during setup and use.
+Operators can use the installed app without separately installing Python, Node.js, Rust, .NET, or Visual Studio. Use synthetic data for this engineering preview. Demo A customer sign-off and production approval are pending.
 
-On first launch, **Dashboard** shows a synthetic project. Use **Projects** to create and edit projects and work items. Rigarus saves the database to `%LOCALAPPDATA%\RigarusDispatch\data\rigarus.db`.
+## Current preview
 
-For internal testing, use the installer from the [private Windows CI acceptance kit](docs/08-RELEASE-HANDBOOK.md#offline-acceptance-kit).
+- **Dashboard** opens the synthetic job `DEMO-001`. Edit its demo note, select **Save note**, and reopen the app to verify the saved note.
+- **Projects** lets you search by Job #, Site ID, or site name and create or edit projects and work items. Each work item can record a required crew count and an estimate in whole half-days.
+- **Crews** lets you create, search, edit, deactivate, and reactivate Civil and Tower crews. Inactive crews remain visible.
 
-## Legacy WPF development build
+The [project plan](docs/00-PROJECT-PLAN.md) covers upcoming employee and foreman workflows, rig inventory, scheduling, import and export, backup and restore, and upgrade verification.
 
-Install the .NET 10 SDK. Run from the repository root in PowerShell.
+## Local data
 
-```powershell
-dotnet restore Rigarus.sln --locked-mode
-dotnet build Rigarus.sln -c Release --no-restore
-dotnet test Rigarus.sln -c Release --no-build --no-restore
-dotnet run --project src/Rigarus.Desktop -c Release --no-build --no-restore
-```
-
-The first restore requires NuGet access. In the app, edit the demo note, select **Save note**, close the window and reopen it. The database is under `%LOCALAPPDATA%\RigarusDispatch\data\rigarus.db`. Startup and save failures are logged locally by operation and exception type.
-
-Open **Projects** to browse the unscheduled backlog, search by Job #, Site ID or site name, and create or edit projects. Work items are optional. Each one records a type, required crew count and estimated whole half-days.
-
-See the [desktop verification walkthrough](docs/05-DEMO-ACCEPTANCE.md), [architecture](docs/02-ARCHITECTURE.md) and [local Windows ZIP procedure](docs/08-RELEASE-HANDBOOK.md).
-
-## Development
-
-Read [AGENTS.md](AGENTS.md) and the [project plan](docs/00-PROJECT-PLAN.md) before starting an Issue. Use synthetic data for development and tests. Personnel and fleet management, scheduling, imports, exports, backup and install/upgrade workflows are future milestones.
+The default database path is `%LOCALAPPDATA%\RigarusDispatch\data\rigarus.db`. Development, demos, and CI use synthetic data. Keep customer databases, original spreadsheets, attachments, backups, and raw diagnostics on authorized local systems. See the [data model and migration notes](docs/03-DATA-MODEL.md) before using an existing database.
 
 ## Tauri development and tests
 
-The Tauri desktop preview uses React/TypeScript and a bundled Python FastAPI sidecar. It supports demo note save and reopen, and the Project Master backlog, search, detail, creation and editing on the existing SQLite schema.
+Follow the [Windows source build and packaging instructions](docs/08-RELEASE-HANDBOOK.md#tauri-desktop-preview) to set up Node.js, Rust, the Windows C++ build tools, Python 3.13, and uv 0.10.12. The first dependency restore requires network access.
 
-Use Python 3.13 and uv 0.10.12 on Windows to verify the backend from the repository root.
+Run the backend checks from the repository root in PowerShell.
 
 ```powershell
 Set-Location src/Rigarus.Backend
@@ -51,4 +38,17 @@ uv run --locked ruff format --check
 uv run --locked python -m unittest discover -s tests -v
 ```
 
-The tests use temporary synthetic SQLite files, an in-process ASGI client, and child-process loopback HTTP. See the [Windows build and installer procedure](docs/08-RELEASE-HANDBOOK.md#tauri-desktop-preview) and [desktop verification walkthrough](docs/05-DEMO-ACCEPTANCE.md#tauri-demo-note-engineering-check).
+The tests use temporary synthetic databases and loopback HTTP. The [desktop verification walkthrough](docs/05-DEMO-ACCEPTANCE.md#tauri-demo-note-engineering-check) describes the native Windows smoke tests. Read [AGENTS.md](AGENTS.md) and the [architecture](docs/02-ARCHITECTURE.md) before working on an Issue.
+
+## Legacy WPF development build
+
+The .NET/WPF baseline remains available for checking earlier behavior and data compatibility. Install the .NET 10 SDK and run these commands from the repository root in PowerShell.
+
+```powershell
+dotnet restore Rigarus.sln --locked-mode
+dotnet build Rigarus.sln -c Release --no-restore
+dotnet test Rigarus.sln -c Release --no-build --no-restore
+dotnet run --project src/Rigarus.Desktop -c Release --no-build --no-restore
+```
+
+The first restore requires NuGet access. See the [legacy Windows ZIP procedure](docs/08-RELEASE-HANDBOOK.md#local-m0-engineering-package).
