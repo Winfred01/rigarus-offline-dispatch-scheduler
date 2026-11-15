@@ -36,8 +36,13 @@ function Wait-For([string]$Description, [scriptblock]$Probe) {
     } $timer
 }
 
-function Find-Control($Window, $Property, [string]$Value) {
+function Find-Control($Window, $Property, [string]$Value, [switch]$Button) {
     $condition = New-Object Windows.Automation.PropertyCondition($Property, $Value)
+    if ($Button) {
+        $buttonCondition = [Windows.Automation.PropertyCondition]::new(
+            [Windows.Automation.AutomationElement]::ControlTypeProperty, [Windows.Automation.ControlType]::Button)
+        $condition = [Windows.Automation.AndCondition]::new($condition, $buttonCondition)
+    }
     Wait-For $Value {
         $Window.FindAll([Windows.Automation.TreeScope]::Descendants, $condition) |
             Select-Object -First 1
@@ -95,7 +100,7 @@ function Get-Sidecar($Process) {
 }
 
 function Invoke-Button($Window, [string]$Label) {
-    $button = Find-Control $Window $name $Label
+    $button = Find-Control $Window $name $Label -Button
     Wait-For "$Label to be enabled" { $button.Current.IsEnabled } | Out-Null
     $button.GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke()
 }
