@@ -97,6 +97,8 @@ jobs:
         env:
           RUSTUP_TOOLCHAIN: '1.95.0'
         run: npm run tauri -- build -- --locked
+      - name: Test sidecar readiness and startup errors
+        run: cargo +1.95.0 test --release --locked --features tauri/custom-protocol --manifest-path src-tauri/Cargo.toml
       - name: Assemble the offline acceptance kit
         if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
         working-directory: .
