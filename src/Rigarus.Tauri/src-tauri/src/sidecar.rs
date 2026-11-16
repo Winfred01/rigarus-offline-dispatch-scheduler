@@ -15,7 +15,10 @@ use std::{
 };
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
+const STARTUP_TIMEOUT: Duration = Duration::from_secs(60);
 const SERVICE_UNAVAILABLE: &str = "The local service is unavailable. Reopen Rigarus to retry.";
+const STARTUP_TIMED_OUT: &str =
+    "The local service took too long to start. Try again, or reopen Rigarus.";
 const OPEN_DATABASE: &str =
     "Unable to open the local database. Check folder permissions and close other Rigarus windows.";
 const INCOMPATIBLE_DATABASE: &str =
@@ -86,25 +89,8 @@ impl Sidecar {
 
         writeln!(service.child.stdin.as_mut().unwrap(), "{}", service.token)
             .map_err(|_| SERVICE_UNAVAILABLE)?;
-        let ready = rx
-            .recv_timeout(Duration::from_secs(20))
-            .ok()
-            .and_then(Result::ok);
-        match ready {
-            Some(ready) if ready.event == "ready" && ready.port > 0 => {
-                service.port = ready.port;
-                Ok(service)
-            }
-            _ => {
-                let hint = error_rx.recv_timeout(Duration::from_millis(250));
-                Err(match hint.as_deref().map(str::trim) {
-                    Ok(OPEN_DATABASE) => OPEN_DATABASE,
-                    Ok(INCOMPATIBLE_DATABASE) => INCOMPATIBLE_DATABASE,
-                    _ => SERVICE_UNAVAILABLE,
-                }
-                .into())
-            }
-        }
+        service.port = wait_for_readiness(rx, error_rx, STARTUP_TIMEOUT)?;
+        Ok(service)
     }
 
     pub fn is_running(&mut self) -> bool {
@@ -201,6 +187,25 @@ impl Sidecar {
     }
 }
 
+fn wait_for_readiness(
+    ready: mpsc::Receiver<Result<Ready, serde_json::Error>>,
+    startup_error: mpsc::Receiver<String>,
+    timeout: Duration,
+) -> Result<u16, &'static str> {
+    match ready.recv_timeout(timeout) {
+        Ok(Ok(ready)) if ready.event == "ready" && ready.port > 0 => Ok(ready.port),
+        Err(mpsc::RecvTimeoutError::Timeout) => Err(STARTUP_TIMED_OUT),
+        _ => {
+            let hint = startup_error.recv_timeout(Duration::from_millis(250));
+            Err(match hint.as_deref().map(str::trim) {
+                Ok(OPEN_DATABASE) => OPEN_DATABASE,
+                Ok(INCOMPATIBLE_DATABASE) => INCOMPATIBLE_DATABASE,
+                _ => SERVICE_UNAVAILABLE,
+            })
+        }
+    }
+}
+
 impl Drop for Sidecar {
     fn drop(&mut self) {
         self.child.stdin.take();
@@ -211,6 +216,66 @@ impl Drop for Sidecar {
         if self.is_running() {
             let _ = self.child.kill();
             let _ = self.child.wait();
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accepts_a_delayed_valid_readiness_signal() {
+        let (ready_tx, ready_rx) = mpsc::channel();
+        let (_, error_rx) = mpsc::channel();
+        let worker = thread::spawn(move || {
+            thread::sleep(Duration::from_millis(30));
+            ready_tx
+                .send(serde_json::from_str(r#"{"event":"ready","port":42000}"#))
+                .unwrap();
+        });
+        assert_eq!(
+            wait_for_readiness(ready_rx, error_rx, Duration::from_secs(3)),
+            Ok(42000),
+        );
+        worker.join().unwrap();
+    }
+
+    #[test]
+    fn reports_a_deadline_when_the_pipe_is_open_without_readiness() {
+        let (_ready_tx, ready_rx) = mpsc::channel();
+        let (_, error_rx) = mpsc::channel();
+        assert_eq!(
+            wait_for_readiness(ready_rx, error_rx, Duration::ZERO),
+            Err(STARTUP_TIMED_OUT),
+        );
+    }
+
+    #[test]
+    fn preserves_known_database_errors_when_the_sidecar_exits() {
+        for message in [OPEN_DATABASE, INCOMPATIBLE_DATABASE] {
+            let (ready_tx, ready_rx) = mpsc::channel();
+            let (error_tx, error_rx) = mpsc::channel();
+            error_tx.send(format!("{message}\r\n")).unwrap();
+            drop(ready_tx);
+            assert_eq!(
+                wait_for_readiness(ready_rx, error_rx, Duration::from_secs(3)),
+                Err(message),
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_readiness_without_exposing_stderr() {
+        for line in ["", r#"{"event":"ready","port":0}"#] {
+            let (ready_tx, ready_rx) = mpsc::channel();
+            let (error_tx, error_rx) = mpsc::channel();
+            ready_tx.send(serde_json::from_str(line)).unwrap();
+            error_tx.send("Unexpected synthetic error.".into()).unwrap();
+            assert_eq!(
+                wait_for_readiness(ready_rx, error_rx, Duration::ZERO),
+                Err(SERVICE_UNAVAILABLE),
+            );
         }
     }
 }
