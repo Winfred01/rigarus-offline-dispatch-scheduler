@@ -7,6 +7,7 @@ from .domain import DemoProject, validate_note
 INITIAL_DEMO = "20261112045924_InitialDemo"
 PROJECT_MASTER = "20261112072258_AddProjectsAndWorkItems"
 CREW_ROSTER = "20261115031137_AddCrewRoster"
+EMPLOYEE_ROSTER = "20261115130213_AddEmployeeRoster"
 EF_VERSION = "10.0.15"
 
 # Keep the on-disk format compatible with the two released EF Core migrations.
@@ -43,12 +44,27 @@ CREATE_PROJECT_MASTER = (
 
 
 PROJECT_TABLES = {"__EFMigrationsHistory", "DemoProjects", "Projects", "WorkItems"}
+CREW_TABLES = PROJECT_TABLES | {"Crews"}
+CREW_HISTORY = (INITIAL_DEMO, PROJECT_MASTER, CREW_ROSTER)
 CREATE_CREWS = """
     CREATE TABLE Crews (
         Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
         Name TEXT NOT NULL CHECK (length(trim(Name)) BETWEEN 1 AND 100),
         Type TEXT NOT NULL CHECK (Type IN ('Civil', 'Tower')),
         Active INTEGER NOT NULL CHECK (Active IN (0, 1))
+    )
+"""
+
+
+CREATE_EMPLOYEES = """
+    CREATE TABLE Employees (
+        Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        Name TEXT NOT NULL CHECK (length(trim(Name)) BETWEEN 1 AND 100),
+        HomeCrewId INTEGER NOT NULL REFERENCES Crews (Id) ON DELETE RESTRICT,
+        SkillLevel INTEGER NOT NULL CHECK (typeof(SkillLevel) = 'integer' AND SkillLevel BETWEEN 1 AND 3),
+        ForemanEligible INTEGER NOT NULL CHECK (ForemanEligible IN (0, 1)),
+        Active INTEGER NOT NULL CHECK (Active IN (0, 1)),
+        DriverStatus TEXT NOT NULL DEFAULT 'Unverified' CHECK (DriverStatus = 'Unverified')
     )
 """
 
@@ -110,8 +126,19 @@ def initialize_database(path: Path) -> None:
                 record_migration(
                     connection, CREW_ROSTER, product_version="Rigarus 0.1.0"
                 )
-            elif history != (INITIAL_DEMO, PROJECT_MASTER, CREW_ROSTER) or tables != (
-                PROJECT_TABLES | {"Crews"}
+                history = CREW_HISTORY
+                tables = CREW_TABLES
+
+            if history == CREW_HISTORY and tables == CREW_TABLES:
+                connection.execute(CREATE_EMPLOYEES)
+                connection.execute(
+                    "CREATE INDEX IX_Employees_HomeCrewId ON Employees (HomeCrewId)"
+                )
+                record_migration(
+                    connection, EMPLOYEE_ROSTER, product_version="Rigarus 0.1.0"
+                )
+            elif history != (*CREW_HISTORY, EMPLOYEE_ROSTER) or tables != (
+                CREW_TABLES | {"Employees"}
             ):
                 raise UnsupportedDatabaseError(
                     "This Rigarus database has an unsupported schema. Open it with a compatible version."
@@ -126,6 +153,9 @@ def initialize_database(path: Path) -> None:
             )
 
             connection.execute("SELECT Id, Name, Type, Active FROM Crews LIMIT 0")
+            connection.execute(
+                "SELECT Id, Name, HomeCrewId, SkillLevel, ForemanEligible, Active, DriverStatus FROM Employees LIMIT 0"
+            )
 
         mode = connection.execute("PRAGMA journal_mode = WAL").fetchone()
         if mode != ("wal",):

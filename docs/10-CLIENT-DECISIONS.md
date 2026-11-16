@@ -12,6 +12,7 @@ Source for this draft is the November 2026 project plan and delivery playbook. C
 | Proposed | AM/PM granularity | Demo B |
 | Open | Whether Site ID is required. Project Master currently follows the required field in the Issue #6 schema. | Demo A |
 | Open | Accepted Job # format and non-ASCII case rules. Current uniqueness follows SQLite ASCII `NOCASE`. | Demo A |
+| Proposed | Employee entry requires a Home Crew. Retain references when that crew becomes inactive. Confirm whether the roster needs unassigned employees. | Demo A |
 | Proposed | Check an approved driver during each actual work period | Demo D |
 | Open | Qualification criteria, crew sizes and foreman replacement rules | Demo D |
 | Open | Who approves weekend work and who records the decision | Demo E |

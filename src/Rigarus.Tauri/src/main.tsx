@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState, type SubmitEvent } from "react";
 import { createRoot } from "react-dom/client";
+import { EmployeeRoster } from "./employees";
 import { CrewRoster } from "./roster";
 import { ProjectMaster } from "./projects";
 import "./styles.css";
@@ -119,9 +120,9 @@ function DemoDashboard({ active }: { active: boolean }) {
 }
 
 function App() {
-  const [page, setPage] = useState<"dashboard" | "projects" | "crews">(
-    "dashboard",
-  );
+  const [page, setPage] = useState<
+    "dashboard" | "projects" | "crews" | "employees"
+  >("dashboard");
   return (
     <>
       <header className="app-header">
@@ -149,6 +150,13 @@ function App() {
             >
               Crews
             </button>
+            <button
+              className="nav-button"
+              aria-current={page === "employees" ? "page" : undefined}
+              onClick={() => setPage("employees")}
+            >
+              Employees
+            </button>
           </nav>
           <span className="mode">Demo mode</span>
         </div>
@@ -160,6 +168,7 @@ function App() {
         {page === "projects" && <ProjectMaster />}
       </div>
       {page === "crews" && <CrewRoster />}
+      {page === "employees" && <EmployeeRoster />}
     </>
   );
 }

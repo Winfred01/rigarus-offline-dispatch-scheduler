@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from .domain import DemoProject
 from .project_api import project_router
-from .roster_api import crew_router
+from .roster_api import crew_router, employee_router
 from .storage import DemoStore, UnsupportedDatabaseError, initialize_database
 
 
@@ -27,6 +27,7 @@ def create_app(database_path: Path, *, database_initialized: bool = False) -> Fa
     app = FastAPI(lifespan=lifespan, openapi_url=None)
     app.include_router(project_router(database_path))
     app.include_router(crew_router(database_path))
+    app.include_router(employee_router(database_path))
 
     @app.get("/health")
     def health() -> dict[str, str]:

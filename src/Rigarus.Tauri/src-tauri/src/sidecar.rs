@@ -134,6 +134,10 @@ impl Sidecar {
         self.search("/crews", term)
     }
 
+    pub fn search_employees(&self, term: &str) -> Result<Value, String> {
+        self.search("/employees", term)
+    }
+
     fn search(&self, path: &str, term: &str) -> Result<Value, String> {
         let mut url =
             reqwest::Url::parse(&self.url(path)).map_err(|_| SERVICE_UNAVAILABLE.to_string())?;
@@ -154,11 +158,24 @@ impl Sidecar {
     }
 
     pub fn save_crew(&self, id: Option<i64>, crew: &Value) -> Result<Value, String> {
+        self.save_roster_record("/crews", id, crew)
+    }
+
+    pub fn save_employee(&self, id: Option<i64>, employee: &Value) -> Result<Value, String> {
+        self.save_roster_record("/employees", id, employee)
+    }
+
+    fn save_roster_record(
+        &self,
+        path: &str,
+        id: Option<i64>,
+        record: &Value,
+    ) -> Result<Value, String> {
         let request = match id {
-            Some(id) => self.client.put(self.url(&format!("/crews/{id}"))),
-            None => self.client.post(self.url("/crews")),
+            Some(id) => self.client.put(self.url(&format!("{path}/{id}"))),
+            None => self.client.post(self.url(path)),
         };
-        self.send(request.json(crew))
+        self.send(request.json(record))
     }
 
     fn url(&self, path: &str) -> String {

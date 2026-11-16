@@ -18,7 +18,9 @@ Operators can use the installed app without separately installing Python, Node.j
 - **Projects** lets you search by Job #, Site ID, or site name and create or edit projects and work items. Each work item can record a required crew count and an estimate in whole half-days.
 - **Crews** lets you create, search, edit, deactivate, and reactivate Civil and Tower crews. Inactive crews remain visible.
 
-The [project plan](docs/00-PROJECT-PLAN.md) covers upcoming employee and foreman workflows, rig inventory, scheduling, import and export, backup and restore, and upgrade verification.
+- **Employees** lets you maintain names, home crews, skill levels, foreman eligibility and active status. Driver status starts as Unverified.
+
+The [project plan](docs/00-PROJECT-PLAN.md) covers upcoming foreman assignments, rig inventory, scheduling, import and export, backup and restore, and upgrade verification.
 
 ## Local data
 
