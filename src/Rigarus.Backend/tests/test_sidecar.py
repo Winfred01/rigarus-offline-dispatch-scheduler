@@ -1,4 +1,6 @@
 import concurrent.futures
+import base64
+import hashlib
 import http.client
 import json
 import os
@@ -10,6 +12,7 @@ import tempfile
 import unittest
 from contextlib import closing
 from pathlib import Path
+from test_import_preview import workbook_bytes
 
 
 class SidecarTests(unittest.TestCase):
@@ -134,6 +137,29 @@ class SidecarTests(unittest.TestCase):
         self.assertEqual(self.request(port, "GET", "/rigs", token), (200, [rig]))
         restarted.stdin.close()
         self.assertEqual(restarted.wait(timeout=10), 0)
+
+    def test_workbook_preview_is_authenticated_read_only_and_packaged(self):
+        token = secrets.token_hex(32)
+        process = self.launch(token)
+        port = self.read_port(process)
+        content = workbook_bytes(
+            [["SYN-011", "0011", "Synthetic import yard"]],
+            headers=("Job #", "Site ID", "Site Name"),
+        )
+        payload = {"content": base64.b64encode(content).decode("ascii")}
+        digest = hashlib.sha256(self.database.read_bytes()).digest()
+        self.assertEqual(
+            self.request(port, "POST", "/import-preview", payload=payload)[0], 401
+        )
+        code, preview = self.request(
+            port, "POST", "/import-preview", token, payload=payload
+        )
+        self.assertEqual(code, 200)
+        self.assertEqual(preview["rows"][0]["status"], "Ready")
+        self.assertEqual(preview["rows"][0]["source"], "'Synthetic Plan'!A2:C2")
+        self.assertEqual(hashlib.sha256(self.database.read_bytes()).digest(), digest)
+        process.stdin.close()
+        self.assertEqual(process.wait(timeout=10), 0)
 
     def test_startup_rejects_unknown_database_with_recovery_hint(self):
         self.database.parent.mkdir()

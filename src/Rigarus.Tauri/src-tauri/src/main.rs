@@ -16,6 +16,14 @@ struct DemoProject {
 }
 
 #[tauri::command]
+async fn preview_import(app: tauri::AppHandle, content: String) -> Result<Value, String> {
+    if content.len() > 7_000_000 {
+        return Err("Choose an .xlsx workbook of at most 5 MiB.".into());
+    }
+    with_sidecar(app, move |service| service.preview_import(&content)).await
+}
+
+#[tauri::command]
 async fn read_demo(app: tauri::AppHandle) -> Result<DemoProject, String> {
     with_sidecar(app, Sidecar::read_demo).await
 }
@@ -126,6 +134,7 @@ fn main() {
     tauri::Builder::default()
         .manage(Mutex::<Option<Sidecar>>::new(None))
         .invoke_handler(tauri::generate_handler![
+            preview_import,
             read_demo,
             save_demo_note,
             search_projects,

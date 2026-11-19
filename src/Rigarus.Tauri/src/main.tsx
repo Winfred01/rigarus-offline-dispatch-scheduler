@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { ImportPreview } from "./import-preview";
 import { useEffect, useState, type SubmitEvent } from "react";
 import { createRoot } from "react-dom/client";
 import { EmployeeRoster } from "./employees";
@@ -122,7 +123,7 @@ function DemoDashboard({ active }: { active: boolean }) {
 
 function App() {
   const [page, setPage] = useState<
-    "dashboard" | "projects" | "crews" | "employees" | "rigs"
+    "dashboard" | "projects" | "crews" | "employees" | "rigs" | "import"
   >("dashboard");
   return (
     <>
@@ -165,6 +166,13 @@ function App() {
             >
               Rigs
             </button>
+            <button
+              className="nav-button"
+              aria-current={page === "import" ? "page" : undefined}
+              onClick={() => setPage("import")}
+            >
+              Import preview
+            </button>
           </nav>
           <span className="mode">Demo mode</span>
         </div>
@@ -178,6 +186,7 @@ function App() {
       {page === "crews" && <CrewRoster />}
       {page === "employees" && <EmployeeRoster />}
       {page === "rigs" && <RigInventory />}
+      {page === "import" && <ImportPreview />}
     </>
   );
 }

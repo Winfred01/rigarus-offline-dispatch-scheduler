@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from .domain import DemoProject
+from .import_preview_api import import_preview_router
 from .project_api import project_router
 from .rig_api import rig_router
 from .roster_api import crew_router, employee_router
@@ -30,6 +31,7 @@ def create_app(database_path: Path, *, database_initialized: bool = False) -> Fa
     app.include_router(crew_router(database_path))
     app.include_router(employee_router(database_path))
     app.include_router(rig_router(database_path))
+    app.include_router(import_preview_router(database_path))
 
     @app.get("/health")
     def health() -> dict[str, str]:
