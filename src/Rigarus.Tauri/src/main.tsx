@@ -3,6 +3,7 @@ import { useEffect, useState, type SubmitEvent } from "react";
 import { createRoot } from "react-dom/client";
 import { EmployeeRoster } from "./employees";
 import { CrewRoster } from "./roster";
+import { RigInventory } from "./rigs";
 import { ProjectMaster } from "./projects";
 import "./styles.css";
 
@@ -121,7 +122,7 @@ function DemoDashboard({ active }: { active: boolean }) {
 
 function App() {
   const [page, setPage] = useState<
-    "dashboard" | "projects" | "crews" | "employees"
+    "dashboard" | "projects" | "crews" | "employees" | "rigs"
   >("dashboard");
   return (
     <>
@@ -157,6 +158,13 @@ function App() {
             >
               Employees
             </button>
+            <button
+              className="nav-button"
+              aria-current={page === "rigs" ? "page" : undefined}
+              onClick={() => setPage("rigs")}
+            >
+              Rigs
+            </button>
           </nav>
           <span className="mode">Demo mode</span>
         </div>
@@ -169,6 +177,7 @@ function App() {
       </div>
       {page === "crews" && <CrewRoster />}
       {page === "employees" && <EmployeeRoster />}
+      {page === "rigs" && <RigInventory />}
     </>
   );
 }

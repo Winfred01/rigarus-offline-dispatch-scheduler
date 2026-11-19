@@ -59,13 +59,15 @@ class SidecarTests(unittest.TestCase):
         return message["port"]
 
     @staticmethod
-    def request(port, method, route, token=None, note=None, headers=None):
+    def request(port, method, route, token=None, note=None, headers=None, payload=None):
         request_headers = dict(headers or {})
         if token is not None:
             request_headers["Authorization"] = "Bearer " + token
         body = None
         if note is not None:
-            body = json.dumps({"note": note})
+            payload = {"note": note}
+        if payload is not None:
+            body = json.dumps(payload)
             request_headers["Content-Type"] = "application/json"
         with closing(
             http.client.HTTPConnection("127.0.0.1", port, timeout=5)
@@ -114,6 +116,22 @@ class SidecarTests(unittest.TestCase):
             self.request(next_port, "GET", "/demo", next_token)[1]["note"],
             "Synthetic sidecar note",
         )
+        restarted.stdin.close()
+        self.assertEqual(restarted.wait(timeout=10), 0)
+
+    def test_rig_api_is_authenticated_and_persists_across_sidecar_restart(self):
+        token = secrets.token_hex(32)
+        process = self.launch(token)
+        port = self.read_port(process)
+        draft = {"number": "SYN-RIG-009", "type": "Synthetic truck"}
+        self.assertEqual(self.request(port, "POST", "/rigs", payload=draft)[0], 401)
+        code, rig = self.request(port, "POST", "/rigs", token, payload=draft)
+        self.assertEqual(code, 201)
+        process.stdin.close()
+        self.assertEqual(process.wait(timeout=10), 0)
+        restarted = self.launch(token)
+        port = self.read_port(restarted)
+        self.assertEqual(self.request(port, "GET", "/rigs", token), (200, [rig]))
         restarted.stdin.close()
         self.assertEqual(restarted.wait(timeout=10), 0)
 

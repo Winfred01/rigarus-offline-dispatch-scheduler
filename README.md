@@ -19,8 +19,9 @@ Operators can use the installed app without separately installing Python, Node.j
 - **Crews** lets you create, search, edit, deactivate, and reactivate Civil and Tower crews. Inactive crews remain visible.
 
 - **Employees** lets you maintain names, home crews, skill levels, foreman eligibility and active status. Driver status starts as Unverified.
+- **Rigs** lets you maintain unique Rig #s, type, notes, an optional default crew and active status. Inactive rigs keep their identity and number.
 
-The [project plan](docs/00-PROJECT-PLAN.md) covers upcoming foreman assignments, rig inventory, scheduling, import and export, backup and restore, and upgrade verification.
+The [project plan](docs/00-PROJECT-PLAN.md) covers upcoming foreman assignments, scheduling, import and export, backup and restore, and upgrade verification.
 
 ## Local data
 

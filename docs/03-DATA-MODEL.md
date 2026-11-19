@@ -35,6 +35,14 @@ Employees have a stable ID, name, required Home Crew ID, skill level 1 through 3
 The AddEmployeeRoster migration adds Employees and its Home Crew index within the existing migration transaction. Fresh, M0, Project Master and Crew-only databases take the corresponding upgrade path. The new migration leaves existing note, project, work-item and crew IDs intact. Driver status has a database default and constraint of Unverified. The employee write API has no driver approval field. The earlier Tauri preview rejects the newer migration history, so test fallback with a verified pre-upgrade backup and a compatible build.
 
 
+## Rig inventory
+
+The AddRigInventory migration adds Rigs, a unique NOCASE Number index and a DefaultCrewId index in the existing SQLite migration transaction. A rig has a stable generated ID, required number and type, optional notes, optional default Crew reference, and active status. Leading zeroes in the number are preserved. An inactive rig retains its number and references. Crew deactivation keeps the optional association intact. The UI offers inactive crews with an explicit label, and operators may clear the association.
+
+The default Crew link is master data for future assignment entry. It carries no date-scoped reservation or eligibility. Future maintenance, inspections and actual vehicle swaps can reference the stable Rig ID. Demo A still needs to confirm number conventions, type labels and default vehicle expectations.
+
+Synthetic regression tests cover upgrades from the Employee schema, existing note/Project/WorkItem/Crew/Employee preservation, a failure after Rigs DDL with transaction rollback and retry, duplicate and concurrent case-variant numbers, and retirement/reactivation on the same ID. Earlier previews reject the newer migration history. Preserve a verified pre-upgrade backup before upgrading a live profile. Recovery requires a compatible build or the pre-upgrade database copy. Packaged upgrade and operator backup/restore acceptance remain part of the RC gate.
+
 ## Migration check
 
 The Python backend uses the existing EF Core table and migration identifiers. On a fresh file it creates the demo, Project Master, Crew and Employee schemas. On an M0 file it adds the missing tables and indexes while preserving the note. On a Project Master file it adds the empty Crew and Employee tables in place and preserves project and work-item IDs and values. The schema update runs in a single SQLite write transaction. Unknown migration histories are rejected.

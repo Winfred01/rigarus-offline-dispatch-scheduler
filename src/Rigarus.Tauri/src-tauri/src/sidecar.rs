@@ -124,6 +124,10 @@ impl Sidecar {
         self.search("/employees", term)
     }
 
+    pub fn search_rigs(&self, term: &str) -> Result<Value, String> {
+        self.search("/rigs", term)
+    }
+
     fn search(&self, path: &str, term: &str) -> Result<Value, String> {
         let mut url =
             reqwest::Url::parse(&self.url(path)).map_err(|_| SERVICE_UNAVAILABLE.to_string())?;
@@ -149,6 +153,10 @@ impl Sidecar {
 
     pub fn save_employee(&self, id: Option<i64>, employee: &Value) -> Result<Value, String> {
         self.save_roster_record("/employees", id, employee)
+    }
+
+    pub fn save_rig(&self, id: Option<i64>, rig: &Value) -> Result<Value, String> {
+        self.save_roster_record("/rigs", id, rig)
     }
 
     fn save_roster_record(
