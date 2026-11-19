@@ -141,7 +141,7 @@ export function ImportPreview() {
             </ul>
           )}
           {result.rows.length > 0 && (
-            <div className="project-table">
+            <div className="project-table import-preview-table">
               <table>
                 <thead>
                   <tr>
