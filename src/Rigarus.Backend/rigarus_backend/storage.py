@@ -8,6 +8,7 @@ INITIAL_DEMO = "20261112045924_InitialDemo"
 PROJECT_MASTER = "20261112072258_AddProjectsAndWorkItems"
 CREW_ROSTER = "20261115031137_AddCrewRoster"
 EMPLOYEE_ROSTER = "20261115130213_AddEmployeeRoster"
+RIG_INVENTORY = "20261119130000_AddRigInventory"
 EF_VERSION = "10.0.15"
 
 # Keep the on-disk format compatible with the two released EF Core migrations.
@@ -65,6 +66,17 @@ CREATE_EMPLOYEES = """
         ForemanEligible INTEGER NOT NULL CHECK (ForemanEligible IN (0, 1)),
         Active INTEGER NOT NULL CHECK (Active IN (0, 1)),
         DriverStatus TEXT NOT NULL DEFAULT 'Unverified' CHECK (DriverStatus = 'Unverified')
+    )
+"""
+
+CREATE_RIGS = """
+    CREATE TABLE Rigs (
+        Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        Number TEXT COLLATE NOCASE NOT NULL CHECK (length(Number) BETWEEN 1 AND 50 AND Number = trim(Number)),
+        Type TEXT NOT NULL CHECK (length(trim(Type)) BETWEEN 1 AND 100),
+        Notes TEXT NOT NULL CHECK (length(Notes) <= 2000),
+        DefaultCrewId INTEGER REFERENCES Crews (Id) ON DELETE RESTRICT,
+        Active INTEGER NOT NULL CHECK (Active IN (0, 1))
     )
 """
 
@@ -137,9 +149,27 @@ def initialize_database(path: Path) -> None:
                 record_migration(
                     connection, EMPLOYEE_ROSTER, product_version="Rigarus 0.1.0"
                 )
-            elif history != (*CREW_HISTORY, EMPLOYEE_ROSTER) or tables != (
+                history = (*CREW_HISTORY, EMPLOYEE_ROSTER)
+                tables = CREW_TABLES | {"Employees"}
+
+            if history == (*CREW_HISTORY, EMPLOYEE_ROSTER) and tables == (
                 CREW_TABLES | {"Employees"}
             ):
+                connection.execute(CREATE_RIGS)
+                connection.execute(
+                    "CREATE UNIQUE INDEX IX_Rigs_Number ON Rigs (Number)"
+                )
+                connection.execute(
+                    "CREATE INDEX IX_Rigs_DefaultCrewId ON Rigs (DefaultCrewId)"
+                )
+                record_migration(
+                    connection, RIG_INVENTORY, product_version="Rigarus 0.1.0"
+                )
+            elif history != (
+                *CREW_HISTORY,
+                EMPLOYEE_ROSTER,
+                RIG_INVENTORY,
+            ) or tables != (CREW_TABLES | {"Employees", "Rigs"}):
                 raise UnsupportedDatabaseError(
                     "This Rigarus database has an unsupported schema. Open it with a compatible version."
                 )
@@ -155,6 +185,9 @@ def initialize_database(path: Path) -> None:
             connection.execute("SELECT Id, Name, Type, Active FROM Crews LIMIT 0")
             connection.execute(
                 "SELECT Id, Name, HomeCrewId, SkillLevel, ForemanEligible, Active, DriverStatus FROM Employees LIMIT 0"
+            )
+            connection.execute(
+                "SELECT Id, Number, Type, Notes, DefaultCrewId, Active FROM Rigs LIMIT 0"
             )
 
         mode = connection.execute("PRAGMA journal_mode = WAL").fetchone()
