@@ -69,3 +69,9 @@ In a disposable synthetic profile, open Rigs and create SYN-RIG-009 with a type 
 Create a synthetic Crew and associate it with the rig. Edit the rig number, type and note, deactivate it, close the app and reopen. Verify all fields and the default Crew remain. Reactivate the same row and clear its default Crew. Inactive rig numbers stay reserved. Customer review still needs to confirm Rig fields and default vehicle expectations.
 
 The automated suite covers this lifecycle, validation failures, concurrent duplicate creation, packaged sidecar access control, and migration failure/rollback/retry. Record native Windows GUI conditions separately from CI.
+
+## Tauri Excel import preview engineering check
+
+Prepare a synthetic .xlsx workbook following the [mapping dictionary](11-IMPORT-MAPPING.md). Include a valid row, a case-variant duplicate, a missing Site ID, #REF! and an unknown date column. Open Import preview, choose the file and select Preview workbook. Check row counts, proposed Create/Update/Skip outcomes and the source worksheet/cell references. Expand Fields and diagnostics to inspect the source values and warnings.
+
+Select Cancel preview and verify the selected file and results clear. Navigate to Projects and reopen the app. Confirm no workbook row was inserted. Record SQLite SHA-256 and logical-content comparisons from the automated suite, the desktop executable hash, Windows build, connection state and package conditions. Demo A/F still needs approval of the real field layout.

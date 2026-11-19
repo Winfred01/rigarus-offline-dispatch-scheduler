@@ -20,6 +20,7 @@ Operators can use the installed app without separately installing Python, Node.j
 
 - **Employees** lets you maintain names, home crews, skill levels, foreman eligibility and active status. Driver status starts as Unverified.
 - **Rigs** lets you maintain unique Rig #s, type, notes, an optional default crew and active status. Inactive rigs keep their identity and number.
+- **Import preview** checks local .xlsx rows against existing projects, shows source cells and validation issues, and leaves stored records intact. See the [mapping dictionary](docs/11-IMPORT-MAPPING.md).
 
 The [project plan](docs/00-PROJECT-PLAN.md) covers upcoming foreman assignments, scheduling, import and export, backup and restore, and upgrade verification.
 

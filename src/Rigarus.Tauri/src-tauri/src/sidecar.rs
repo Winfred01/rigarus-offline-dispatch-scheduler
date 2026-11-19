@@ -101,6 +101,15 @@ impl Sidecar {
         self.send(self.client.get(self.url("/demo")))
     }
 
+    pub fn preview_import(&self, content: &str) -> Result<Value, String> {
+        self.send(
+            self.client
+                .post(self.url("/import-preview"))
+                .timeout(Duration::from_secs(60))
+                .json(&serde_json::json!({ "content": content })),
+        )
+    }
+
     pub fn save_note(&self, note: &str) -> Result<DemoProject, String> {
         if note.encode_utf16().count() > 200 {
             return Err("The demo note must be 200 characters or fewer.".into());

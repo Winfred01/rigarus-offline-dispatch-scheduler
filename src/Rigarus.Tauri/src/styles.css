@@ -248,6 +248,21 @@ nav,
   font-size: 14px;
 }
 
+.import-preview-table table {
+  min-width: 1100px;
+}
+
+.import-preview-table :is(th, td):nth-child(-n + 3),
+.import-preview-table :is(th, td):nth-child(5),
+.import-preview-table :is(th, td):nth-child(6) {
+  white-space: nowrap;
+}
+
+.import-preview-table :is(th, td):last-child {
+  min-width: 360px;
+  text-align: left;
+}
+
 .job-link,
 .job-link:not(:disabled):hover {
   background: transparent;

@@ -19,5 +19,6 @@ Source for this draft is the November 2026 project plan and delivery playbook. C
 | Open | Who approves weekend work and who records the decision | Demo E |
 | Proposed | Early completion produces an earlier-start suggestion | Demo C |
 | Open | Historical workbook mappings, exceptions and exact report fidelity | Demo F |
+| Proposed | Import preview uses explicit row-1 English headers, text identifiers and one project/work-item per data row. Repeated Job #s are held for review. Real worksheet grouping, dates and unsupported field mappings require client confirmation. | Demo A/F |
 | Open | Installer strategy, backup encryption, commercial source and support terms | RC or commercial agreement |
 | Out of scope | Cloud, Web/mobile, multi-user accounts, payroll, fleet tracking and automated message delivery | Both plans |
