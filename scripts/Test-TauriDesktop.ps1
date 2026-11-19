@@ -3,6 +3,7 @@ param(
     [string]$Executable,
     [switch]$RequireOffline,
     [switch]$IncludeProjects,
+    [switch]$IncludeProjectSorting,
     [switch]$IncludeCrews,
     [ValidateSet('Default', 'SlowVm')]
     [string]$Profile = 'Default',
@@ -163,6 +164,75 @@ function Test-Crews($Window) {
     Find-Control $Window $name 'Edit Synthetic Civil 02' | Out-Null
 }
 
+function Assert-TableColumn($Window, [string]$TableName, [int]$Column, [string[]]$Expected) {
+    $table = Find-Control $Window $name $TableName
+    Wait-For 'synthetic-table-row-order' {
+        $grid = $table.GetCurrentPattern([Windows.Automation.GridPattern]::Pattern)
+        if ($grid.Current.RowCount -ne $Expected.Count + 1) { return $false }
+        $values = for ($row = 1; $row -lt $grid.Current.RowCount; $row++) {
+            $grid.GetItem($row, $Column).Current.Name
+        }
+        ($values -join '|') -ceq ($Expected -join '|')
+    } | Out-Null
+}
+
+function Test-ProjectSorting($Window) {
+    Invoke-Button $Window 'Projects'
+    Invoke-Button $Window 'New project'
+    Set-Field $Window 'job_number' 'SYN-SORT-2'
+    Set-Field $Window 'site_id' '02'
+    Set-Field $Window 'site_name' 'Synthetic sort Z'
+    Invoke-Button $Window 'Add work item'
+    Set-Field $Window 'crews-0' '10'
+    Set-Field $Window 'half-days-0' '20'
+    Invoke-Button $Window 'Add work item'
+    Set-Field $Window 'crews-1' '2'
+    Set-Field $Window 'half-days-1' '4'
+    Invoke-Button $Window 'Save project'
+    Find-Control $Window $name ('SYN-SORT-2 {0} Synthetic sort Z' -f [char]0x00B7) | Out-Null
+    Invoke-Button $Window 'New project'
+    Set-Field $Window 'job_number' 'SYN-SORT-10'
+    Set-Field $Window 'site_id' '10'
+    Set-Field $Window 'site_name' 'Synthetic sort A'
+    Invoke-Button $Window 'Save project'
+    Find-Control $Window $name ('SYN-SORT-10 {0} Synthetic sort A' -f [char]0x00B7) | Out-Null
+    Invoke-Button $Window 'SYN-SORT-2'
+    Set-Field $Window 'project-search' 'sort'
+    Invoke-Button $Window 'Search'
+    Find-Control $Window $name '2 projects' | Out-Null
+
+    Invoke-Button $Window 'Sort work items by Estimated half-days ascending'
+    Assert-TableColumn $Window 'Project work items' 2 @('4', '20')
+    Invoke-Button $Window 'Sort work items by Estimated half-days descending'
+    Assert-TableColumn $Window 'Project work items' 2 @('20', '4')
+    Invoke-Button $Window 'Sort work items by Required crews ascending'
+    Assert-TableColumn $Window 'Project work items' 1 @('2', '10')
+    Invoke-Button $Window 'Sort work items by Required crews descending'
+    Assert-TableColumn $Window 'Project work items' 1 @('10', '2')
+
+    foreach ($column in @(
+        @{ Label = 'Job #'; First = 'SYN-SORT-10'; Last = 'SYN-SORT-2' },
+        @{ Label = 'Site ID'; First = 'SYN-SORT-2'; Last = 'SYN-SORT-10' },
+        @{ Label = 'Site name'; First = 'SYN-SORT-10'; Last = 'SYN-SORT-2' },
+        @{ Label = 'Work items'; First = 'SYN-SORT-10'; Last = 'SYN-SORT-2' }
+    )) {
+        Invoke-Button $Window "Sort projects by $($column.Label) ascending"
+        Assert-TableColumn $Window 'Unscheduled projects' 0 @($column.First, $column.Last)
+        Invoke-Button $Window "Sort projects by $($column.Label) descending"
+        Assert-TableColumn $Window 'Unscheduled projects' 0 @($column.Last, $column.First)
+        Find-Control $Window $name ('SYN-SORT-2 {0} Synthetic sort Z' -f [char]0x00B7) | Out-Null
+        Assert-TableColumn $Window 'Project work items' 1 @('10', '2')
+        $search = (Find-Control $Window $automationId 'project-search').GetCurrentPattern($valuePattern)
+        if ($search.Current.Value -cne 'sort') { throw 'Synthetic search changed during sorting.' }
+    }
+    # Type sorting must not reset the project sort or selected detail.
+    Invoke-Button $Window 'Sort work items by Type ascending'
+    Invoke-Button $Window 'Sort work items by Type descending'
+    Assert-TableColumn $Window 'Unscheduled projects' 0 @('SYN-SORT-2', 'SYN-SORT-10')
+    Find-Control $Window $name ('SYN-SORT-2 {0} Synthetic sort Z' -f [char]0x00B7) | Out-Null
+    Write-AcceptanceEvent 'PASS' 'project-sorting' $timer 0 'bothTables=independent numericOrder=verified filter=preserved selectedProject=preserved'
+}
+
 
 Write-Host "Diagnostic log: $acceptanceLog"
 Write-AcceptanceEvent 'INFO' 'gui-configuration' $null 0 "profile=$Profile guiSeconds=$($waits.GuiTimeoutSeconds) exitSeconds=$($waits.ExitTimeoutSeconds)"
@@ -200,7 +270,8 @@ try {
     $note.SetValue($newNote)
     Invoke-Button $window 'Save note'
     Find-Control $window $name 'Note saved.' | Out-Null
-    if ($IncludeProjects) { Test-Projects $window }
+    if ($IncludeProjects -or $IncludeProjectSorting) { Test-Projects $window }
+    if ($IncludeProjectSorting) { Test-ProjectSorting $window }
     if ($IncludeCrews) { Test-Crews $window }
     Close-Dashboard $process
     $process.Dispose()
@@ -217,7 +288,7 @@ try {
     if ($note.Current.Value -ne $newNote) {
         Stop-Acceptance 'FAIL' 'note-reopen' $timer 0 'savedNoteMismatch=true'
     }
-    if ($IncludeProjects) {
+    if ($IncludeProjects -or $IncludeProjectSorting) {
         Invoke-Button $window 'Projects'
         Find-Control $window $name ("DEMO-26001 {0} Edited synthetic yard" -f [char]0x00B7) | Out-Null
         Find-Control $window $name 'Small' | Out-Null

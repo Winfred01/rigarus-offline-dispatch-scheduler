@@ -1,5 +1,54 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState, type SubmitEvent } from "react";
+import { nextSort, sortRows, type SortState } from "./table-sort";
+
+const projectColumns = [
+  ["job_number", "Job #"],
+  ["site_id", "Site ID"],
+  ["site_name", "Site name"],
+  ["work_item_count", "Work items"],
+] as const;
+const workItemColumns = [
+  ["type", "Type"],
+  ["required_crew_count", "Required crews"],
+  ["estimated_half_days", "Estimated half-days"],
+] as const;
+
+function SortHeader({
+  label,
+  table,
+  direction,
+  disabled,
+  onSort,
+}: {
+  label: string;
+  table: string;
+  direction?: "ascending" | "descending";
+  disabled: boolean;
+  onSort: () => void;
+}) {
+  const nextDirection = direction === "ascending" ? "descending" : "ascending";
+  return (
+    <th scope="col" aria-sort={direction}>
+      <button
+        type="button"
+        className="sort-header"
+        disabled={disabled}
+        aria-label={`Sort ${table} by ${label} ${nextDirection}`}
+        onClick={onSort}
+      >
+        {label}{" "}
+        <span className="sort-indicator" aria-hidden="true">
+          {direction === "ascending"
+            ? "↑"
+            : direction === "descending"
+              ? "↓"
+              : "⇅"}
+        </span>
+      </button>
+    </th>
+  );
+}
 
 type ProjectFields = { job_number: string; site_id: string; site_name: string };
 type Summary = ProjectFields & { id: number; work_item_count: number };
@@ -29,6 +78,10 @@ export function ProjectMaster() {
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [projectSort, setProjectSort] =
+    useState<SortState<(typeof projectColumns)[number][0]>>();
+  const [workItemSort, setWorkItemSort] =
+    useState<SortState<(typeof workItemColumns)[number][0]>>();
 
   async function refresh(search: string, preferredId?: number, reveal = false) {
     setError("");
@@ -142,14 +195,26 @@ export function ProjectMaster() {
                 <table aria-label="Unscheduled projects">
                   <thead>
                     <tr>
-                      <th scope="col">Job #</th>
-                      <th scope="col">Site ID</th>
-                      <th scope="col">Site name</th>
-                      <th scope="col">Work items</th>
+                      {projectColumns.map(([key, label]) => (
+                        <SortHeader
+                          key={key}
+                          label={label}
+                          table="projects"
+                          direction={
+                            projectSort?.key === key
+                              ? projectSort.direction
+                              : undefined
+                          }
+                          disabled={loading}
+                          onSort={() =>
+                            setProjectSort((current) => nextSort(current, key))
+                          }
+                        />
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((row) => (
+                    {sortRows(rows, projectSort).map((row) => (
                       <tr key={row.id}>
                         <th scope="row">
                           <button
@@ -206,13 +271,28 @@ export function ProjectMaster() {
                   <table aria-label="Project work items">
                     <thead>
                       <tr>
-                        <th scope="col">Type</th>
-                        <th scope="col">Required crews</th>
-                        <th scope="col">Estimated half-days</th>
+                        {workItemColumns.map(([key, label]) => (
+                          <SortHeader
+                            key={key}
+                            label={label}
+                            table="work items"
+                            direction={
+                              workItemSort?.key === key
+                                ? workItemSort.direction
+                                : undefined
+                            }
+                            disabled={loading}
+                            onSort={() =>
+                              setWorkItemSort((current) =>
+                                nextSort(current, key),
+                              )
+                            }
+                          />
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {detail.work_items.map((item) => (
+                      {sortRows(detail.work_items, workItemSort).map((item) => (
                         <tr key={item.id}>
                           <th scope="row">{item.type}</th>
                           <td>{item.required_crew_count}</td>

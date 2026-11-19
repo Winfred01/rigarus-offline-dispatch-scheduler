@@ -75,3 +75,19 @@ The automated suite covers this lifecycle, validation failures, concurrent dupli
 Prepare a synthetic .xlsx workbook following the [mapping dictionary](11-IMPORT-MAPPING.md). Include a valid row, a case-variant duplicate, a missing Site ID, #REF! and an unknown date column. Open Import preview, choose the file and select Preview workbook. Check row counts, proposed Create/Update/Skip outcomes and the source worksheet/cell references. Expand Fields and diagnostics to inspect the source values and warnings.
 
 Select Cancel preview and verify the selected file and results clear. Navigate to Projects and reopen the app. Confirm no workbook row was inserted. Record SQLite SHA-256 and logical-content comparisons from the automated suite, the desktop executable hash, Windows build, connection state and package conditions. Demo A/F still needs approval of the real field layout.
+
+## Tauri Project and Work Item sorting engineering check
+
+Click any existing column header in Projects or Project work items. A new column starts ascending; click again for descending. The active column has a blue directional arrow and `aria-sort`; other columns show neutral double arrows. Headers are keyboard buttons. The tables sort independently. Crew counts, estimated half-days and work-item counts compare numerically. Job # and Site ID remain text, including leading zeroes. Sorting is a display preference for the current Projects screen and resets when leaving that screen or restarting; it does not change database order or scheduling priority.
+
+Use synthetic projects SYN-SORT-2 and SYN-SORT-10, with Site IDs 02 and 10. Give one project two work items with 2 and 10 crews and 4 and 20 half-days (2 and 10 days). Search for `sort`, select that project and sort both ways. Confirm both matching projects remain, the search text and selected project stay unchanged, and changing the project table does not reset the work-item order. Review the text identifier convention in the decision register.
+
+The native smoke script creates this fixture in a temporary database, asserts actual table rows using Windows UI Automation, and also reruns project creation/edit/reopen and note/startup-error checks:
+
+```powershell
+powershell.exe -NoProfile -STA -File scripts/Test-TauriDesktop.ps1 -Executable src/Rigarus.Tauri/src-tauri/target/release/rigarus-dispatch.exe -IncludeProjectSorting
+```
+
+Use `-Profile SlowVm` for a slow Windows VM and `-RequireOffline` only after disconnecting the test environment. Each GUI probe and exit wait retains its existing upper bound. Run `npm ci`, `npm run format`, `npm test` and `npm run build` in `src/Rigarus.Tauri` for the pure sorting regressions and frontend checks (Node 22.13 or newer). Windows CI includes these tests.
+
+This is the existing-column sorting slice of [Issue #45](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/issues/45). Work Item Code and Status fields, Bulk Add Projects and transactional import confirmation remain outside this slice. See the [November 19 engineering evidence](acceptance/2026-11-19-issue-45-project-sorting.md). Customer Demo A acceptance and production readiness remain separate gates.

@@ -90,6 +90,7 @@ jobs:
           ./scripts/Build-RigarusSidecar.ps1
       - run: npm ci
       - run: npm run format
+      - run: npm test
       - run: rustup toolchain install 1.95.0 --profile minimal --component rustfmt
       - run: cargo +1.95.0 fmt --manifest-path src-tauri/Cargo.toml --check
       - run: cargo +1.95.0 fetch --locked --manifest-path src-tauri/Cargo.toml

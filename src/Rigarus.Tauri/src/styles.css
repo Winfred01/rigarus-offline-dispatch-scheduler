@@ -248,6 +248,25 @@ nav,
   font-size: 14px;
 }
 
+.sort-header,
+.sort-header:not(:disabled):hover {
+  padding: 3px 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-align: inherit;
+}
+
+.sort-indicator {
+  color: #526674;
+  white-space: nowrap;
+}
+
+th[aria-sort] .sort-indicator {
+  color: #245ea5;
+}
+
 .import-preview-table table {
   min-width: 1100px;
 }
