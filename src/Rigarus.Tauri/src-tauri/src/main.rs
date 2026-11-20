@@ -16,6 +16,22 @@ struct DemoProject {
 }
 
 #[tauri::command]
+async fn bulk_projects(
+    app: tauri::AppHandle,
+    action: String,
+    input: Value,
+) -> Result<Value, String> {
+    if input
+        .get("content")
+        .and_then(Value::as_str)
+        .is_some_and(|content| content.len() > 7_000_000)
+    {
+        return Err("Choose input of at most 5 MiB.".into());
+    }
+    with_sidecar(app, move |service| service.bulk_projects(&action, &input)).await
+}
+
+#[tauri::command]
 async fn preview_import(app: tauri::AppHandle, content: String) -> Result<Value, String> {
     if content.len() > 7_000_000 {
         return Err("Choose an .xlsx workbook of at most 5 MiB.".into());
@@ -135,6 +151,7 @@ fn main() {
         .manage(Mutex::<Option<Sidecar>>::new(None))
         .invoke_handler(tauri::generate_handler![
             preview_import,
+            bulk_projects,
             read_demo,
             save_demo_note,
             search_projects,

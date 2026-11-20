@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState, type SubmitEvent } from "react";
 import { nextSort, sortRows, type SortState } from "./table-sort";
+import { BulkProjects } from "./bulk-projects";
 
 const projectColumns = [
   ["job_number", "Job #"],
@@ -75,6 +76,7 @@ export function ProjectMaster() {
   const [rows, setRows] = useState<Summary[]>([]);
   const [detail, setDetail] = useState<Project>();
   const [editor, setEditor] = useState<{ project?: Project }>();
+  const [bulk, setBulk] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -134,17 +136,37 @@ export function ProjectMaster() {
     <main className="frame project-master">
       <div className="page-heading">
         <h1>Projects</h1>
-        <button
-          disabled={loading || !!editor}
-          onClick={() => {
-            setStatus("");
-            setEditor({});
-          }}
-        >
-          New project
-        </button>
+        <div className="search-controls">
+          <button
+            disabled={loading || !!editor || bulk}
+            onClick={() => {
+              setStatus("");
+              setEditor({});
+            }}
+          >
+            New project
+          </button>
+          <button
+            disabled={loading || !!editor || bulk}
+            onClick={() => {
+              setStatus("");
+              setBulk(true);
+            }}
+          >
+            Bulk Add Projects
+          </button>
+        </div>
       </div>
-      {editor ? (
+      {bulk ? (
+        <BulkProjects
+          onCancel={() => setBulk(false)}
+          onSaved={(message, firstId) => {
+            setBulk(false);
+            setStatus(message);
+            void refresh(appliedTerm, firstId ?? detail?.id, true);
+          }}
+        />
+      ) : editor ? (
         <ProjectEditor
           project={editor.project}
           onCancel={() => setEditor(undefined)}

@@ -28,7 +28,25 @@ Files must be .xlsx, at most 5 MiB, up to 10 worksheets, 40 columns and 2000 dat
 
 The browser reads the selected file into memory. The Tauri command sends its content only to the authenticated loopback sidecar. The backend parses it in memory and opens SQLite in read-only mode for a consistent snapshot of existing projects and work items. The preview HTTP request has a 60-second deadline. Cancel clears the selected file and preview from the screen. Source files, parsed rows and batch metadata are not saved by this feature.
 
-The grid validation and row diagnostics support a later shared flow for #45. Fixed-format pasted text, import confirmation, source hashes and repeat-batch tracking require subsequent implementation. Demo F must approve the real worksheet layout, project/work-item grouping, date interpretation and unsupported field mappings using authorized local copies.
+The Projects page now reuses this validation and diagnostic grid for the #45 Bulk Add flow described below. The separate Import preview screen remains read-only. Persistent source hashes/batch history and historical reconciliation remain future #31 work. Demo F must approve the real worksheet layout, project/work-item grouping, date interpretation and unsupported field mappings using authorized local copies.
+
+## Bulk Add Projects
+
+Open Projects → Bulk Add Projects. Choose Paste Text or Upload Excel. Download Excel Template creates a local .xlsx workbook without a server or installed Office application; the supported entry range is formatted as text. Fill one project per row, preserving identifiers as text. The three fields are Project Number, Site ID and Site Name. The Excel flow also recognizes Job # as the existing mapping alias; the CSV header and order are fixed:
+
+```csv
+Project Number,Site ID,Site Name
+000045,0002,"Synthetic, yard"
+SYN-046,0003,Synthetic tower site
+```
+
+The CSV reader handles quoted commas and quoted multiline names and reports physical line numbers. The Excel flow retains worksheet/cell references and the same formula/error/numeric-identifier checks as Import preview. Both inputs allow up to 5 MiB and 2000 nonblank data rows, with the existing workbook archive/sheet/column limits. CSV fields above the parser's 128-KiB field limit are rejected; cell values above 2000 characters produce validation errors. Blank input rows are skipped.
+
+The grid and count line show Ready and skipped rows. Existing project numbers (including case variants) and every occurrence of a repeated number within the input are skipped. Existing projects and work items are never updated. Extra populated fields, including work-item data, are invalid here; use the separate read-only preview to review those fields. Missing or repeated Excel headers prevent confirmation until resolved, including when another sheet contains ready rows.
+
+Changing text, selecting another file or switching input tabs invalidates the preview. Cancel leaves SQLite unchanged. Confirm is enabled only for a nonempty ready subset with no workbook-level diagnostics, and its label includes the eligible count. The service re-parses and revalidates the exact input against matching projects under the same `BEGIN IMMEDIATE` transaction as all inserts. Changes to input or affected duplicate classification return a stale-preview response before any insert. Any insertion failure rolls back the entire attempt. A successful batch reports created/skipped counts, refreshes Projects and selects the first new project; a prior search is cleared if it would hide that project.
+
+A repeated confirmation cannot insert duplicate projects. After success, or after an uncertain/lost response, preview again to see the current state; a repeated original confirmation returns a stale-preview error rather than another copy. Preview fingerprints are content checks, not durable batch receipts. Original inputs, workbook files and fingerprints are not stored in new database tables. No schema migration or scheduling priority is added.
 
 ## Verification
 

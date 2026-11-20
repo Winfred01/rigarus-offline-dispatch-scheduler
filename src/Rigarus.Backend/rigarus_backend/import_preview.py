@@ -206,7 +206,7 @@ def preview_row(sheet, number, cells, columns, existing) -> PreviewRow:
 
 
 def preview_workbook(
-    content: bytes, existing: dict[str, ExistingProject]
+    content: bytes, existing: dict[str, ExistingProject], *, project_only: bool = False
 ) -> ImportPreview:
     if not content or len(content) > MAX_FILE_BYTES:
         raise PreviewError("Choose an .xlsx workbook of at most 5 MiB.")
@@ -236,6 +236,8 @@ def preview_workbook(
             sheet_rows = sheet.iter_rows(max_row=2001, max_col=width)
             header_cells = next(sheet_rows, ())
             canonical = {label.lower(): label for label in HEADERS}
+            if project_only:
+                canonical["project number"] = "Job #"
             columns = [
                 canonical.get(
                     str(cell.value or "").strip().lower(), str(cell.value or "").strip()
