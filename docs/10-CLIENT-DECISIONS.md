@@ -12,6 +12,7 @@ Source for this draft is the November 2026 project plan and delivery playbook. C
 | Proposed | AM/PM granularity | Demo B |
 | Open | Whether Site ID is required. Project Master currently follows the required field in the Issue #6 schema. | Demo A |
 | Open | Accepted Job # format and non-ASCII case rules. Current uniqueness follows SQLite ASCII `NOCASE`. | Demo A |
+| Proposed | Project and work-item table sorting compares identifiers as case-insensitive English text, preserving leading zeroes, and quantities as numbers. Equal values use ascending record ID. Sorting changes the displayed order only; search and selected project remain. Confirm whether operators prefer natural-number ordering inside identifiers. | Demo A / Issue #45 |
 | Proposed | Employee entry requires a Home Crew. Retain references when that crew becomes inactive. Confirm whether the roster needs unassigned employees. | Demo A |
 | Proposed | Rig # uses SQLite ASCII NOCASE uniqueness and remains reserved after retirement. Rig type is required free text. A rig may have an optional default Crew link, retained when that crew becomes inactive. Confirm Rig # format, type labels and default vehicle conventions. | Demo A |
 | Proposed | Check an approved driver during each actual work period | Demo D |

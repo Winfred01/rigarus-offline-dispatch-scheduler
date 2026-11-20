@@ -10,7 +10,7 @@ if ($LASTEXITCODE -ne 0 -or $files.Count -eq 0) {
 $allowedRoot = '^(?:\.editorconfig|\.gitattributes|\.gitignore|README\.md|AGENTS\.md|Directory\.Build\.props|Rigarus\.sln|global\.json)$'
 $allowedSource = '^(?:src|tests)/[A-Za-z0-9_.-]+/(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+\.(?:cs|xaml|csproj|json)$'
 $allowedBackend = '^src/Rigarus\.Backend/(?:pyproject\.toml|uv\.lock|tests/fixtures/legacy_ef_schema\.sql|(?:rigarus_backend|tests)/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.py)$'
-$allowedTauri = '^src/Rigarus\.Tauri/(?:index\.html|(?:package(?:-lock)?|tsconfig)\.json|src/[A-Za-z0-9_-]+\.(?:tsx|css)|src-tauri/(?:Cargo\.(?:toml|lock)|build\.rs|tauri\.conf\.json|icons/icon\.ico|src/[A-Za-z0-9_-]+\.rs))$'
+$allowedTauri = '^src/Rigarus\.Tauri/(?:index\.html|(?:package(?:-lock)?|tsconfig)\.json|src/[A-Za-z0-9_-]+\.(?:ts|tsx|css)|tests/[A-Za-z0-9_-]+\.test\.mjs|src-tauri/(?:Cargo\.(?:toml|lock)|build\.rs|tauri\.conf\.json|icons/icon\.ico|src/[A-Za-z0-9_-]+\.rs))$'
 $allowedDocs = '^(?:docs/|samples/synthetic-only/)(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+\.md$'
 $allowedAutomation = '^(?:\.github/(?:workflows/ci\.yml|pull_request_template\.md|ISSUE_TEMPLATE/(?:config\.yml|feature\.yml|bug\.yml))|\.config/dotnet-tools\.json|scripts/[A-Za-z0-9_.-]+\.ps1)$'
 foreach ($file in $files) {
