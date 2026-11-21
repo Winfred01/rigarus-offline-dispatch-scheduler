@@ -4,6 +4,7 @@ param(
     [switch]$RequireOffline,
     [switch]$IncludeProjects,
     [switch]$IncludeProjectSorting,
+    [switch]$IncludeBulkProjects,
     [switch]$IncludeCrews,
     [ValidateSet('Default', 'SlowVm')]
     [string]$Profile = 'Default',
@@ -176,6 +177,46 @@ function Assert-TableColumn($Window, [string]$TableName, [int]$Column, [string[]
     } | Out-Null
 }
 
+function Test-BulkProjects($Window) {
+    Invoke-Button $Window 'Projects'
+    Invoke-Button $Window 'Bulk Add Projects'
+    $content = "Project Number,Site ID,Site Name`nSYN-BULK-0002,0002,Synthetic bulk yard`ndemo-26001,9999,Do not overwrite`nSYN-BULK-DUP,03,Repeat A`nsyn-bulk-dup,04,Repeat B`nSYN-BULK-BAD,,Missing ID`n"
+    Set-Field $Window 'bulk-text' $content
+    Invoke-Button $Window 'Preview projects'
+    Find-Control $Window $name 'Confirm 1 project' -Button | Out-Null
+    # Editing invalidates the visible confirmation, even if only whitespace changes.
+    Set-Field $Window 'bulk-text' ($content + "`n")
+    Wait-For 'bulk-edited-preview-invalidated' {
+        $condition = [Windows.Automation.PropertyCondition]::new($name, 'Confirm 1 project')
+        $Window.FindAll([Windows.Automation.TreeScope]::Descendants, $condition).Count -eq 0
+    } | Out-Null
+    Invoke-Button $Window 'Preview projects'
+    Find-Control $Window $name 'Confirm 1 project' -Button | Out-Null
+    Invoke-Button $Window 'Cancel Bulk Add'
+    Set-Field $Window 'project-search' 'SYN-BULK'
+    Invoke-Button $Window 'Search'
+    Find-Control $Window $name 'No projects match your search.' | Out-Null
+
+    Invoke-Button $Window 'Bulk Add Projects'
+    Set-Field $Window 'bulk-text' $content
+    Invoke-Button $Window 'Preview projects'
+    Invoke-Button $Window 'Confirm 1 project'
+    Find-Control $Window $name 'SYN-BULK-0002' -Button | Out-Null
+    Find-Control $Window $name ('SYN-BULK-0002 {0} Synthetic bulk yard' -f [char]0x00B7) | Out-Null
+    Assert-TableColumn $Window 'Unscheduled projects' 1 @('0002')
+    Invoke-Button $Window 'Bulk Add Projects'
+    Set-Field $Window 'bulk-text' $content
+    Invoke-Button $Window 'Preview projects'
+    $confirm = Find-Control $Window $name 'Confirm 0 projects' -Button
+    if ($confirm.Current.IsEnabled) { throw 'Duplicate-only synthetic batch could be confirmed.' }
+    Invoke-Button $Window 'Cancel Bulk Add'
+    Set-Field $Window 'project-search' '0042'
+    Invoke-Button $Window 'Search'
+    Find-Control $Window $name ('DEMO-26001 {0} Edited synthetic yard' -f [char]0x00B7) | Out-Null
+    Find-Control $Window $name 'Small' | Out-Null
+    Write-AcceptanceEvent 'PASS' 'bulk-projects' $timer 0 'preview=readonly edit=invalidated cancel=readonly confirm=eligibleOnly existing=preserved repeatedBatch=skipped'
+}
+
 function Test-ProjectSorting($Window) {
     Invoke-Button $Window 'Projects'
     Invoke-Button $Window 'New project'
@@ -270,8 +311,9 @@ try {
     $note.SetValue($newNote)
     Invoke-Button $window 'Save note'
     Find-Control $window $name 'Note saved.' | Out-Null
-    if ($IncludeProjects -or $IncludeProjectSorting) { Test-Projects $window }
+    if ($IncludeProjects -or $IncludeProjectSorting -or $IncludeBulkProjects) { Test-Projects $window }
     if ($IncludeProjectSorting) { Test-ProjectSorting $window }
+    if ($IncludeBulkProjects) { Test-BulkProjects $window }
     if ($IncludeCrews) { Test-Crews $window }
     Close-Dashboard $process
     $process.Dispose()
@@ -288,11 +330,19 @@ try {
     if ($note.Current.Value -ne $newNote) {
         Stop-Acceptance 'FAIL' 'note-reopen' $timer 0 'savedNoteMismatch=true'
     }
-    if ($IncludeProjects -or $IncludeProjectSorting) {
+    if ($IncludeProjects -or $IncludeProjectSorting -or $IncludeBulkProjects) {
         Invoke-Button $window 'Projects'
         Find-Control $window $name ("DEMO-26001 {0} Edited synthetic yard" -f [char]0x00B7) | Out-Null
         Find-Control $window $name 'Small' | Out-Null
         Write-AcceptanceEvent 'PASS' 'project-master' $timer 0 'syntheticProjectAndWorkItem=reopened'
+    }
+    if ($IncludeBulkProjects) {
+        Invoke-Button $window 'SYN-BULK-0002'
+        Find-Control $window $name ('SYN-BULK-0002 {0} Synthetic bulk yard' -f [char]0x00B7) | Out-Null
+        Set-Field $window 'project-search' 'SYN-BULK'
+        Invoke-Button $window 'Search'
+        Assert-TableColumn $window 'Unscheduled projects' 1 @('0002')
+        Write-AcceptanceEvent 'PASS' 'bulk-projects-reopen' $timer 0 'syntheticProject=preserved leadingZeroes=preserved'
     }
     if ($IncludeCrews) {
         Invoke-Button $window 'Crews'

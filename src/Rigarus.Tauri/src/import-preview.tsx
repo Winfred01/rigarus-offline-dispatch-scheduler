@@ -13,13 +13,13 @@ type PreviewRow = {
   status: "Ready" | "Duplicate" | "Review" | "Invalid";
   diagnostics: Diagnostic[];
 };
-type Preview = {
+export type Preview = {
   rows: PreviewRow[];
   diagnostics: Diagnostic[];
   counts: Record<string, number>;
 };
 
-function readWorkbook(file: File): Promise<string> {
+export function readWorkbook(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result).split(",", 2)[1]);
@@ -120,91 +120,90 @@ export function ImportPreview() {
           </p>
         )}
       </section>
-      {result && (
-        <section
-          className="project-detail"
-          aria-labelledby="import-result-title"
-        >
-          <h2 id="import-result-title">Proposed outcomes</h2>
-          <p>
-            {["Ready", "Duplicate", "Review", "Invalid"]
-              .map((label) => label + ": " + (result.counts[label] ?? 0))
-              .join(" · ")}
-          </p>
-          {result.diagnostics.length > 0 && (
-            <ul>
-              {result.diagnostics.map((issue, index) => (
-                <li key={index}>
-                  {issue.source} — {issue.message}
-                </li>
-              ))}
-            </ul>
-          )}
-          {result.rows.length > 0 && (
-            <div className="project-table import-preview-table">
-              <table>
-                <thead>
-                  <tr>
-                    {[
-                      "Source",
-                      "Job #",
-                      "Site ID",
-                      "Site Name",
-                      "Proposed",
-                      "Status",
-                      "Fields and diagnostics",
-                    ].map((label) => (
-                      <th scope="col" key={label}>
-                        {label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.rows.map((row) => (
-                    <tr key={row.source}>
-                      <td>{row.source}</td>
-                      <td>{row.values["Job #"]}</td>
-                      <td>{row.values["Site ID"]}</td>
-                      <td>{row.values["Site Name"]}</td>
-                      <td>{row.action}</td>
-                      <td>{row.status}</td>
-                      <td>
-                        <details>
-                          <summary>
-                            Review fields
-                            {row.diagnostics.length ? " and issues" : ""}
-                          </summary>
-                          <dl>
-                            {Object.entries(row.values).map(
-                              ([label, value]) => (
-                                <div key={label}>
-                                  <dt>{label}</dt>
-                                  <dd>{value || "Blank"}</dd>
-                                </div>
-                              ),
-                            )}
-                          </dl>
-                          {row.diagnostics.length > 0 && (
-                            <ul>
-                              {row.diagnostics.map((issue, index) => (
-                                <li key={index}>
-                                  {issue.severity} · {issue.source} —{" "}
-                                  {issue.message}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </details>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      )}
+      {result && <PreviewResults result={result} />}
     </main>
+  );
+}
+
+export function PreviewResults({ result }: { result: Preview }) {
+  return (
+    <section className="project-detail" aria-labelledby="import-result-title">
+      <h2 id="import-result-title">Proposed outcomes</h2>
+      <p>
+        {["Ready", "Duplicate", "Review", "Invalid"]
+          .map((label) => label + ": " + (result.counts[label] ?? 0))
+          .join(" · ")}
+      </p>
+      {result.diagnostics.length > 0 && (
+        <ul>
+          {result.diagnostics.map((issue, index) => (
+            <li key={index}>
+              {issue.source} — {issue.message}
+            </li>
+          ))}
+        </ul>
+      )}
+      {result.rows.length > 0 && (
+        <div className="project-table import-preview-table">
+          <table aria-label="Import preview rows">
+            <thead>
+              <tr>
+                {[
+                  "Source",
+                  "Job #",
+                  "Site ID",
+                  "Site Name",
+                  "Proposed",
+                  "Status",
+                  "Fields and diagnostics",
+                ].map((label) => (
+                  <th scope="col" key={label}>
+                    {label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {result.rows.map((row) => (
+                <tr key={row.source}>
+                  <td>{row.source}</td>
+                  <td>{row.values["Job #"]}</td>
+                  <td>{row.values["Site ID"]}</td>
+                  <td>{row.values["Site Name"]}</td>
+                  <td>{row.action}</td>
+                  <td>{row.status}</td>
+                  <td>
+                    <details>
+                      <summary>
+                        Review fields
+                        {row.diagnostics.length ? " and issues" : ""}
+                      </summary>
+                      <dl>
+                        {Object.entries(row.values).map(([label, value]) => (
+                          <div key={label}>
+                            <dt>{label}</dt>
+                            <dd>{value || "Blank"}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                      {row.diagnostics.length > 0 && (
+                        <ul>
+                          {row.diagnostics.map((issue, index) => (
+                            <li key={index}>
+                              {issue.severity} · {issue.source} —{" "}
+                              {issue.message}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </details>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }

@@ -1,43 +1,22 @@
 import base64
 import binascii
 import sqlite3
-from contextlib import closing
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from .import_preview import (
-    ExistingProject,
     ImportPreview,
     PreviewError,
-    job_key,
     preview_workbook,
 )
+from .import_snapshot import read_existing_projects
 
 
 class WorkbookInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     content: str = Field(max_length=7_000_000)
-
-
-def read_existing_projects(database: Path) -> dict[str, ExistingProject]:
-    # Opening SQLite read-only also prevents accidentally creating a missing DB.
-    with closing(
-        sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True, timeout=5)
-    ) as connection:
-        connection.execute("BEGIN")
-        items: dict[int, list[tuple[str, int, int]]] = {}
-        for project, kind, crews, days in connection.execute(
-            "SELECT ProjectId, Type, RequiredCrewCount, EstimatedHalfDays FROM WorkItems ORDER BY Id"
-        ):
-            items.setdefault(project, []).append((kind, crews, days))
-        return {
-            job_key(job): ExistingProject(id, site_id, name, tuple(items.get(id, [])))
-            for id, job, site_id, name in connection.execute(
-                "SELECT Id, JobNumber, SiteId, SiteName FROM Projects"
-            )
-        }
 
 
 def import_preview_router(database: Path) -> APIRouter:

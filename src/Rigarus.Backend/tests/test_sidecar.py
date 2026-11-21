@@ -171,3 +171,51 @@ class SidecarTests(unittest.TestCase):
         self.assertEqual(stdout, "")
         self.assertIn("compatible version of Rigarus", stderr)
         self.assertNotIn(str(self.database), stderr)
+
+    def test_bulk_projects_template_preview_confirm_are_authenticated_and_packaged(
+        self,
+    ):
+        token = secrets.token_hex(32)
+        process = self.launch(token)
+        port = self.read_port(process)
+        content = base64.b64encode(
+            workbook_bytes(
+                [["000045", "0002", "Packaged bulk yard"]],
+                headers=("Project Number", "Site ID", "Site Name"),
+            )
+        ).decode("ascii")
+        payload = {"kind": "xlsx", "content": content}
+        for route in ("/bulk-projects/preview", "/bulk-projects/confirm"):
+            self.assertEqual(self.request(port, "POST", route, payload=payload)[0], 401)
+        self.assertEqual(self.request(port, "GET", "/bulk-projects/template")[0], 401)
+        self.assertEqual(
+            self.request(port, "GET", "/bulk-projects/template", token)[0], 200
+        )
+        digest = hashlib.sha256(self.database.read_bytes()).digest()
+        code, checked = self.request(
+            port, "POST", "/bulk-projects/preview", token, payload=payload
+        )
+        self.assertEqual(code, 200)
+        self.assertEqual(checked["ready_count"], 1)
+        self.assertEqual(hashlib.sha256(self.database.read_bytes()).digest(), digest)
+        payload["preview_id"] = checked["preview_id"]
+        code, result = self.request(
+            port, "POST", "/bulk-projects/confirm", token, payload=payload
+        )
+        self.assertEqual(code, 200)
+        self.assertEqual(result["created_count"], 1)
+        self.assertEqual(
+            self.request(
+                port, "POST", "/bulk-projects/confirm", token, payload=payload
+            )[0],
+            409,
+        )
+        process.stdin.close()
+        self.assertEqual(process.wait(timeout=10), 0)
+        restarted = self.launch(token)
+        port = self.read_port(restarted)
+        projects = self.request(port, "GET", "/projects", token)[1]
+        self.assertEqual(projects[0]["job_number"], "000045")
+        self.assertEqual(projects[0]["site_id"], "0002")
+        restarted.stdin.close()
+        self.assertEqual(restarted.wait(timeout=10), 0)

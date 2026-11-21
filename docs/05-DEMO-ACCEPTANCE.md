@@ -90,4 +90,14 @@ powershell.exe -NoProfile -STA -File scripts/Test-TauriDesktop.ps1 -Executable s
 
 Use `-Profile SlowVm` for a slow Windows VM and `-RequireOffline` only after disconnecting the test environment. Each GUI probe and exit wait retains its existing upper bound. Run `npm ci`, `npm run format`, `npm test` and `npm run build` in `src/Rigarus.Tauri` for the pure sorting regressions and frontend checks (Node 22.13 or newer). Windows CI includes these tests.
 
-This is the existing-column sorting slice of [Issue #45](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/issues/45). Work Item Code and Status fields, Bulk Add Projects and transactional import confirmation remain outside this slice. See the [November 19 engineering evidence](acceptance/2026-11-19-issue-45-project-sorting.md). Customer Demo A acceptance and production readiness remain separate gates.
+This is the existing-column sorting slice of [Issue #45](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/issues/45). Work Item Code and Status fields remain outside it. Bulk Add Projects is the subsequent slice below. See the [November 19 engineering evidence](acceptance/2026-11-19-issue-45-project-sorting.md). Customer Demo A acceptance and production readiness remain separate gates.
+
+## Tauri Bulk Add Projects engineering check
+
+Use the [three-column template and CSV mapping](11-IMPORT-MAPPING.md#bulk-add-projects) with synthetic data. Preview equivalent CSV and Excel inputs: a ready row, a changed existing project, case-variant repeats, a missing Site ID, a formula/error and a numeric Excel identifier. Check counts, source references and diagnostics. Confirm that changing the input removes the old confirmation. Cancel, search Projects and verify that no new row exists. Preview again and explicitly confirm the ready rows. Verify created/skipped counts, the new project and retained leading zeroes; existing project IDs, work items and notes must remain. Reopening or resubmitting must not create extra copies.
+
+```powershell
+powershell.exe -NoProfile -STA -File scripts/Test-TauriDesktop.ps1 -Executable src/Rigarus.Tauri/src-tauri/target/release/rigarus-dispatch.exe -IncludeBulkProjects -IncludeProjectSorting
+```
+
+This bounded native UI Automation run covers the pasted-text preview/edit/cancel/confirm/repeat/reopen flow plus the Project Master and sorting regressions. Excel template/file selection is a separate native GUI check; record whether it was actually executed, the WebView2 version, network state and executable hash. Use `-Profile SlowVm -RequireOffline` in an already disconnected VM. The backend and packaged-sidecar suites cover the Excel roundtrip, actual rollback on an injected second insert failure, concurrent confirmation and snapshot preservation. See [November 20 evidence](acceptance/2026-11-20-issue-45-bulk-projects.md); customer acceptance and production approval remain pending.

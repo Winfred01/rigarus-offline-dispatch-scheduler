@@ -110,6 +110,22 @@ impl Sidecar {
         )
     }
 
+    pub fn bulk_projects(&self, action: &str, input: &Value) -> Result<Value, String> {
+        let request = match action {
+            "template" => self.client.get(self.url("/bulk-projects/template")),
+            "preview" => self
+                .client
+                .post(self.url("/bulk-projects/preview"))
+                .json(input),
+            "confirm" => self
+                .client
+                .post(self.url("/bulk-projects/confirm"))
+                .json(input),
+            _ => return Err("Choose a supported Bulk Add action.".into()),
+        };
+        self.send(request.timeout(Duration::from_secs(60)))
+    }
+
     pub fn save_note(&self, note: &str) -> Result<DemoProject, String> {
         if note.encode_utf16().count() > 200 {
             return Err("The demo note must be 200 characters or fewer.".into());

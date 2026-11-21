@@ -21,5 +21,6 @@ Source for this draft is the November 2026 project plan and delivery playbook. C
 | Proposed | Early completion produces an earlier-start suggestion | Demo C |
 | Open | Historical workbook mappings, exceptions and exact report fidelity | Demo F |
 | Proposed | Import preview uses explicit row-1 English headers, text identifiers and one project/work-item per data row. Repeated Job #s are held for review. Real worksheet grouping, dates and unsupported field mappings require client confirmation. | Demo A/F |
+| Proposed | Bulk Add Projects uses Project Number, Site ID and Site Name only; Site ID stays required under Project Master. Existing and within-batch duplicate numbers are skipped, never updated or combined. Extra populated Excel fields are invalid for this flow. Confirmation requires the exact previewed input and unchanged matching-record classification; a stale or uncertain attempt requires a fresh preview. | Demo A / Issue #45 |
 | Open | Installer strategy, backup encryption, commercial source and support terms | RC or commercial agreement |
 | Out of scope | Cloud, Web/mobile, multi-user accounts, payroll, fleet tracking and automated message delivery | Both plans |
