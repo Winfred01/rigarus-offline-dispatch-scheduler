@@ -105,3 +105,19 @@ This bounded native UI Automation run covers the pasted-text preview/edit/cancel
 For the Excel clipboard follow-up, run the same command against the current candidate. It now also checks both Copy buttons using a real keyboard gesture and verifies the clipboard separators, pastes the examples into Preview, opens format help and dismisses it with Escape, then confirms synthetic TSV projects and verifies leading zeroes after reopening. The script privately restores the prior clipboard; it never records it. WebView2 exposes native popover buttons through ExpandCollapse rather than Invoke in UI Automation. The test handles that pattern and keeps its waits bounded.
 
 Separately deny clipboard access in a browser-only test and verify that the selected example and Ctrl+C instructions appear without a false success. Compare the actual screen with the local UI design's November 21 section 批量添加：Excel 表格粘贴与纯文本样例, Figure 3A. Record keyboard focus, one open help popover, narrow-window layout and the unchanged preview/Cancel/transaction behavior. A real Microsoft Excel application copy is separate from synthetic TAB clipboard verification; do not claim Office was used when it was absent.
+
+## New/Edit Project field validation (#65)
+
+Compare the current editor with the authorized local November 21 UI design, section 单项目录入：醒目校验与字段提示 / Figure 2A, including its written corrections. See the [Design-First checklist](design/2026-11-21-issue-65-project-validation-checklist.md) and [engineering evidence](acceptance/2026-11-21-issue-65-project-validation.md).
+
+1. Open New project and Save empty fields. Confirm three specific messages, first-field focus, no write and a summary that focuses the selected input. Correct one field; other errors and all draft values must remain.
+2. Enter a unique synthetic Job #, Site ID `A-7` and a descriptive synthetic name. Add work items. Blank/zero/negative/fractional/overflow counts must identify only the invalid control and row. Valid `2` crews / `4` half-days must save. Do not enforce four-digit Site IDs or an unconfirmed Job # character policy.
+3. Add/remove draft rows after errors; confirm summary labels follow visible rows and removed errors disappear. Save from the bottom of a long form; first invalid input must scroll into view. Cancel must leave saved data unchanged.
+4. Use Tab and Shift+Tab to reach all six help types. Open by keyboard; Escape and Close help dismiss. Opening another help closes the previous one. Check positive whole counts, actual type values, leading zeroes and half-day examples. Check focus outlines, field/summary descriptions and narrow-window wrapping.
+5. Attempt a duplicate Job #. Only Job # is marked; draft rows remain. Distinguish a storage/service failure from a field error. Save valid multiple work items, edit an invalid count then correct it, reopen the application and compare project/work-item records and IDs.
+
+```powershell
+powershell.exe -NoProfile -STA -File scripts/Test-TauriDesktop.ps1 -Executable <candidate-exe> -IncludeProjectValidation -IncludeBulkProjects -IncludeProjectSorting -IncludeCrews
+```
+
+The new switch is opt-in; existing bounded Default waits (GUI 30 s, exit 12 s) and SlowVm waits (GUI 150 s, exit 60 s) remain. Add `-Profile SlowVm -RequireOffline -DiagnosticLog <local-log>` only inside an actually disconnected authorized VM. Use synthetic data; keep raw evidence local. Automated ARIA/UIA checks do not establish a manual screen-reader pass. Record human assistive-technology review, matching installer tests, customer acceptance and production approval separately.
