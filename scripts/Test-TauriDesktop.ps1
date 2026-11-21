@@ -3,6 +3,7 @@ param(
     [string]$Executable,
     [switch]$RequireOffline,
     [switch]$IncludeProjects,
+    [switch]$IncludeProjectValidation,
     [switch]$IncludeProjectSorting,
     [switch]$IncludeBulkProjects,
     [switch]$IncludeCrews,
@@ -149,7 +150,7 @@ function Test-Projects($Window) {
     Invoke-Button $Window 'Add work item'
     Set-Field $Window 'half-days-0' '1.5'
     Invoke-Button $Window 'Save project'
-    Find-Control $Window $name 'Work item 1 needs a positive whole number for crews and estimated half-days.' | Out-Null
+    Find-Control $Window $name 'Estimated half-days must be a whole number of at least 1.' | Out-Null
     Set-Field $Window 'half-days-0' '3'
     Invoke-Button $Window 'Save project'
     Find-Control $Window $name ("DEMO-26001 {0} Edited synthetic yard" -f [char]0x00B7) | Out-Null
@@ -178,6 +179,110 @@ function Test-Crews($Window) {
     Set-Field $Window 'crew-search' 'civil 02'
     Invoke-Button $Window 'Search'
     Find-Control $Window $name 'Edit Synthetic Civil 02' | Out-Null
+}
+
+function Assert-InputFocus($Window, [string]$Id) {
+    Wait-For 'invalid-field-visible-and-focused' {
+        $control = Find-Control $Window $automationId $Id
+        $control.Current.HasKeyboardFocus -and -not $control.Current.IsOffscreen
+    } | Out-Null
+}
+
+function Assert-NoValidationSummary($Window) {
+    Wait-For 'validation-summary-cleared' {
+        $condition = [Windows.Automation.PropertyCondition]::new($automationId, 'project-error-summary')
+        $Window.FindAll([Windows.Automation.TreeScope]::Descendants, $condition).Count -eq 0
+    } | Out-Null
+}
+
+function Test-ProjectValidation($Window) {
+    Add-Type -AssemblyName System.Windows.Forms
+    Invoke-Button $Window 'Projects'
+    Invoke-Button $Window 'New project'
+    Invoke-Button $Window 'Save project'
+    Assert-InputFocus $Window 'job_number'
+    Find-Control $Window $name 'Check 3 fields before saving' | Out-Null
+    Set-Field $Window 'job_number' 'UX-65-NEW'
+    Set-Field $Window 'site_id' 'A-7'
+    Set-Field $Window 'site_name' 'Synthetic validation yard'
+    Invoke-Button $Window 'Add work item'
+    Set-Field $Window 'crews-0' '0'
+    Set-Field $Window 'half-days-0' '1.5'
+    Invoke-Button $Window 'Save project'
+    Assert-InputFocus $Window 'crews-0'
+    Invoke-Button $Window 'Go to Work item 1 Estimated half-days'
+    Assert-InputFocus $Window 'half-days-0'
+    Set-Field $Window 'crews-0' '2'
+    Set-Field $Window 'half-days-0' '4'
+    Assert-NoValidationSummary $Window
+
+    foreach ($help in @(
+        @{ Label = 'Job #'; Id = 'job_number' },
+        @{ Label = 'Site ID'; Id = 'site_id' },
+        @{ Label = 'Site name'; Id = 'site_name' },
+        @{ Label = 'Type for work item 1'; Id = 'type-0' },
+        @{ Label = 'Required crews for work item 1'; Id = 'crews-0' },
+        @{ Label = 'Estimated half-days for work item 1'; Id = 'half-days-0' }
+    )) {
+        $trigger = Find-Control $Window $name ('Help: ' + $help.Label) -Button
+        $trigger.SetFocus()
+        Wait-For 'field-help-trigger-focused' { $trigger.Current.HasKeyboardFocus } | Out-Null
+        [Windows.Forms.SendKeys]::SendWait('{ENTER}')
+        $popover = Find-Control $Window $automationId ($help.Id + '-help')
+        # A slow WebView2 may expose the popover before its focus transition settles.
+        # Confirm keyboard focus inside this specific open popover before Escape.
+        $close = Find-Control $popover $name 'Close help' -Button
+        $close.SetFocus()
+        Wait-For 'field-help-content-focused' { $close.Current.HasKeyboardFocus } | Out-Null
+        [Windows.Forms.SendKeys]::SendWait('{ESC}')
+        Wait-For 'field-help-escape-dismissed' {
+            $condition = [Windows.Automation.PropertyCondition]::new($automationId, ($help.Id + '-help'))
+            $Window.FindAll([Windows.Automation.TreeScope]::Descendants, $condition).Count -eq 0
+        } | Out-Null
+    }
+    (Find-Control $Window $automationId 'job_number').SetFocus()
+    [Windows.Forms.SendKeys]::SendWait('{TAB}')
+    Wait-For 'tab-reaches-site-help' { (Find-Control $Window $name 'Help: Site ID' -Button).Current.HasKeyboardFocus } | Out-Null
+    [Windows.Forms.SendKeys]::SendWait('{TAB}')
+    Assert-InputFocus $Window 'site_id'
+    [Windows.Forms.SendKeys]::SendWait('+{TAB}')
+    Wait-For 'shift-tab-reaches-site-help' { (Find-Control $Window $name 'Help: Site ID' -Button).Current.HasKeyboardFocus } | Out-Null
+
+    Invoke-Button $Window 'Add work item'
+    Set-Field $Window 'crews-1' '-1'
+    Invoke-Button $Window 'Save project'
+    Assert-InputFocus $Window 'crews-1'
+    Invoke-Button $Window 'Remove draft work item 2'
+    Assert-NoValidationSummary $Window
+    for ($row = 0; $row -lt 5; $row++) { Invoke-Button $Window 'Add work item' }
+    Set-Field $Window 'crews-0' '0'
+    Invoke-Button $Window 'Save project'
+    Assert-InputFocus $Window 'crews-0'
+    Invoke-Button $Window 'Cancel'
+    Set-Field $Window 'project-search' 'UX-65-NEW'
+    Invoke-Button $Window 'Search'
+    Find-Control $Window $name 'No projects match your search.' | Out-Null
+
+    Invoke-Button $Window 'New project'
+    Set-Field $Window 'job_number' 'UX-65-NEW'
+    Set-Field $Window 'site_id' 'A-7'
+    Set-Field $Window 'site_name' 'Synthetic validation yard'
+    Invoke-Button $Window 'Add work item'
+    Set-Field $Window 'crews-0' '2'
+    Set-Field $Window 'half-days-0' '4'
+    Invoke-Button $Window 'Add work item'
+    Set-Field $Window 'crews-1' '3'
+    Set-Field $Window 'half-days-1' '6'
+    Invoke-Button $Window 'Save project'
+    Find-Control $Window $name 'UX-65-NEW' -Button | Out-Null
+    Invoke-Button $Window 'Edit project'
+    Set-Field $Window 'crews-1' '0'
+    Invoke-Button $Window 'Save project'
+    Assert-InputFocus $Window 'crews-1'
+    Set-Field $Window 'crews-1' '3'
+    Invoke-Button $Window 'Save project'
+    Find-Control $Window $name 'UX-65-NEW' -Button | Out-Null
+    Write-AcceptanceEvent 'PASS' 'project-validation' $timer 0 'fields=targeted summary=focusable validCounts=accepted help=allSix keyboard=verified removedDraft=cleared cancel=readonly'
 }
 
 function Assert-TableColumn($Window, [string]$TableName, [int]$Column, [string[]]$Expected) {
@@ -373,7 +478,8 @@ try {
     $note.SetValue($newNote)
     Invoke-Button $window 'Save note'
     Find-Control $window $name 'Note saved.' | Out-Null
-    if ($IncludeProjects -or $IncludeProjectSorting -or $IncludeBulkProjects) { Test-Projects $window }
+    if ($IncludeProjects -or $IncludeProjectSorting -or $IncludeBulkProjects -or $IncludeProjectValidation) { Test-Projects $window }
+    if ($IncludeProjectValidation) { Test-ProjectValidation $window }
     if ($IncludeProjectSorting) { Test-ProjectSorting $window }
     if ($IncludeBulkProjects) { Test-BulkProjects $window }
     if ($IncludeCrews) { Test-Crews $window }
@@ -392,7 +498,7 @@ try {
     if ($note.Current.Value -ne $newNote) {
         Stop-Acceptance 'FAIL' 'note-reopen' $timer 0 'savedNoteMismatch=true'
     }
-    if ($IncludeProjects -or $IncludeProjectSorting -or $IncludeBulkProjects) {
+    if ($IncludeProjects -or $IncludeProjectSorting -or $IncludeBulkProjects -or $IncludeProjectValidation) {
         Invoke-Button $window 'Projects'
         # TSV identifiers sort before the preserved Project Master fixture.
         if ($IncludeBulkProjects) { Invoke-Button $window 'DEMO-26001' }
@@ -412,6 +518,15 @@ try {
         Invoke-Button $window '000071'
         Assert-TableColumn $window 'Unscheduled projects' 1 @('0007')
         Write-AcceptanceEvent 'PASS' 'clipboard-tsv-reopen' $timer 0 'copiedExamples=exactDelimiters tooltip=escapeDismissed tsv=confirmed leadingZeroes=preserved'
+    }
+    if ($IncludeProjectValidation) {
+        Invoke-Button $window 'Projects'
+        Set-Field $window 'project-search' 'UX-65-NEW'
+        Invoke-Button $window 'Search'
+        Invoke-Button $window 'UX-65-NEW'
+        Assert-TableColumn $window 'Project work items' 1 @('2', '3')
+        Assert-TableColumn $window 'Project work items' 2 @('4', '6')
+        Write-AcceptanceEvent 'PASS' 'project-validation-reopen' $timer 0 'validProjectAndWorkItems=preserved'
     }
     if ($IncludeCrews) {
         Invoke-Button $window 'Crews'

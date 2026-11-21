@@ -32,6 +32,35 @@ class ProjectApiTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.database = Path(temporary.name) / "rigarus.db"
 
+    def test_editor_text_contract_preserves_open_formats_and_valid_counts(self):
+        with TestClient(create_app(self.database)) as client:
+            for field, label in (
+                ("job_number", "Job #"),
+                ("site_id", "Site ID"),
+                ("site_name", "site name"),
+            ):
+                for value in ("", " \t", "\u001c", "\u0085", "A\0B"):
+                    with self.subTest(field=field, value=repr(value)):
+                        draft = project()
+                        draft[field] = value
+                        response = client.post("/projects", json=draft)
+                        self.assertEqual(response.status_code, 422)
+                        self.assertEqual(
+                            response.json()["detail"], f"Enter a valid {label}."
+                        )
+            self.assertEqual(client.get("/projects").json(), [])
+            for job, site in (("项目 Ω/?", "S-104"), ("\ufeff", "1")):
+                response = client.post(
+                    "/projects",
+                    json=project(job, site, items=[work_item("Small", 2, 4)]),
+                )
+                self.assertEqual(response.status_code, 201)
+                self.assertEqual(response.json()["job_number"], job)
+                self.assertEqual(response.json()["site_id"], site)
+                self.assertEqual(
+                    response.json()["work_items"][0]["estimated_half_days"], 4
+                )
+
     def test_create_search_edit_and_reopen_existing_project(self):
         with TestClient(create_app(self.database)) as client:
             self.assertEqual(client.get("/projects").json(), [])
