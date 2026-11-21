@@ -104,7 +104,22 @@ function Get-Sidecar($Process) {
 function Invoke-Button($Window, [string]$Label) {
     $button = Find-Control $Window $name $Label -Button
     Wait-For "$Label to be enabled" { $button.Current.IsEnabled } | Out-Null
-    $button.GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke()
+    $button.SetFocus()
+    if ($Label -match '^Copy (TSV|CSV) example$') {
+        # Clipboard writes require an actual keyboard/pointer user gesture.
+        [Windows.Forms.SendKeys]::SendWait('{ENTER}')
+        return
+    }
+    $pattern = $null
+    if ($button.TryGetCurrentPattern([Windows.Automation.InvokePattern]::Pattern, [ref]$pattern)) {
+        $pattern.Invoke()
+    }
+    elseif ($button.TryGetCurrentPattern([Windows.Automation.ExpandCollapsePattern]::Pattern, [ref]$pattern)) {
+        # WebView2 exposes native popover buttons as expand/collapse controls.
+        if ($pattern.Current.ExpandCollapseState -eq [Windows.Automation.ExpandCollapseState]::Expanded) { $pattern.Collapse() }
+        else { $pattern.Expand() }
+    }
+    else { throw 'Synthetic button has no supported action pattern.' }
 }
 
 function Set-Field($Window, [string]$Id, [string]$Value) {
@@ -180,6 +195,40 @@ function Assert-TableColumn($Window, [string]$TableName, [int]$Column, [string[]
 function Test-BulkProjects($Window) {
     Invoke-Button $Window 'Projects'
     Invoke-Button $Window 'Bulk Add Projects'
+    Add-Type -AssemblyName System.Windows.Forms
+    $previousClipboard = [Windows.Forms.Clipboard]::GetDataObject()
+    try {
+        foreach ($format in @('TSV', 'CSV')) {
+            $delimiter = if ($format -eq 'TSV') { "`t" } else { ',' }
+            $expected = @(
+                "Project Number${delimiter}Site ID${delimiter}Site Name",
+                "VM-0001${delimiter}0001${delimiter}Synthetic VM Yard A",
+                "VM-0002${delimiter}0002${delimiter}Synthetic VM Yard B",
+                "VM-0003${delimiter}0003${delimiter}North Field Pad 1"
+            ) -join "`n"
+            $expected += "`n"
+            Invoke-Button $Window "Copy $format example"
+            Wait-For 'example-copied-exact-delimiters' {
+                ([Windows.Forms.Clipboard]::GetText() -replace "`r`n", "`n") -ceq $expected
+            } | Out-Null
+            Set-Field $Window 'bulk-text' ([Windows.Forms.Clipboard]::GetText())
+            Invoke-Button $Window 'Preview projects'
+            Find-Control $Window $name 'Confirm 3 projects' -Button | Out-Null
+        }
+    }
+    finally {
+        if ($previousClipboard) { [Windows.Forms.Clipboard]::SetDataObject($previousClipboard, $true) }
+        else { [Windows.Forms.Clipboard]::Clear() }
+    }
+    Invoke-Button $Window 'Help: Accepted formats'
+    Find-Control $Window $automationId 'bulk-help-formats' | Out-Null
+    $helpButton = Find-Control $Window $name 'Help: Accepted formats' -Button
+    $helpButton.SetFocus()
+    [Windows.Forms.SendKeys]::SendWait('{ESC}')
+    Wait-For 'help-dismissed-with-escape' {
+        $condition = [Windows.Automation.PropertyCondition]::new($automationId, 'bulk-help-formats')
+        $Window.FindAll([Windows.Automation.TreeScope]::Descendants, $condition).Count -eq 0
+    } | Out-Null
     $content = "Project Number,Site ID,Site Name`nSYN-BULK-0002,0002,Synthetic bulk yard`ndemo-26001,9999,Do not overwrite`nSYN-BULK-DUP,03,Repeat A`nsyn-bulk-dup,04,Repeat B`nSYN-BULK-BAD,,Missing ID`n"
     Set-Field $Window 'bulk-text' $content
     Invoke-Button $Window 'Preview projects'
@@ -209,6 +258,19 @@ function Test-BulkProjects($Window) {
     Invoke-Button $Window 'Preview projects'
     $confirm = Find-Control $Window $name 'Confirm 0 projects' -Button
     if ($confirm.Current.IsEnabled) { throw 'Duplicate-only synthetic batch could be confirmed.' }
+    Invoke-Button $Window 'Cancel Bulk Add'
+
+    Invoke-Button $Window 'Bulk Add Projects'
+    $tsv = "Project Number`tSite ID`tSite Name`r`n000071`t0007`tNorth TSV yard`r`n000072`t0008`tWest TSV yard, Phase 2`r`n"
+    Set-Field $Window 'bulk-text' $tsv
+    Invoke-Button $Window 'Preview projects'
+    Invoke-Button $Window 'Confirm 2 projects'
+    Find-Control $Window $name '000071' -Button | Out-Null
+    Invoke-Button $Window 'Bulk Add Projects'
+    Set-Field $Window 'bulk-text' $tsv
+    Invoke-Button $Window 'Preview projects'
+    $confirmTsv = Find-Control $Window $name 'Confirm 0 projects' -Button
+    if ($confirmTsv.Current.IsEnabled) { throw 'Repeated TSV batch could be confirmed.' }
     Invoke-Button $Window 'Cancel Bulk Add'
     Set-Field $Window 'project-search' '0042'
     Invoke-Button $Window 'Search'
@@ -332,6 +394,8 @@ try {
     }
     if ($IncludeProjects -or $IncludeProjectSorting -or $IncludeBulkProjects) {
         Invoke-Button $window 'Projects'
+        # TSV identifiers sort before the preserved Project Master fixture.
+        if ($IncludeBulkProjects) { Invoke-Button $window 'DEMO-26001' }
         Find-Control $window $name ("DEMO-26001 {0} Edited synthetic yard" -f [char]0x00B7) | Out-Null
         Find-Control $window $name 'Small' | Out-Null
         Write-AcceptanceEvent 'PASS' 'project-master' $timer 0 'syntheticProjectAndWorkItem=reopened'
@@ -343,6 +407,11 @@ try {
         Invoke-Button $window 'Search'
         Assert-TableColumn $window 'Unscheduled projects' 1 @('0002')
         Write-AcceptanceEvent 'PASS' 'bulk-projects-reopen' $timer 0 'syntheticProject=preserved leadingZeroes=preserved'
+        Set-Field $window 'project-search' '000071'
+        Invoke-Button $window 'Search'
+        Invoke-Button $window '000071'
+        Assert-TableColumn $window 'Unscheduled projects' 1 @('0007')
+        Write-AcceptanceEvent 'PASS' 'clipboard-tsv-reopen' $timer 0 'copiedExamples=exactDelimiters tooltip=escapeDismissed tsv=confirmed leadingZeroes=preserved'
     }
     if ($IncludeCrews) {
         Invoke-Button $window 'Crews'
@@ -372,7 +441,13 @@ finally {
     Stop-AcceptanceProcess $process 'desktop-cleanup' $waits.ExitTimeoutSeconds
     Stop-AcceptanceProcess $sidecar 'sidecar-cleanup' $waits.ExitTimeoutSeconds
     if ($runRoot -and (Test-Path -LiteralPath $runRoot -PathType Container)) {
-        Remove-Item -LiteralPath $runRoot -Recurse -Force -ErrorAction SilentlyContinue
+        $resolvedRoot = (Resolve-Path -LiteralPath $runRoot).Path
+        $temporaryParent = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\')
+        if ((Split-Path -Parent $resolvedRoot) -eq $temporaryParent -and
+            (Split-Path -Leaf $resolvedRoot) -match '^rigarus-tauri-smoke-[0-9a-f]{32}$') {
+            Remove-Item -LiteralPath $resolvedRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        else { Write-Warning 'Synthetic cleanup path did not match the expected temporary directory.' }
     }
 }
 exit $exitCode

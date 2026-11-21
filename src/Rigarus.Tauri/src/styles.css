@@ -335,3 +335,48 @@ th[aria-sort] .sort-indicator {
     padding: 16px;
   }
 }
+
+.bulk-examples {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.bulk-example {
+  min-width: 0;
+}
+
+.bulk-example .page-heading {
+  margin-bottom: 8px;
+}
+
+.bulk-example textarea {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 14px;
+  white-space: pre;
+  overflow: auto;
+  tab-size: 16;
+  background: #f5f8fa;
+}
+
+.bulk-example .project-status {
+  margin: 4px 0 0;
+}
+
+.bulk-help {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.bulk-help-popover {
+  width: min(420px, calc(100% - 32px));
+  padding: 20px;
+  border: 1px solid #8195a2;
+  border-radius: 6px;
+  color: #182b36;
+  background: #fff;
+  box-shadow: 0 8px 24px #182b3630;
+}

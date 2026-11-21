@@ -32,7 +32,11 @@ The Projects page now reuses this validation and diagnostic grid for the #45 Bul
 
 ## Bulk Add Projects
 
-Open Projects → Bulk Add Projects. Choose Paste Text or Upload Excel. Download Excel Template creates a local .xlsx workbook without a server or installed Office application; the supported entry range is formatted as text. Fill one project per row, preserving identifiers as text. The three fields are Project Number, Site ID and Site Name. The Excel flow also recognizes Job # as the existing mapping alias; the CSV header and order are fixed:
+Open Projects → Bulk Add Projects. Choose Paste from Excel or plain text, or Upload Excel. In Excel, select the header and cells, press Ctrl+C and paste with Ctrl+V. The text reader detects TAB-separated clipboard content (TSV) or CSV from the fixed three-column header, rather than guessing from data cells. CRLF and LF are accepted. The three fields are Project Number, Site ID and Site Name, in that order. Keep identifiers as text; four-digit IDs are examples, not a new format constraint.
+
+Both monospace examples have a Copy action: Excel / TAB-separated copies actual TAB characters, while CSV / plain text copies commas. Clipboard permission failure selects the example and explains how to copy with Ctrl+C; it does not report a successful copy. Copy alone does not change the input or save any project. The five help controls work with keyboard focus/activation, close with Escape or Close help, and use native auto-popovers so only one is open at a time.
+
+Download Excel Template creates a local .xlsx workbook without a server or installed Office application; the supported entry range is formatted as text. Fill one project per row. The Excel file flow also recognizes Job # as the existing mapping alias; pasted text keeps the fixed header and order:
 
 ```csv
 Project Number,Site ID,Site Name
@@ -40,7 +44,7 @@ Project Number,Site ID,Site Name
 SYN-046,0003,Synthetic tower site
 ```
 
-The CSV reader handles quoted commas and quoted multiline names and reports physical line numbers. The Excel flow retains worksheet/cell references and the same formula/error/numeric-identifier checks as Import preview. Both inputs allow up to 5 MiB and 2000 nonblank data rows, with the existing workbook archive/sheet/column limits. CSV fields above the parser's 128-KiB field limit are rejected; cell values above 2000 characters produce validation errors. Blank input rows are skipped.
+The CSV/TSV reader handles quoted delimiters, doubled quotes and quoted multiline names and reports physical line numbers. A TAB inside quoted CSV, or a comma inside TSV, does not change the detected delimiter. A repeated header row is Invalid / Skip with its source line, rather than becoming a project. Mixed delimiters/incorrect field counts receive diagnostics; malformed quoting stops the preview. The Excel flow retains worksheet/cell references and the same formula/error/numeric-identifier checks as Import preview. Both inputs allow up to 5 MiB and 2000 nonblank data rows, with the existing workbook archive/sheet/column limits. Pasted fields above the parser's 128-KiB field limit are rejected; cell values above 2000 characters produce validation errors. Blank input rows are skipped.
 
 The grid and count line show Ready and skipped rows. Existing project numbers (including case variants) and every occurrence of a repeated number within the input are skipped. Existing projects and work items are never updated. Extra populated fields, including work-item data, are invalid here; use the separate read-only preview to review those fields. Missing or repeated Excel headers prevent confirmation until resolved, including when another sheet contains ready rows.
 

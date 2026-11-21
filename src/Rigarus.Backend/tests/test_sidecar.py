@@ -217,5 +217,21 @@ class SidecarTests(unittest.TestCase):
         projects = self.request(port, "GET", "/projects", token)[1]
         self.assertEqual(projects[0]["job_number"], "000045")
         self.assertEqual(projects[0]["site_id"], "0002")
+        tsv = {
+            "kind": "text",
+            "content": "Project Number\tSite ID\tSite Name\r\n000046\t0003\tTSV, yard\r\n",
+        }
+        code, checked_tsv = self.request(
+            port, "POST", "/bulk-projects/preview", token, payload=tsv
+        )
+        self.assertEqual(code, 200)
+        self.assertEqual(checked_tsv["ready_count"], 1)
+        tsv["preview_id"] = checked_tsv["preview_id"]
+        code, saved_tsv = self.request(
+            port, "POST", "/bulk-projects/confirm", token, payload=tsv
+        )
+        self.assertEqual(code, 200)
+        self.assertEqual(saved_tsv["created_count"], 1)
+        self.assertEqual(len(self.request(port, "GET", "/projects", token)[1]), 2)
         restarted.stdin.close()
         self.assertEqual(restarted.wait(timeout=10), 0)
