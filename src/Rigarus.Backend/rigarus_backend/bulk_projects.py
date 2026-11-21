@@ -40,16 +40,31 @@ class BulkPreview:
 
 def text_rows(content: str) -> ImportPreview:
     if len(content.encode("utf-8")) > 5 * 1024 * 1024:
-        raise PreviewError("Paste CSV text of at most 5 MiB.")
-    reader = csv.reader(
-        StringIO(content.removeprefix("\ufeff"), newline=""), strict=True
-    )
-    try:
-        headers = next(reader, [])
-        if [h.strip().lower() for h in headers] != [
+        raise PreviewError("Paste Excel cells or CSV text of at most 5 MiB.")
+    # Detect the delimiter from the fixed header, never from project data. A
+    # comma inside a TSV site name (or a tab inside quoted CSV) is just text.
+    reader = None
+    for delimiter in (",", "\t"):
+        candidate = csv.reader(
+            StringIO(content.removeprefix("\ufeff"), newline=""),
+            delimiter=delimiter,
+            strict=True,
+        )
+        try:
+            headers = next(candidate, [])
+        except csv.Error:
+            continue
+        if [h.strip().lower() for h in headers] == [
             h.lower() for h in TEMPLATE_HEADERS
         ]:
-            raise PreviewError("Use CSV headers: Project Number,Site ID,Site Name.")
+            reader = candidate
+            break
+    if reader is None:
+        raise PreviewError(
+            "Include the headers Project Number, Site ID and Site Name, "
+            "separated by tabs (Excel) or commas (CSV)."
+        )
+    try:
         rows = []
         while True:
             start = reader.line_num + 1
@@ -63,6 +78,24 @@ def text_rows(content: str) -> ImportPreview:
             source = f"Paste Text line {start}"
             if reader.line_num != start:
                 source += f"-{reader.line_num}"
+            if [value.strip().lower() for value in values] == [
+                header.lower() for header in TEMPLATE_HEADERS
+            ]:
+                rows.append(
+                    PreviewRow(
+                        source,
+                        {},
+                        "Skip",
+                        "Invalid",
+                        [
+                            Diagnostic(
+                                source,
+                                "Repeated header row. Keep only the first header.",
+                            )
+                        ],
+                    )
+                )
+                continue
             if len(values) != 3:
                 rows.append(
                     PreviewRow(
@@ -72,7 +105,8 @@ def text_rows(content: str) -> ImportPreview:
                         "Invalid",
                         [
                             Diagnostic(
-                                source, "Each CSV row must have exactly three fields."
+                                source,
+                                "Each pasted row must have exactly three fields.",
                             )
                         ],
                     )
@@ -88,7 +122,7 @@ def text_rows(content: str) -> ImportPreview:
             rows.append(row)
     except csv.Error as error:
         raise PreviewError(
-            "Could not read CSV. Check quoting and field lengths."
+            "Could not read pasted text. Check quoting and field lengths."
         ) from error
     return ImportPreview(rows, [], {})
 

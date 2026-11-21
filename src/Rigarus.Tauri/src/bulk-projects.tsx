@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useState, type SubmitEvent } from "react";
+import { useRef, useState, type SubmitEvent } from "react";
 import { PreviewResults, readWorkbook, type Preview } from "./import-preview";
 
 type BulkPreview = {
@@ -14,6 +14,95 @@ type Confirmation = {
   created_count: number;
   skipped_count: number;
 };
+
+const examples = [
+  {
+    id: "tsv",
+    label: "Excel / TAB-separated",
+    text: "Project Number\tSite ID\tSite Name\r\nVM-0001\t0001\tSynthetic VM Yard A\r\nVM-0002\t0002\tSynthetic VM Yard B\r\nVM-0003\t0003\tNorth Field Pad 1\r\n",
+  },
+  {
+    id: "csv",
+    label: "CSV / plain text",
+    text: "Project Number,Site ID,Site Name\r\nVM-0001,0001,Synthetic VM Yard A\r\nVM-0002,0002,Synthetic VM Yard B\r\nVM-0003,0003,North Field Pad 1\r\n",
+  },
+] as const;
+
+const help = [
+  [
+    "formats",
+    "Accepted formats",
+    "Copy the header and cells in Excel with Ctrl+C, then paste with Ctrl+V. TAB-separated text and CSV are accepted. In CSV, quote a site name containing a comma.",
+  ],
+  [
+    "rows",
+    "One project per row",
+    "Include Project Number, Site ID and Site Name in that order. Keep identifiers as text to preserve leading zeroes.",
+  ],
+  [
+    "preview",
+    "Preview is read-only",
+    "Preview and Cancel do not save projects. Changing text, file or tab removes the previous confirmation; preview again before saving.",
+  ],
+  [
+    "overwrite",
+    "No overwrite",
+    "Only ready new projects are added after confirmation. Existing projects and work items stay unchanged. Duplicate rows are skipped; a failed transaction rolls back.",
+  ],
+  [
+    "limits",
+    "Limits",
+    "Up to 2,000 data rows and 5 MiB. Excel files must be .xlsx. Formulas and external references are not evaluated; review source-cell diagnostics.",
+  ],
+] as const;
+
+function CopyExample({ id, label, text }: (typeof examples)[number]) {
+  const field = useRef<HTMLTextAreaElement>(null);
+  const [message, setMessage] = useState("");
+
+  async function copy() {
+    setMessage("");
+    try {
+      if (!navigator.clipboard?.writeText)
+        throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(text);
+      setMessage(`${label} example copied.`);
+    } catch {
+      // Keep the exact example selectable when clipboard permissions are denied.
+      field.current?.focus();
+      field.current?.select();
+      setMessage(
+        "Copy unavailable. The example is selected; press Ctrl+C to copy it.",
+      );
+    }
+  }
+
+  return (
+    <div className="bulk-example">
+      <div className="page-heading">
+        <label htmlFor={`bulk-example-${id}`}>{label} example</label>
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={() => void copy()}
+        >
+          Copy {id.toUpperCase()} example
+        </button>
+      </div>
+      <textarea
+        id={`bulk-example-${id}`}
+        ref={field}
+        readOnly
+        value={text}
+        rows={5}
+        spellCheck={false}
+      />
+      <p className="project-status" role="status">
+        {message}
+      </p>
+    </div>
+  );
+}
 
 export function BulkProjects({
   onCancel,
@@ -53,7 +142,7 @@ export function BulkProjects({
         }
         content = await readWorkbook(file);
       } else if (new Blob([text]).size > 5 * 1024 * 1024) {
-        throw new Error("Paste CSV text of at most 5 MiB.");
+        throw new Error("Paste Excel cells or CSV text of at most 5 MiB.");
       }
       const input = { kind, content };
       const checked = await invoke<BulkPreview>("bulk_projects", {
@@ -146,7 +235,7 @@ export function BulkProjects({
         <div role="tablist" aria-label="Bulk project source">
           {(
             [
-              ["text", "Paste Text"],
+              ["text", "Paste from Excel or plain text"],
               ["xlsx", "Upload Excel"],
             ] as const
           ).map(([value, label]) => (
@@ -199,18 +288,23 @@ export function BulkProjects({
             role="tabpanel"
             aria-labelledby={`bulk-tab-${kind}`}
           >
-            <p>
+            <p id="bulk-input-help">
               Use Project Number, Site ID and Site Name, one project per row.
               Keep Excel identifiers as text. Up to 2000 rows and 5 MiB.
             </p>
             {kind === "text" ? (
               <>
                 <label htmlFor="bulk-text">
-                  CSV text (include the header row; quote names containing
-                  commas)
+                  Paste from Excel or plain text
                 </label>
+                <p id="bulk-paste-help" className="project-status">
+                  In Excel, select the header and rows, press Ctrl+C, then paste
+                  here with Ctrl+V. CSV with the same headers also works.
+                </p>
                 <textarea
                   id="bulk-text"
+                  aria-describedby="bulk-input-help bulk-paste-help"
+                  placeholder="Paste header and rows from Excel, or CSV text…"
                   disabled={busy}
                   value={text}
                   onChange={(event) => {
@@ -218,6 +312,14 @@ export function BulkProjects({
                     invalidate();
                   }}
                 />
+                <div
+                  className="bulk-examples"
+                  aria-label="Copyable project examples"
+                >
+                  {examples.map((example) => (
+                    <CopyExample key={example.id} {...example} />
+                  ))}
+                </div>
               </>
             ) : (
               <>
@@ -226,6 +328,7 @@ export function BulkProjects({
                   id="bulk-workbook"
                   type="file"
                   accept=".xlsx"
+                  aria-describedby="bulk-input-help"
                   disabled={busy}
                   onChange={(event) => {
                     setFile(event.target.files?.[0]);
@@ -234,6 +337,37 @@ export function BulkProjects({
                 />
               </>
             )}
+          </div>
+          <div className="bulk-help" aria-label="Bulk Add help">
+            {help.map(([id, label, description]) => (
+              <span key={id}>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  aria-label={`Help: ${label}`}
+                  popoverTarget={`bulk-help-${id}`}
+                >
+                  {label} <span aria-hidden="true">ⓘ</span>
+                </button>
+                <div
+                  id={`bulk-help-${id}`}
+                  popover="auto"
+                  className="bulk-help-popover"
+                  role="note"
+                >
+                  <strong>{label}</strong>
+                  <p>{description}</p>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    popoverTarget={`bulk-help-${id}`}
+                    popoverTargetAction="hide"
+                  >
+                    Close help
+                  </button>
+                </div>
+              </span>
+            ))}
           </div>
           <div className="actions">
             <button disabled={busy || (kind === "xlsx" && !file)}>

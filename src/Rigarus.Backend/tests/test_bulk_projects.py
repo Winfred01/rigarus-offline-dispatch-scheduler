@@ -73,6 +73,156 @@ class BulkProjectTests(unittest.TestCase):
         self.assertEqual(before, hashlib.sha256(self.database.read_bytes()).hexdigest())
         self.assertEqual(self.client.get("/projects").json(), [])
 
+    def test_excel_tsv_crlf_matches_csv_and_preserves_quoted_text_and_zeroes(self):
+        csv_content = (
+            HEADER
+            + '000071,0007,"West Yard, ""Phase 2"""\n'
+            + "SYN-TSV-DUP,01,A\nsyn-tsv-dup,02,B\nSYN-TSV-BAD,,Missing\n"
+        )
+        tsv_content = (
+            "\ufeffProject Number\tSite ID\tSite Name\r\n"
+            '000071\t0007\t"West Yard, ""Phase 2"""\r\n'
+            "\r\nSYN-TSV-DUP\t01\tA\r\nsyn-tsv-dup\t02\tB\r\n"
+            "SYN-TSV-BAD\t\tMissing\r\n"
+        )
+        before = hashlib.sha256(self.database.read_bytes()).hexdigest()
+        csv_preview = self.post("preview", csv_content).json()
+        tsv_preview = self.post("preview", tsv_content).json()
+        self.assertEqual(tsv_preview["ready_count"], 1)
+        self.assertEqual(tsv_preview["skipped_count"], 3)
+        self.assertEqual(
+            tsv_preview["preview"]["counts"], csv_preview["preview"]["counts"]
+        )
+        self.assertEqual(
+            [r["values"] for r in tsv_preview["preview"]["rows"]],
+            [r["values"] for r in csv_preview["preview"]["rows"]],
+        )
+        row = tsv_preview["preview"]["rows"][0]
+        self.assertEqual(row["values"]["Job #"], "000071")
+        self.assertEqual(row["values"]["Site ID"], "0007")
+        self.assertEqual(row["values"]["Site Name"], 'West Yard, "Phase 2"')
+        invalid = tsv_preview["preview"]["rows"][-1]
+        self.assertEqual(invalid["source"], "Paste Text line 6")
+        self.assertTrue(any("Site ID" in d["message"] for d in invalid["diagnostics"]))
+        self.assertEqual(before, hashlib.sha256(self.database.read_bytes()).hexdigest())
+
+    def test_tsv_confirm_revalidates_and_retry_preserves_existing_records(self):
+        original = self.client.post(
+            "/projects",
+            json={
+                "job_number": "SYN-KEEP",
+                "site_id": "001",
+                "site_name": "Keep original",
+                "work_items": [
+                    {
+                        "type": "Tower",
+                        "required_crew_count": 2,
+                        "estimated_half_days": 4,
+                    }
+                ],
+            },
+        ).json()
+        content = (
+            "Project Number\tSite ID\tSite Name\r\n"
+            "000071\t0007\tNorth Yard\r\n"
+            "000072\t0008\tWest Yard, Phase 2\r\n"
+            "syn-keep\t9999\tDo not overwrite\r\n"
+            "SYN-BAD\t\tMissing ID\r\n"
+        )
+        before = self.database.read_bytes()
+        checked = self.post("preview", content).json()
+        self.assertEqual(self.database.read_bytes(), before)
+        self.assertEqual((checked["ready_count"], checked["skipped_count"]), (2, 2))
+        self.assertEqual(
+            self.post(
+                "confirm", content + "\r\n", preview_id=checked["preview_id"]
+            ).status_code,
+            409,
+        )
+        self.assertEqual(self.database.read_bytes(), before)
+        result = self.post("confirm", content, preview_id=checked["preview_id"])
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.json()["created_count"], 2)
+        self.assertEqual(result.json()["skipped_count"], 2)
+        self.assertEqual(
+            self.client.get(f"/projects/{original['id']}").json(), original
+        )
+        self.assertEqual(
+            self.post("confirm", content, preview_id=checked["preview_id"]).status_code,
+            409,
+        )
+        with TestClient(create_app(self.database)) as reopened:
+            stored = reopened.get("/projects").json()
+            self.assertEqual(len(stored), 3)
+            self.assertIn(
+                ("000072", "0008", "West Yard, Phase 2"),
+                [(r["job_number"], r["site_id"], r["site_name"]) for r in stored],
+            )
+        self.assertEqual(self.post("preview", content).json()["ready_count"], 0)
+
+    def test_tsv_quoted_tabs_multiline_cells_and_physical_source_lines(self):
+        content = (
+            '"Project Number"\t"Site ID"\t"Site Name"\r\n'
+            '000073\t0009\t"First\tphase\r\nSecond ""phase"""\r\n'
+            "SYN-EXTRA\t01\tName\tExtra\r\n"
+        )
+        result = self.post("preview", content).json()
+        self.assertEqual((result["ready_count"], result["skipped_count"]), (1, 1))
+        first, extra = result["preview"]["rows"]
+        self.assertEqual(first["source"], "Paste Text line 2-3")
+        self.assertEqual(first["values"]["Site Name"], 'First\tphase\r\nSecond "phase"')
+        self.assertEqual(extra["source"], "Paste Text line 4")
+        self.assertIn("three fields", extra["diagnostics"][0]["message"])
+        self.assertEqual(
+            self.post(
+                "preview", "Project Number\tSite ID\tSite Name\r\n" + '"unclosed'
+            ).status_code,
+            422,
+        )
+        self.assertEqual(
+            self.post(
+                "preview",
+                "Project Number\tSite ID\tSite Name\r\n" + "A\tB\tC\r\n" * 2001,
+            ).status_code,
+            422,
+        )
+
+    def test_mixed_newlines_and_repeated_headers_are_not_projects(self):
+        before = self.database.read_bytes()
+        for delimiter in (",", "\t"):
+            with self.subTest(delimiter=delimiter):
+                header = delimiter.join(TEMPLATE_HEADERS)
+                content = (
+                    header
+                    + "\r\n"
+                    + delimiter.join(("000080", "0008", "North Yard"))
+                    + "\n"
+                    + header
+                    + "\r\n"
+                    + delimiter.join(("000081", "0009", "West Yard"))
+                    + "\n"
+                )
+                response = self.post("preview", content)
+                self.assertEqual(response.status_code, 200)
+                result = response.json()
+                self.assertEqual(
+                    (result["ready_count"], result["skipped_count"]), (2, 1)
+                )
+                repeated = result["preview"]["rows"][1]
+                self.assertEqual(repeated["status"], "Invalid")
+                self.assertEqual(repeated["source"], "Paste Text line 3")
+                self.assertIn("Repeated header", repeated["diagnostics"][0]["message"])
+                self.assertEqual(self.database.read_bytes(), before)
+
+    def test_csv_tab_inside_quoted_cell_does_not_change_delimiter(self):
+        result = self.post("preview", HEADER + '000074,0010,"West\tYard, Phase 2"\n')
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.json()["ready_count"], 1)
+        self.assertEqual(
+            result.json()["preview"]["rows"][0]["values"]["Site Name"],
+            "West\tYard, Phase 2",
+        )
+
     def test_confirm_inserts_only_ready_rows_and_retry_cannot_duplicate(self):
         checked = self.post("preview").json()
         result = self.post("confirm", preview_id=checked["preview_id"])
