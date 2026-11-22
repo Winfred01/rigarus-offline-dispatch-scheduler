@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory = $true)]
     [string]$Executable,
     [switch]$RequireOffline,
@@ -9,6 +9,7 @@ param(
     [switch]$IncludeCrews,
     [switch]$IncludeForemen,
     [switch]$IncludeAssignments,
+    [switch]$PreserveSyntheticProfile,
     [ValidateSet('Default', 'SlowVm')]
     [string]$Profile = 'Default',
     [ValidateRange(1, 300)]
@@ -70,7 +71,26 @@ function Get-DashboardWindow($Process) {
         if ($Process.HasExited) { throw "Desktop exited with code $($Process.ExitCode)." }
         if ($Process.MainWindowHandle -ne [IntPtr]::Zero) {
             $window = [Windows.Automation.AutomationElement]::FromHandle($Process.MainWindowHandle)
-            if ($window.Current.Name -eq 'Rigarus Offline Dispatch Scheduler') { $window }
+            if ($window.Current.Name -eq 'Rigarus Offline Dispatch Scheduler') {
+                if ($IncludeAssignments) {
+                    $transform = $window.GetCurrentPattern([Windows.Automation.TransformPattern]::Pattern)
+                    if (-not $transform.Current.CanResize) { throw 'Weekly smoke requires a resizable test window.' }
+                    if (-not ('RigarusAcceptanceWindow' -as [type])) {
+                        Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class RigarusAcceptanceWindow {
+    [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr window);
+}
+'@
+                    }
+                    # TransformPattern uses physical pixels; Tauri sizes use DIPs.
+                    $dpi = [RigarusAcceptanceWindow]::GetDpiForWindow($Process.MainWindowHandle)
+                    if ($dpi -lt 96 -or $dpi -gt 480) { throw 'Unsupported test-window DPI.' }
+                    $transform.Resize(1000 * $dpi / 96, 720 * $dpi / 96)
+                }
+                $window
+            }
         }
     }
 }
@@ -126,6 +146,10 @@ function Invoke-Button($Window, [string]$Label) {
         # WebView2 exposes native popover buttons as expand/collapse controls.
         if ($pattern.Current.ExpandCollapseState -eq [Windows.Automation.ExpandCollapseState]::Expanded) { $pattern.Collapse() }
         else { $pattern.Expand() }
+    }
+    elseif ($button.TryGetCurrentPattern([Windows.Automation.TogglePattern]::Pattern, [ref]$pattern)) {
+        # Schedule cards expose aria-pressed through native Toggle, not Invoke.
+        $pattern.Toggle()
     }
     else { throw 'Synthetic button has no supported action pattern.' }
 }
@@ -279,10 +303,9 @@ function Assert-InputFocus($Window, [string]$Id) {
 
 function Assert-SyntheticTextContains($Window, [string]$SyntheticNeedle) {
     Wait-For 'synthetic-visible-text' {
-        $condition = [Windows.Automation.PropertyCondition]::new(
-            [Windows.Automation.AutomationElement]::ControlTypeProperty,
-            [Windows.Automation.ControlType]::Text)
-        @($Window.FindAll([Windows.Automation.TreeScope]::Descendants, $condition) |
+        # WebView2 can coalesce nested roster text into the row-header accessible
+        # name rather than exposing an independent StaticText element.
+        @($Window.FindAll([Windows.Automation.TreeScope]::Descendants, [Windows.Automation.Condition]::TrueCondition) |
             Where-Object { ([string]$_.Current.Name).Contains($SyntheticNeedle) }).Count -gt 0
     } | Out-Null
 }
@@ -297,22 +320,223 @@ function Open-SyntheticAssignment($Window, [int]$WorkItemId) {
 }
 
 function Select-AssignmentChoice($Window, [string]$Id, [string]$Keys, [string]$ExpectedChoice) {
-    Add-Type -AssemblyName System.Windows.Forms
     $choiceControl = Find-Control $Window $automationId $Id
+    Wait-For 'assignment-choice-enabled' { $choiceControl.Current.IsEnabled } | Out-Null
+    if (([string]$choiceControl.GetCurrentPattern($valuePattern).Current.Value) -ceq $ExpectedChoice) { return }
+    $scrollItem = $null
+    if ($choiceControl.TryGetCurrentPattern([Windows.Automation.ScrollItemPattern]::Pattern, [ref]$scrollItem)) { $scrollItem.ScrollIntoView() }
     $choiceControl.SetFocus()
-    Wait-For 'assignment-select-focused' { $choiceControl.Current.HasKeyboardFocus } | Out-Null
-    [Windows.Forms.SendKeys]::SendWait($Keys)
-    [Windows.Forms.SendKeys]::SendWait('{TAB}')
+    # Native WebView2 options expose SelectionItem. Do not send keys to whichever
+    # host window happens to have foreground input. Keys is kept for old callers.
+    $expand = $choiceControl.GetCurrentPattern([Windows.Automation.ExpandCollapsePattern]::Pattern)
+    $option = Wait-For 'assignment-option-available' {
+        if ($expand.Current.ExpandCollapseState -ne [Windows.Automation.ExpandCollapseState]::Expanded) { $expand.Expand() }
+        $condition = [Windows.Automation.PropertyCondition]::new(
+            [Windows.Automation.AutomationElement]::ControlTypeProperty,
+            [Windows.Automation.ControlType]::ListItem)
+        $options = @($Window.FindAll([Windows.Automation.TreeScope]::Descendants, $condition) |
+            Where-Object { ([string]$_.Current.Name).StartsWith($ExpectedChoice, [StringComparison]::Ordinal) })
+        if ($options.Count -gt 1) { throw 'Synthetic choice is ambiguous.' }
+        if ($options.Count -eq 1) { $options[0] }
+    }
+    $option.GetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern).Select()
+    if ($expand.Current.ExpandCollapseState -eq [Windows.Automation.ExpandCollapseState]::Expanded) { $expand.Collapse() }
     Wait-For 'assignment-choice-committed' {
         $observedChoice = $choiceControl.GetCurrentPattern($valuePattern).Current.Value
         ([string]$observedChoice).StartsWith($ExpectedChoice)
     } | Out-Null
 }
 
+function Get-SyntheticDateParts([string]$Date, [string[]]$Parts) {
+    $calendarDate = [DateTime]::ParseExact($Date, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
+    if ($Parts.Count -ne 3 -or (($Parts | Sort-Object) -join ',') -cne 'Day,Month,Year') {
+        throw 'Unsupported date control segments; expected Year, Month and Day exactly once.'
+    }
+    $fields = @{ Year = $calendarDate.ToString('yyyy'); Month = $calendarDate.ToString('MM'); Day = $calendarDate.ToString('dd') }
+    @($Parts | ForEach-Object { [pscustomobject]@{ Part = $_; Digits = $fields[$_] } })
+}
+
 function Show-SyntheticAssignmentDate($Window, [string]$Date) {
-    Set-Field $Window 'schedule-date' $Date
-    Invoke-Button $Window 'Show date'
-    Assert-SyntheticTextContains $Window $Date
+    $dateControl = Find-Control $Window $automationId 'schedule-date'
+    Wait-For 'schedule-date-enabled' { $dateControl.Current.IsEnabled } | Out-Null
+    $condition = [Windows.Automation.PropertyCondition]::new(
+        [Windows.Automation.AutomationElement]::ControlTypeProperty,
+        [Windows.Automation.ControlType]::Spinner)
+    $parts = @($dateControl.FindAll([Windows.Automation.TreeScope]::Descendants, $condition) |
+        ForEach-Object { ([string]$_.Current.Name -split ' ')[0] })
+    $dateParts = Get-SyntheticDateParts $Date $parts
+    # WebView2 advertises ValuePattern here but SetValue silently keeps the old date.
+    # Type only validated digits into the activated test window, in its actual locale order.
+    Add-Type -AssemblyName Microsoft.VisualBasic, System.Windows.Forms
+    if (-not ('RigarusAcceptanceInput' -as [type])) {
+        Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class RigarusAcceptanceInput {
+    [StructLayout(LayoutKind.Sequential)] public struct Point { public int X,Y; }
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern IntPtr WindowFromPhysicalPoint(Point point);
+    [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr window,uint flag);
+    [DllImport("user32.dll")] public static extern bool SetPhysicalCursorPos(int x,int y);
+    [DllImport("user32.dll")] public static extern bool GetPhysicalCursorPos(out Point point);
+    [DllImport("user32.dll")] static extern void mouse_event(uint flags,uint x,uint y,uint data,UIntPtr extra);
+    public static bool ClickOwned(int x,int y,IntPtr owner) {
+        if(owner==IntPtr.Zero)return false;
+        var point=new Point { X=x,Y=y };
+        if(GetForegroundWindow()!=owner || GetAncestor(WindowFromPhysicalPoint(point),2)!=owner)return false;
+        if(!SetPhysicalCursorPos(x,y))return false;
+        mouse_event(2,0,0,0,UIntPtr.Zero);mouse_event(4,0,0,0,UIntPtr.Zero);return true;
+    }
+}
+'@
+    }
+    [Microsoft.VisualBasic.Interaction]::AppActivate($process.Id)
+    $originalPointer = New-Object RigarusAcceptanceInput+Point
+    $null = [RigarusAcceptanceInput]::GetPhysicalCursorPos([ref]$originalPointer)
+    $lastPoint = $null
+    try {
+        # Enter each segment independently: MDY auto-advances after Month, while
+        # YMD behaves differently. Never infer focus from a fixed arrow sequence.
+        $targets = @{}
+        foreach ($part in $dateParts) { $targets[$part.Part] = $part.Digits }
+        $steps = @(@('Day', '01'), @('Year', $targets.Year), @('Month', $targets.Month), @('Day', $targets.Day))
+        foreach ($step in $steps) {
+            $segmentName = $step[0]
+            $segment = Find-Control $dateControl $name ($segmentName + ' Jump to local date')
+            $bounds = $segment.Current.BoundingRectangle
+            if ($bounds.Width -le 0 -or $bounds.Height -le 0) { throw 'Date segment is not visible.' }
+            $point = @{ X = [int]($bounds.Left + $bounds.Width / 2); Y = [int]($bounds.Top + $bounds.Height / 2) }
+            Wait-For 'schedule-date-segment-owned' { [RigarusAcceptanceInput]::ClickOwned($point.X, $point.Y, $process.MainWindowHandle) } | Out-Null
+            $lastPoint = $point
+            Wait-For 'schedule-date-segment-focused' {
+                ([string][Windows.Automation.AutomationElement]::FocusedElement.Current.Name).StartsWith($segmentName + ' ')
+            } | Out-Null
+            if ([RigarusAcceptanceInput]::GetForegroundWindow() -ne $process.MainWindowHandle) { throw 'Test window no longer owns foreground input.' }
+            [Windows.Forms.SendKeys]::SendWait('{BACKSPACE}' + $step[1])
+            Wait-For 'schedule-date-segment-committed' {
+                $segment.GetCurrentPattern([Windows.Automation.RangeValuePattern]::Pattern).Current.Value -eq [double]$step[1]
+            } | Out-Null
+        }
+        [Windows.Forms.SendKeys]::SendWait('{TAB}')
+    }
+    finally {
+        $currentPointer = New-Object RigarusAcceptanceInput+Point
+        $null = [RigarusAcceptanceInput]::GetPhysicalCursorPos([ref]$currentPointer)
+        if ($lastPoint -and $currentPointer.X -eq $lastPoint.X -and $currentPointer.Y -eq $lastPoint.Y) {
+            $null = [RigarusAcceptanceInput]::SetPhysicalCursorPos($originalPointer.X, $originalPointer.Y)
+        }
+    }
+    Wait-For 'schedule-date-committed' { $dateControl.GetCurrentPattern($valuePattern).Current.Value -ceq $Date } | Out-Null
+    Invoke-Button $Window 'Go'
+    Find-Control $Window $name 'Job Schedule Sunday–Saturday' | Out-Null
+}
+
+function Get-SyntheticAssignmentCards($Window) {
+    $table = Find-Control $Window $name 'Job Schedule Sunday–Saturday'
+    $condition = [Windows.Automation.PropertyCondition]::new(
+        [Windows.Automation.AutomationElement]::ControlTypeProperty,
+        [Windows.Automation.ControlType]::Button)
+    @($table.FindAll([Windows.Automation.TreeScope]::Descendants, $condition) |
+        Where-Object { $_.Current.Name -match '^Draft [1-9][0-9]*, SYN-14-UI, ' })
+}
+
+function Assert-WeekAssignmentCards($Window, [string[]]$Expected) {
+    $observation = @{ Values = @() }
+    try { Wait-For 'weekly-synthetic-cards' {
+        $observation.Values = @(Get-SyntheticAssignmentCards $Window | ForEach-Object { $_.Current.Name } | Sort-Object)
+        ($observation.Values -join '|') -ceq (($Expected | Sort-Object) -join '|')
+    } | Out-Null }
+    catch {
+        Write-AcceptanceEvent 'INFO' 'weekly-card-diagnostic' $timer 0 ("actual=$($observation.Values -join '|') expected=$($Expected -join '|')")
+        throw
+    }
+}
+
+function Open-WeekAssignment($Window, [int]$Id, [string]$DateSlot) {
+    Invoke-Button $Window ("Draft $Id, SYN-14-UI, $DateSlot, Assignment Test Crew")
+    Find-Control $Window $name ("Edit Draft $Id") -Button | Out-Null
+}
+
+function Close-AssignmentDetails($Window, [int]$Id) {
+    Find-Control $Window $name ("Edit Draft $Id") -Button | Out-Null
+    Invoke-Button $Window 'Close dialog'
+}
+
+function Get-SyntheticAssignmentDigest {
+    # Only the private, generated smoke profile is observed; ignore transient SHM locks.
+    $syntheticDatabase = Join-Path $root 'data/rigarus.db'
+    if (-not (Test-Path -LiteralPath $syntheticDatabase -PathType Leaf)) { throw 'Synthetic database is missing.' }
+    (@($syntheticDatabase, ($syntheticDatabase + '-wal')) | ForEach-Object {
+        if (Test-Path -LiteralPath $_ -PathType Leaf) { (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash }
+        else { 'absent' }
+    }) -join ':'
+}
+
+function Initialize-SyntheticWeeklyScale($Window) {
+    foreach ($number in 2..9) {
+        Invoke-Button $Window 'New crew'
+        $label = 'Weekly Test Crew ' + $number.ToString('00')
+        if ($number -eq 9) { $label += ' long synthetic alignment label' }
+        Set-Field $Window 'crew-name' $label
+        Invoke-Button $Window 'Save crew'
+        Find-Control $Window $name 'Crew saved.' | Out-Null
+    }
+    Invoke-Button $Window 'Projects'
+    Invoke-Button $Window 'Bulk Add Projects'
+    $lines = @('Project Number,Site ID,Site Name')
+    $lines += @(1..100 | ForEach-Object { 'SYN-WEEK-' + $_.ToString('000') + ',' + $_.ToString('0000') + ',Synthetic weekly scale site ' + $_ })
+    Set-Field $Window 'bulk-text' ($lines -join "`n")
+    Invoke-Button $Window 'Preview projects'
+    Invoke-Button $Window 'Confirm 100 projects'
+    Find-Control $Window $name 'SYN-WEEK-001' -Button | Out-Null
+}
+
+function Assert-SyntheticWeeklyScroll($Window) {
+    $table = Find-Control $Window $name 'Crew Board Sunday–Saturday'
+    $grid = $table.GetCurrentPattern([Windows.Automation.GridPattern]::Pattern)
+    if ($grid.Current.RowCount -lt 10 -or $grid.Current.ColumnCount -ne 8) { throw 'Expected nine Crews and seven day columns.' }
+    $lastRow = 0
+    for ($row = 1; $row -lt $grid.Current.RowCount; $row++) {
+        if ($grid.GetItem($row, 0).Current.Name.StartsWith('Weekly Test Crew 09')) { $lastRow = $row; break }
+    }
+    if (-not $lastRow) { throw 'The ninth synthetic Crew is missing.' }
+    $region = Find-Control $Window $name 'Scrollable weekly schedule'
+    $scroll = $region.GetCurrentPattern([Windows.Automation.ScrollPattern]::Pattern)
+    if (-not $scroll.Current.VerticallyScrollable -or -not $scroll.Current.HorizontallyScrollable) { throw 'Expected both scroll axes in the bounded test viewport.' }
+    $scroll.SetScrollPercent(100, 100)
+    $observation = @{ State = 'not-observed' }
+    try { Wait-For 'last-crew-sticky-header-alignment' {
+        $bounds = $region.Current.BoundingRectangle
+        $roster = $grid.GetItem($lastRow, 0).Current.BoundingRectangle
+        $day = $grid.GetItem($lastRow, 7).Current.BoundingRectangle
+        $header = $grid.GetItem(0, 7).Current.BoundingRectangle
+        $observation.State = "row=$lastRow region=$bounds roster=$roster day=$day header=$header vertical=$($scroll.Current.VerticalScrollPercent) horizontal=$($scroll.Current.HorizontalScrollPercent)"
+        $roster.Width -gt 0 -and $roster.Height -gt 0 -and $day.Width -gt 0 -and
+            $roster.Bottom -gt $header.Bottom -and $roster.Bottom -le ($bounds.Bottom + 2) -and
+            [Math]::Abs($roster.Top - $day.Top) -le 2 -and [Math]::Abs($roster.Bottom - $day.Bottom) -le 2 -and
+            [Math]::Abs($roster.Left - $bounds.Left) -le 3 -and $header.Top -ge $bounds.Top -and $header.Bottom -lt $roster.Bottom
+    } | Out-Null }
+    catch { Write-AcceptanceEvent 'INFO' 'weekly-scroll-diagnostic' $timer 0 $observation.State; throw }
+    # A wrapped roster can legitimately exceed the body viewport. Check both ends
+    # instead of inventing a maximum name/member/row height to make it fit at once.
+    $bounds = $region.Current.BoundingRectangle
+    $roster = $grid.GetItem($lastRow, 0).Current.BoundingRectangle
+    $header = $grid.GetItem(0, 7).Current.BoundingRectangle
+    if ($roster.Top -lt $header.Bottom) {
+        $maximumScroll = $bounds.Height * (100 / $scroll.Current.VerticalViewSize - 1)
+        $target = [Math]::Max(0, 100 - 100 * ($header.Bottom - $roster.Top + 2) / $maximumScroll)
+        $scroll.SetScrollPercent(100, $target)
+    }
+    Wait-For 'last-crew-name-reachable' {
+        $bounds = $region.Current.BoundingRectangle
+        $roster = $grid.GetItem($lastRow, 0).Current.BoundingRectangle
+        $day = $grid.GetItem($lastRow, 7).Current.BoundingRectangle
+        $header = $grid.GetItem(0, 7).Current.BoundingRectangle
+        $roster.Top -ge ($header.Bottom - 2) -and $roster.Top -lt $bounds.Bottom -and
+            [Math]::Abs($roster.Top - $day.Top) -le 2 -and [Math]::Abs($roster.Left - $bounds.Left) -le 3
+    } | Out-Null
+    $scroll.SetScrollPercent(0, 0)
+    Write-AcceptanceEvent 'PASS' 'weekly-scale-scroll' $timer 0 'crews=9 projectsAtLeast=101 lastCrewTopAndBottom=reachable stickyDate=visible stickyRoster=aligned method=UIA-ScrollPattern windowDips=1000x720'
 }
 
 function Test-Assignments($Window) {
@@ -321,6 +545,7 @@ function Test-Assignments($Window) {
     Set-Field $Window 'crew-name' 'Assignment Test Crew'
     Invoke-Button $Window 'Save crew'
     Find-Control $Window $name 'Crew saved.' | Out-Null
+    Initialize-SyntheticWeeklyScale $Window
     Invoke-Button $Window 'Projects'
     Invoke-Button $Window 'New project'
     Set-Field $Window 'job_number' 'SYN-14-UI'
@@ -347,11 +572,17 @@ function Test-Assignments($Window) {
         Select-AssignmentChoice $Window 'assignment-slot' $(if ($slot -eq 'AM') { '{HOME}' } else { '{END}' }) $slot
         Set-Field $Window 'assignment-notes' ('Synthetic visit ' + $slot)
         Invoke-Button $Window 'Save to Draft'
-        Find-Control $Window $name 'Draft saved. Validation pending.' | Out-Null
+        Close-AssignmentDetails $Window $(if ($slot -eq 'AM') { 1 } else { 2 })
     }
-    Assert-TableColumn $Window 'Saved draft assignments' 0 @('2026-12-31 AM', '2026-12-31 PM')
-    $publish = Find-Control $Window $name 'Publish unavailable' -Button
+    $am = 'Draft 1, SYN-14-UI, 2026-12-31 AM, Assignment Test Crew'
+    $pm = 'Draft 2, SYN-14-UI, 2026-12-31 PM, Assignment Test Crew'
+    $tower = 'Draft 3, SYN-14-UI, 2027-01-01 AM, Assignment Test Crew'
+    $replacement = 'Draft 4, SYN-14-UI, 2026-12-31 AM, Assignment Test Crew'
+    Assert-WeekAssignmentCards $Window @($am, $pm)
+    Invoke-Button $Window 'Review & Publish'
+    $publish = Find-Control $Window $name 'Publish schedule unavailable' -Button
     if ($publish.Current.IsEnabled) { throw 'Draft publication must remain disabled.' }
+    Invoke-Button $Window 'Close dialog'
     Open-SyntheticAssignment $Window $assignmentTowerId
     Select-AssignmentChoice $Window 'assignment-crew' 'a' 'Assignment Test Crew'
     Set-Field $Window 'assignment-date' '2026-12-31'
@@ -363,53 +594,80 @@ function Test-Assignments($Window) {
     }
     Set-Field $Window 'assignment-date' '2027-01-01'
     Invoke-Button $Window 'Save to Draft'
-    Find-Control $Window $name 'Draft saved. Validation pending.' | Out-Null
-    Assert-TableColumn $Window 'Saved draft assignments' 0 @('2027-01-01 AM')
+    Close-AssignmentDetails $Window 3
+    Assert-WeekAssignmentCards $Window @($am, $pm, $tower)
 
+    $beforeCancel = Get-SyntheticAssignmentDigest
     Open-SyntheticAssignment $Window $assignmentCivilId
     Select-AssignmentChoice $Window 'assignment-crew' 'a' 'Assignment Test Crew'
     Set-Field $Window 'assignment-date' '2027-01-02'
     Set-Field $Window 'assignment-notes' 'Synthetic unsaved cancelled form'
     Invoke-Button $Window 'Cancel'
-    Show-SyntheticAssignmentDate $Window '2027-01-02'
-    Find-Control $Window $name 'No draft assignments on this date.' | Out-Null
+    if ((Get-SyntheticAssignmentDigest) -cne $beforeCancel) { throw 'Form cancellation modified the synthetic SQLite database/WAL.' }
     Show-SyntheticAssignmentDate $Window '2026-12-31'
+    Assert-WeekAssignmentCards $Window @($am, $pm, $tower)
+    Open-WeekAssignment $Window 2 '2026-12-31 PM'
     Invoke-Button $Window 'Edit Draft 2'
     Set-Field $Window 'assignment-notes' 'Edited synthetic PM visit'
     Invoke-Button $Window 'Save to Draft'
-    Find-Control $Window $name 'Draft saved. Validation pending.' | Out-Null
+    Assert-SyntheticTextContains $Window 'Edited synthetic PM visit'
+    Close-AssignmentDetails $Window 2
+    Open-WeekAssignment $Window 1 '2026-12-31 AM'
     Invoke-Button $Window 'Cancel Draft 1'
     Invoke-Button $Window 'Keep draft'
-    Assert-TableColumn $Window 'Saved draft assignments' 0 @('2026-12-31 AM', '2026-12-31 PM')
     Invoke-Button $Window 'Cancel Draft 1'
     Invoke-Button $Window 'Confirm cancellation'
-    Find-Control $Window $name 'Draft cancelled. The slot is available again.' | Out-Null
+    Assert-WeekAssignmentCards $Window @($pm, $tower)
+    Assert-SyntheticTextContains $Window 'Draft cancelled. Its slot is available'
     Open-SyntheticAssignment $Window $assignmentCivilId
     Select-AssignmentChoice $Window 'assignment-crew' 'a' 'Assignment Test Crew'
     Set-Field $Window 'assignment-date' '2026-12-31'
     Invoke-Button $Window 'Save to Draft'
-    Find-Control $Window $name 'Draft saved. Validation pending.' | Out-Null
-    Assert-TableColumn $Window 'Saved draft assignments' 3 @('Cancelled', 'Draft / Validation pending', 'Draft / Validation pending')
-    Write-AcceptanceEvent 'PASS' 'assignment-lifecycle' $timer 0 'civilAndTower=independent amPm=saved collision=rejected repeatedWorkItem=retained formCancel=noWrite edit=retained savedCancel=retainedId freedSlot=reused publish=disabled'
+    Close-AssignmentDetails $Window 4
+    Assert-WeekAssignmentCards $Window @($replacement, $pm, $tower)
+    Invoke-Button $Window 'Crew Board'
+    Find-Control $Window $name 'Crew Board Sunday–Saturday' | Out-Null
+    Find-Control $Window $name $replacement -Button | Out-Null
+    Find-Control $Window $name $pm -Button | Out-Null
+    Find-Control $Window $name $tower -Button | Out-Null
+    Assert-SyntheticTextContains $Window 'Time off not configured'
+    Assert-SyntheticWeeklyScroll $Window
+    Invoke-Button $Window 'Job Schedule'
+    Show-SyntheticAssignmentDate $Window '2027-01-03'
+    Assert-WeekAssignmentCards $Window @()
+    Find-Control $Window $name 'No assignments in this view for the selected week.' | Out-Null
+    Invoke-Button $Window 'Previous week'
+    Assert-WeekAssignmentCards $Window @($replacement, $pm, $tower)
+    Write-AcceptanceEvent 'PASS' 'assignment-lifecycle' $timer 0 'weeklyBoards=shared civilAndTower=independent amPm=saved collision=rejected formCancel=dbAndWalUnchanged edit=retained savedCancel=hidden freedSlot=reused emptyWeek=verified publish=disabled'
 }
 
 function Test-AssignmentsReopened($Window) {
     Invoke-Button $Window 'Schedule'
+    Invoke-Button $Window 'Job Schedule'
     Show-SyntheticAssignmentDate $Window '2026-12-31'
-    Assert-TableColumn $Window 'Saved draft assignments' 0 @('2026-12-31 AM', '2026-12-31 AM', '2026-12-31 PM')
-    Assert-TableColumn $Window 'Saved draft assignments' 3 @('Cancelled', 'Draft / Validation pending', 'Draft / Validation pending')
-    Assert-TableColumn $Window 'Saved draft assignments' 4 @('Synthetic visit AM', ([string][char]0x2014), 'Edited synthetic PM visit')
-    Find-Control $Window $name 'Edit Draft 4' | Out-Null
-    Show-SyntheticAssignmentDate $Window '2027-01-01'
-    Assert-TableColumn $Window 'Saved draft assignments' 0 @('2027-01-01 AM')
-    $table = Find-Control $Window $name 'Saved draft assignments'
-    $towerCell = $table.GetCurrentPattern([Windows.Automation.GridPattern]::Pattern).GetItem(1, 1).Current.Name
-    if (-not $towerCell.Contains('Tower') -or -not $towerCell.Contains('Work Item #' + $assignmentTowerId)) {
-        throw 'The independent Tower Work Item ID was not retained.'
-    }
-    Show-SyntheticAssignmentDate $Window '2027-01-02'
-    Find-Control $Window $name 'No draft assignments on this date.' | Out-Null
-    Write-AcceptanceEvent 'PASS' 'assignment-reopen' $timer 0 'threeDraftVisitsAndOneCancelled=preserved notes=preserved workItemIds=preserved crossYearDates=preserved cancelledForm=absent'
+    Assert-WeekAssignmentCards $Window @(
+        'Draft 4, SYN-14-UI, 2026-12-31 AM, Assignment Test Crew',
+        'Draft 2, SYN-14-UI, 2026-12-31 PM, Assignment Test Crew',
+        'Draft 3, SYN-14-UI, 2027-01-01 AM, Assignment Test Crew')
+    Open-WeekAssignment $Window 2 '2026-12-31 PM'
+    Assert-SyntheticTextContains $Window 'Edited synthetic PM visit'
+    Invoke-Button $Window 'Edit Draft 2'
+    Wait-For 'civil-work-item-id-reopened' {
+        $choice = Find-Control $Window $automationId 'assignment-work-item'
+        ([string]$choice.GetCurrentPattern($valuePattern).Current.Value).StartsWith("Civil $([char]0x00B7) Work Item #$assignmentCivilId $([char]0x00B7)")
+    } | Out-Null
+    Invoke-Button $Window 'Cancel'
+    Close-AssignmentDetails $Window 2
+    Open-WeekAssignment $Window 3 '2027-01-01 AM'
+    Assert-SyntheticTextContains $Window 'Synthetic Tower visit'
+    Invoke-Button $Window 'Edit Draft 3'
+    Wait-For 'tower-work-item-id-reopened' {
+        $choice = Find-Control $Window $automationId 'assignment-work-item'
+        ([string]$choice.GetCurrentPattern($valuePattern).Current.Value).StartsWith("Tower $([char]0x00B7) Work Item #$assignmentTowerId $([char]0x00B7)")
+    } | Out-Null
+    Invoke-Button $Window 'Cancel'
+    Close-AssignmentDetails $Window 3
+    Write-AcceptanceEvent 'PASS' 'assignment-reopen' $timer 0 'threeDraftVisits=preserved notes=preserved workItemIds=preserved crossYearDates=preserved cancelledCard=absent'
 }
 
 function Assert-NoValidationSummary($Window) {
@@ -806,7 +1064,11 @@ finally {
         $temporaryParent = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\')
         if ((Split-Path -Parent $resolvedRoot) -eq $temporaryParent -and
             (Split-Path -Leaf $resolvedRoot) -match '^rigarus-tauri-smoke-[0-9a-f]{32}$') {
-            Remove-Item -LiteralPath $resolvedRoot -Recurse -Force -ErrorAction SilentlyContinue
+            if ($PreserveSyntheticProfile) {
+                Write-Host ("Synthetic profile retained: " + $resolvedRoot)
+                Write-AcceptanceEvent 'INFO' 'synthetic-profile-retained' $timer 0 ("profile=" + (Split-Path -Leaf $resolvedRoot))
+            }
+            else { Remove-Item -LiteralPath $resolvedRoot -Recurse -Force -ErrorAction SilentlyContinue }
         }
         else { Write-Warning 'Synthetic cleanup path did not match the expected temporary directory.' }
     }
