@@ -206,6 +206,7 @@ export function Schedule({
     }
     setEditor(undefined);
     setSelected(saved.id);
+    setQueueOpen(false);
     setDay(saved.local_date);
     setDateField(saved.local_date);
     setCrewFilter("");
@@ -389,7 +390,7 @@ export function Schedule({
             ))}
           </select>
         </label>
-        {view === "Job Schedule" && (
+        {(view === "Job Schedule" || projectFilter) && (
           <label className="filter-label">
             Project filter
             <select
