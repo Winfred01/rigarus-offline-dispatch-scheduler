@@ -15,6 +15,7 @@ CREWS = "20261115031137_AddCrewRoster"
 EMPLOYEES = "20261115130213_AddEmployeeRoster"
 RIGS = "20261119130000_AddRigInventory"
 FOREMEN = "20261122030000_AddForemanHistory"
+ASSIGNMENTS = "20261122040000_AddDraftAssignments"
 
 
 class BackendTests(unittest.TestCase):
@@ -74,7 +75,7 @@ class BackendTests(unittest.TestCase):
         with closing(sqlite3.connect(self.database)) as connection:
             self.assertEqual(
                 self.migration_ids(connection),
-                [INITIAL, PROJECTS, CREWS, EMPLOYEES, RIGS, FOREMEN],
+                [INITIAL, PROJECTS, CREWS, EMPLOYEES, RIGS, FOREMEN, ASSIGNMENTS],
             )
             self.assertEqual(
                 connection.execute("PRAGMA journal_mode").fetchone(), ("wal",)
@@ -108,7 +109,7 @@ class BackendTests(unittest.TestCase):
         with closing(sqlite3.connect(self.database)) as connection:
             self.assertEqual(
                 self.migration_ids(connection),
-                [INITIAL, PROJECTS, CREWS, EMPLOYEES, RIGS, FOREMEN],
+                [INITIAL, PROJECTS, CREWS, EMPLOYEES, RIGS, FOREMEN, ASSIGNMENTS],
             )
             connection.execute("PRAGMA foreign_keys = ON")
             connection.execute(
@@ -139,7 +140,7 @@ class BackendTests(unittest.TestCase):
         with closing(sqlite3.connect(self.database)) as connection:
             self.assertEqual(
                 self.migration_ids(connection),
-                [INITIAL, PROJECTS, CREWS, EMPLOYEES, RIGS, FOREMEN],
+                [INITIAL, PROJECTS, CREWS, EMPLOYEES, RIGS, FOREMEN, ASSIGNMENTS],
             )
             self.assertEqual(
                 connection.execute("SELECT * FROM Projects").fetchall(),
@@ -179,7 +180,7 @@ class BackendTests(unittest.TestCase):
         with closing(sqlite3.connect(self.database)) as connection:
             self.assertEqual(
                 self.migration_ids(connection),
-                [INITIAL, PROJECTS, CREWS, EMPLOYEES, RIGS, FOREMEN],
+                [INITIAL, PROJECTS, CREWS, EMPLOYEES, RIGS, FOREMEN, ASSIGNMENTS],
             )
 
     def test_unknown_database_is_rejected_without_adding_schema(self):

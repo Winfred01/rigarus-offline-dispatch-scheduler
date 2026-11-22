@@ -50,6 +50,21 @@ For Issue #42, use the [offline acceptance kit](08-RELEASE-HANDBOOK.md#offline-a
 
 On November 13, 2026, the installer from commit `6d2fbeb28613f35211ce80db966aaa2296677e2d` passed installation and the full synthetic desktop smoke in a fresh, disconnected Windows 11 Enterprise x64 Sandbox (build 26100). The preflight found no common developer tools or .NET SDKs and recorded WebView2 157.0.4341.46 before and after setup. This verifies the preinstalled-runtime path. A separate test image without WebView2 is needed to exercise setup of the bundled runtime.
 
+## Manual Draft Assignment engineering check (#14)
+
+Create a synthetic Project with independent Civil/Tower WorkItems and a Crew. Use a WorkItem's **Assign** action: confirm its stable ID/type is selected, choose Crew/local date/AM-PM and **Save to Draft**. The list locates that persisted slot. Schedule also has **Assign Work Item**. AM/PM stays provisional; all records must show Draft / Validation pending and Publish unavailable.
+
+1. Save Civil visits for the same Crew on December 31 AM and PM; attempt Tower in the occupied AM slot. Check the actionable conflict and retained form, then move it to January 1 and save. Repeated Civil visits must retain the same WorkItem ID; Tower must remain independent.
+2. Enter another unsaved visit and Cancel; compare records and confirm no write. Edit a saved draft's notes, cancel another only after confirmation, retain its ID/notes and reuse its released slot.
+3. Reopen the app and verify cross-year local dates, Crew/WorkItem IDs, edited notes, three Draft visits and one Cancelled record. Confirm publication remains unavailable. Do not treat a roster or Unverified driver flag as compliance.
+4. Separately test stale updates, uncertain committed creates, list-read failures after save/cancel, missing/empty WorkItems, retries, loading, keyboard focus and narrow layout. A committed write followed by read failure must not display the previous date's rows under the new date.
+
+```powershell
+powershell.exe -NoProfile -STA -File scripts/Test-TauriDesktop.ps1 -Executable <candidate-exe> -IncludeAssignments
+```
+
+Add `-Profile SlowVm -RequireOffline -DiagnosticLog <local-log>` only in an actually disconnected authorized VM. The new flag is opt-in; existing wait limits remain bounded. Record the candidate hash, OS, connectivity, native outcomes and conditions. Browser testing uses a clearly identified test-only IPC proxy to actual packaged FastAPI/SQLite, which does not replace the native Rust or offline run. #16's seven-day/sticky/roster board and #22's time off/actual workers remain separate and unimplemented. See the [Design-First record](design/2026-11-21-issue-14-manual-draft-checklist.md).
+
 ## Tauri Crew roster engineering check
 
 In a disposable profile, open Crews and add a synthetic Civil or Tower crew. Search for it, edit its name or status, close the application and check that the edits appear after reopening. An inactive crew remains editable in the roster. The backend tests also cover invalid data, deactivation and reactivation on the same ID, and migration rollback with retry.

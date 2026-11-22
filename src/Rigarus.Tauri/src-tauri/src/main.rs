@@ -55,6 +55,37 @@ async fn search_projects(app: tauri::AppHandle, term: String) -> Result<Value, S
 }
 
 #[tauri::command]
+async fn list_assignments(app: tauri::AppHandle, query: Value) -> Result<Value, String> {
+    with_sidecar(app, move |service| service.list_assignments(&query)).await
+}
+
+#[tauri::command]
+async fn read_assignment(app: tauri::AppHandle, id: i64) -> Result<Value, String> {
+    with_sidecar(app, move |service| service.read_assignment(id)).await
+}
+
+#[tauri::command]
+async fn save_assignment(
+    app: tauri::AppHandle,
+    id: Option<i64>,
+    assignment: Value,
+) -> Result<Value, String> {
+    with_sidecar(app, move |service| service.save_assignment(id, &assignment)).await
+}
+
+#[tauri::command]
+async fn cancel_assignment(
+    app: tauri::AppHandle,
+    id: i64,
+    expected_revision: i64,
+) -> Result<Value, String> {
+    with_sidecar(app, move |service| {
+        service.cancel_assignment(id, expected_revision)
+    })
+    .await
+}
+
+#[tauri::command]
 async fn read_project(app: tauri::AppHandle, id: i32) -> Result<Value, String> {
     with_sidecar(app, move |service| service.read_project(id)).await
 }
@@ -165,6 +196,10 @@ fn main() {
             read_demo,
             save_demo_note,
             search_projects,
+            list_assignments,
+            read_assignment,
+            save_assignment,
+            cancel_assignment,
             read_project,
             save_project,
             search_crews,

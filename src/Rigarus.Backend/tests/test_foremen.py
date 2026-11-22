@@ -226,6 +226,10 @@ class ForemanTests(unittest.TestCase):
     def test_rig_schema_migration_rolls_back_then_retries_preserving_all_records(self):
         with closing(sqlite3.connect(self.database)) as connection:
             with connection:
+                connection.execute("DROP TABLE DraftAssignments")
+                connection.execute(
+                    "DELETE FROM __EFMigrationsHistory WHERE MigrationId LIKE '%AddDraftAssignments'"
+                )
                 connection.execute("DROP TABLE ForemanChanges")
                 connection.execute(
                     "DELETE FROM __EFMigrationsHistory WHERE MigrationId = ?",

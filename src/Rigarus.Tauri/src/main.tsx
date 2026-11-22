@@ -6,6 +6,8 @@ import { EmployeeRoster } from "./employees";
 import { CrewRoster } from "./roster";
 import { RigInventory } from "./rigs";
 import { ProjectMaster } from "./projects";
+import { Schedule } from "./schedule";
+import type { AssignmentSeed } from "./assignment-fields";
 import "./styles.css";
 
 type DemoProject = {
@@ -123,14 +125,31 @@ function DemoDashboard({ active }: { active: boolean }) {
 
 function App() {
   const [page, setPage] = useState<
-    "dashboard" | "projects" | "crews" | "employees" | "rigs" | "import"
+    | "dashboard"
+    | "projects"
+    | "crews"
+    | "employees"
+    | "rigs"
+    | "import"
+    | "schedule"
   >("dashboard");
+  const [assignmentSeed, setAssignmentSeed] = useState<AssignmentSeed>();
   return (
     <>
       <header className="app-header">
         <div className="frame header-content">
           <strong>Rigarus Dispatch</strong>
           <nav aria-label="Workspace">
+            <button
+              className="nav-button"
+              aria-current={page === "schedule" ? "page" : undefined}
+              onClick={() => {
+                setAssignmentSeed(undefined);
+                setPage("schedule");
+              }}
+            >
+              Schedule
+            </button>
             <button
               className="nav-button"
               aria-current={page === "dashboard" ? "page" : undefined}
@@ -181,12 +200,20 @@ function App() {
         <DemoDashboard active={page === "dashboard"} />
       </div>
       <div hidden={page !== "projects"}>
-        {page === "projects" && <ProjectMaster />}
+        {page === "projects" && (
+          <ProjectMaster
+            onAssign={(projectId, workItemId) => {
+              setAssignmentSeed({ projectId, workItemId });
+              setPage("schedule");
+            }}
+          />
+        )}
       </div>
       {page === "crews" && <CrewRoster />}
       {page === "employees" && <EmployeeRoster />}
       {page === "rigs" && <RigInventory />}
       {page === "import" && <ImportPreview />}
+      {page === "schedule" && <Schedule seed={assignmentSeed} />}
     </>
   );
 }

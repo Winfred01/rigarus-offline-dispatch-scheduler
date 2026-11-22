@@ -99,6 +99,10 @@ class EmployeeRosterTests(unittest.TestCase):
         initialize_database(self.database)
         with closing(sqlite3.connect(self.database)) as connection:
             with connection:
+                connection.execute("DROP TABLE DraftAssignments")
+                connection.execute(
+                    "DELETE FROM __EFMigrationsHistory WHERE MigrationId LIKE '%AddDraftAssignments'"
+                )
                 connection.execute("DROP TABLE ForemanChanges")
                 connection.execute(
                     "DELETE FROM __EFMigrationsHistory WHERE MigrationId LIKE '%AddForemanHistory'"

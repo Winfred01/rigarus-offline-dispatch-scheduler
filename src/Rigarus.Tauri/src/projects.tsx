@@ -81,7 +81,11 @@ type DraftItem = {
   halfDays: string;
 };
 
-export function ProjectMaster() {
+export function ProjectMaster({
+  onAssign,
+}: {
+  onAssign: (projectId: number, workItemId: number) => void;
+}) {
   const [term, setTerm] = useState("");
   const [appliedTerm, setAppliedTerm] = useState("");
   const [rows, setRows] = useState<Summary[]>([]);
@@ -322,6 +326,7 @@ export function ProjectMaster() {
                             }
                           />
                         ))}
+                        <th scope="col">Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -330,6 +335,16 @@ export function ProjectMaster() {
                           <th scope="row">{item.type}</th>
                           <td>{item.required_crew_count}</td>
                           <td>{item.estimated_half_days}</td>
+                          <td>
+                            <button
+                              className="job-link"
+                              aria-label={`Assign Work Item ${item.id}`}
+                              onClick={() => onAssign(detail.id, item.id!)}
+                              disabled={loading}
+                            >
+                              Assign
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
