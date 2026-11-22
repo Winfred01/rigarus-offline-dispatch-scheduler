@@ -1,0 +1,31 @@
+# Issue 16 consecutive saved visits
+
+## Design Compliance Checklist
+
+Resumed November 22, 2026. Fetched main `e10c0c4cf30ea756f9c6083eb3059de446e35db6`; PR #73 and the #35 native/offline acceptance follow-up #74 are already human-merged. #73 Windows CI `45017551111` passed all jobs and artifact upload. No competing open PR/review thread was found. Reuse existing implementations and the #74 acceptance verifier rather than recreating either. Independent branch `codex/issue-16-multiday-board`; original workspace README/design changes remain untouched. Repository remains public.
+
+Read again: AGENTS `d3b9bea`, project plan/M2 `cc9613a`, delivery playbook `e6326df`, architecture `da66698`, data model `587a3ec`, Demo walkthrough `87cb3f2`, client decisions `e0b657a`, #16 evidence `da66698` and #35 evidence/checklist `87cb3f2`; fresh checkout modification times observed November 22 at 19:42:40 UTC. These times are not authoring dates. Current #16 body/PR #73/#74 and their current CI/review states were read through GitHub.
+
+Original local November 22 DOCX remains readable and unchanged: SHA-256 `67cdc2ea9d006caea1a28c0faa50aee71380410dae819e6fcd32c27152161487`; original modification UTC `2026-11-22T08:14:42.434606Z`. Re-read Schedule guidance and UI 01 / UI 13 original embedded figures, including the existing sticky grid, cards, Draft state and Home/actual staffing distinction. These are concepts, not implemented evidence. No rendered-page pagination is claimed. Full DOCX, extracted figures, source metadata and raw evidence stay local. Prototype HTML/ZIP remain absent from the supplied local design inventory; #16's explicit continuous-multi-day criterion supplies the remaining presentation requirement.
+
+| Requirement | Authority / current implementation | Planned acceptance |
+| --- | --- | --- |
+| Continuous multi-day block across date columns | Current #16 explicitly retains this criterion; #73 displays independent half-days | Span only adjacent full saved AM/PM pairs of one stable WorkItem/Crew with identical notes; preserve each source visit ID |
+| No invented staffing, duration, completion or publication | Existing #14/#16 decisions and schema | Never fill an absent half-day, skip an empty calendar day or combine different WorkItems/Crews/notes; retain validation-pending text and blocked Publish |
+| Cards remain individually editable/cancellable | Existing #14 commands/revision protection | Every source AM/PM remains a keyboard button with the same automation ID/accessible name; editing/cancelling one visit recalculates display only |
+| Shared boards / fixed dates and roster | Original UI 01/13 and current table | Job/Crew views use the same pure projection and source IDs; preserve a single table and row alignment, sticky headers and horizontal/vertical scrolling |
+| Cross-year/weekend/restart | M2 / Demo B and current #16 acceptance | Explicit Dec 31/Jan 1 full pairs, weekend pair, a missing PM and independent Civil/Tower WorkItems, native save/edit/cancel/reopen |
+
+Presentation is deliberately conservative: partial days and project rows with parallel assignments keep individual cards. Grouping is not a new domain scheduling rule or an estimate deduction. Historical #35 installed-program evidence remains specific to its recorded binary; it does not certify this changed renderer or a new installer.
+
+## Implementation Plan
+
+Add a pure frontend week-cell planner plus meaningful boundary/identity tests. Reuse existing typed Assignment records, local dates, editor, conflict handling and all Tauri/FastAPI/SQLite commands. Render a table cell spanning only eligible consecutive full dates, with shared WorkItem/Crew/status information and separate AM/PM source buttons for every visit. Keep individual-cell fallback for gaps, notes changes and parallel rows. No migration, dependency, API, actual staffing or Publish change.
+
+Extend the existing native verifier with an opt-in multi-day scenario while preserving the original #35 checks and bounds. Verify both boards, exact source identities, independent edit/cancel and restart; run frontend/backend/Windows checks and the staged privacy scan. Capture actual native client screenshots and report network/tooling conditions separately from any offline installed-package result. Produce one reviewed follow-up Draft PR; no automatic merge, release or Issue closure.
+
+Implemented and reviewed against the original UI 01/13 figures: one continuous cell across eligible saved dates, shared Civil/Tower heading and independent AM/PM source buttons. Unlike a single editable duration block, edits and cancellation deliberately remain per saved source ID. This preserves the approved #14 contract and does not infer business duration. Parallel project rows and incomplete days retain independent cards. Small labels, fixed left rail and grid boundaries follow the supplied design; these are explicit exceptions to generic frontend style preferences.
+
+Frontend 30 tests, format and TypeScript/Vite build passed. Python 68, packaged-sidecar 8, Rust 6 and .NET compatibility 35 tests passed; locked restores, Windows builds and NSIS packaging passed. Actual packaged Windows native verifier passed in 69.981 seconds, including the additional nine-Crew scroll after spanning cells, cross-year weekend create/edit/cancel/replacement/reopen. Native screenshots UI 01/06/13/14/44/47 were captured through the actual WebView/Rust IPC with synthetic SQLite data. Browser interaction/keyboard/responsive checks and the app-screen inspector passed. Networking was active on the developer host; this is not offline evidence. See the linked acceptance record for failed initial runs, package hashes and separate VM outcomes.
+
+Independent no-NIC installed-package verification is in progress. Human Demo B, production approval, missing-WebView2 deployment and pixel comparison with the absent HTML/ZIP remain pending.
