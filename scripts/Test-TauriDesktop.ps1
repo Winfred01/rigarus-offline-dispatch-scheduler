@@ -456,7 +456,23 @@ function Assert-WeekAssignmentCards($Window, [string[]]$Expected) {
 }
 
 function Open-WeekAssignment($Window, [int]$Id, [string]$DateSlot) {
-    Invoke-Button $Window ("Draft $Id, SYN-14-UI, $DateSlot, Assignment Test Crew")
+    $label = "Draft $Id, SYN-14-UI, $DateSlot, Assignment Test Crew"
+    $condition = [Windows.Automation.AndCondition]::new(
+        [Windows.Automation.PropertyCondition]::new($name, $label),
+        [Windows.Automation.PropertyCondition]::new([Windows.Automation.AutomationElement]::ControlTypeProperty, [Windows.Automation.ControlType]::Button))
+    $observation = @{ State = 'not-observed' }
+    # A view switch replaces source nodes; do not poll the old provider forever.
+    # Scroll the current card before testing enabled state, as an operator would.
+    try { Wait-For 'weekly-source-visible-and-enabled' {
+        $card = $Window.FindFirst([Windows.Automation.TreeScope]::Descendants, $condition)
+        if (-not $card) { return $false }
+        $observation.State = "id=$Id enabled=$($card.Current.IsEnabled) offscreen=$($card.Current.IsOffscreen) bounds=$($card.Current.BoundingRectangle)"
+        $scrollItem = $null
+        if ($card.TryGetCurrentPattern([Windows.Automation.ScrollItemPattern]::Pattern, [ref]$scrollItem)) { $scrollItem.ScrollIntoView() }
+        $card.Current.IsEnabled -and -not $card.Current.IsOffscreen
+    } | Out-Null }
+    catch { Write-AcceptanceEvent 'INFO' 'weekly-source-diagnostic' $timer 0 $observation.State; throw }
+    Invoke-Button $Window $label
     Find-Control $Window $name ("Edit Draft $Id") -Button | Out-Null
 }
 
