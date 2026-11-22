@@ -122,6 +122,59 @@ class SidecarTests(unittest.TestCase):
         restarted.stdin.close()
         self.assertEqual(restarted.wait(timeout=10), 0)
 
+    def test_foreman_api_is_authenticated_and_history_survives_sidecar_restart(self):
+        token = secrets.token_hex(32)
+        process = self.launch(token)
+        port = self.read_port(process)
+        _, crew = self.request(
+            port,
+            "POST",
+            "/crews",
+            token,
+            payload={"name": "Synthetic Foreman crew", "type": "Civil"},
+        )
+        _, person = self.request(
+            port,
+            "POST",
+            "/employees",
+            token,
+            payload={
+                "name": "Synthetic Foreman candidate",
+                "home_crew_id": crew["id"],
+                "skill_level": 1,
+                "foreman_eligible": True,
+            },
+        )
+        route = f"/crews/{crew['id']}/foreman"
+        change = {"employee_id": person["id"], "expected_revision": 0}
+        self.assertEqual(self.request(port, "GET", route)[0], 401)
+        self.assertEqual(
+            self.request(port, "PUT", route, "incorrect", payload=change)[0], 401
+        )
+        status, saved = self.request(port, "PUT", route, token, payload=change)
+        self.assertEqual(status, 200)
+        self.assertEqual(saved["employee_id"], person["id"])
+        process.stdin.close()
+        self.assertEqual(process.wait(timeout=10), 0)
+        restarted = self.launch(token)
+        next_port = self.read_port(restarted)
+        self.assertEqual(self.request(next_port, "GET", route, token), (200, saved))
+        self.assertEqual(
+            self.request(next_port, "PUT", route, token, payload=change)[0], 409
+        )
+        status, cleared = self.request(
+            next_port,
+            "PUT",
+            route,
+            token,
+            payload={"employee_id": None, "expected_revision": saved["revision"]},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(len(cleared["history"]), 2)
+        self.assertIsNone(cleared["employee_id"])
+        restarted.stdin.close()
+        self.assertEqual(restarted.wait(timeout=10), 0)
+
     def test_rig_api_is_authenticated_and_persists_across_sidecar_restart(self):
         token = secrets.token_hex(32)
         process = self.launch(token)

@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState, type SubmitEvent } from "react";
+import { ForemanEditor } from "./foreman-editor";
 
 type CrewDraft = {
   name: string;
@@ -21,6 +22,13 @@ export function CrewRoster() {
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
+  const [foremanCrew, setForemanCrew] = useState<Crew>();
+  const [returnFocus, setReturnFocus] = useState<number>();
+
+  useEffect(() => {
+    if (!foremanCrew && returnFocus)
+      document.getElementById(`crew-foreman-${returnFocus}`)?.focus();
+  }, [foremanCrew, returnFocus]);
 
   async function load(term: string) {
     setCrews(await invoke<Crew[]>("search_crews", { term }));
@@ -79,12 +87,18 @@ export function CrewRoster() {
         <h1>Crews</h1>
         <button
           onClick={() => edit(null, emptyCrew)}
-          disabled={busy || !!editor}
+          disabled={busy || !!editor || !!foremanCrew}
         >
           New crew
         </button>
       </div>
-      {editor ? (
+      {foremanCrew ? (
+        <ForemanEditor
+          crew={foremanCrew}
+          crews={crews}
+          onClose={() => setForemanCrew(undefined)}
+        />
+      ) : editor ? (
         <section aria-labelledby="crew-editor-title">
           <h2 id="crew-editor-title">
             {editor.id === null ? "New crew" : "Edit crew"}
@@ -196,6 +210,20 @@ export function CrewRoster() {
                           disabled={busy}
                         >
                           Edit
+                        </button>
+                        <button
+                          id={`crew-foreman-${id}`}
+                          className="job-link"
+                          aria-label={"Foreman for " + name}
+                          onClick={() => {
+                            setReturnFocus(id);
+                            setForemanCrew({ id, name, type, active });
+                            setError("");
+                            setStatus("");
+                          }}
+                          disabled={busy}
+                        >
+                          Foreman
                         </button>
                       </td>
                     </tr>

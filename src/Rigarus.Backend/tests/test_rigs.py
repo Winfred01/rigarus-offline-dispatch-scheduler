@@ -146,6 +146,10 @@ class RigInventoryTests(unittest.TestCase):
             ).json()
         with closing(sqlite3.connect(self.database)) as connection:
             with connection:
+                connection.execute("DROP TABLE ForemanChanges")
+                connection.execute(
+                    "DELETE FROM __EFMigrationsHistory WHERE MigrationId LIKE '%AddForemanHistory'"
+                )
                 connection.execute("DROP TABLE Rigs")
                 connection.execute(
                     "DELETE FROM __EFMigrationsHistory WHERE MigrationId = ?",

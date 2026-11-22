@@ -23,7 +23,7 @@ Project Master uses the existing schema. Search matches literal substrings in Jo
 
 ## Crew roster
 
-The first #8 slice adds the Crews table to the local SQLite database. The stable generated ID survives name, type and status edits. Crew type is Civil or Tower. The roster keeps inactive rows visible and has no hard delete. Search uses literal substrings with SQLite's existing ASCII case behavior. Crew names are labels, so multiple rows may share a name. A roster row is master data and does not establish scheduling eligibility. Employee master data is described below. Foreman assignment history is subsequent work under #8.
+The first #8 slice adds the Crews table to the local SQLite database. The stable generated ID survives name, type and status edits. Crew type is Civil or Tower. The roster keeps inactive rows visible and has no hard delete. Search uses literal substrings with SQLite's existing ASCII case behavior. Crew names are labels, so multiple rows may share a name. A roster row is master data and does not establish scheduling eligibility. Employee master data and Foreman appointment history are described below.
 
 The Tauri backend applies its AddCrewRoster migration in the same SQLite write transaction as preceding upgrades, including from M0 and Project Master files. Demo notes and existing project and work-item IDs stay in the same tables. The migration has its own entry in the shared history and preserves the original EF Core entries. A Tauri build from before #8 rejects the newer migration history. Before upgrading a live profile, preserve a verified pre-upgrade backup and use a compatible build or the original database copy for fallback. This branch validates synthetic upgrades and retry after rollback.
 
@@ -35,6 +35,16 @@ Employees have a stable ID, name, required Home Crew ID, skill level 1 through 3
 The AddEmployeeRoster migration adds Employees and its Home Crew index within the existing migration transaction. Fresh, M0, Project Master and Crew-only databases take the corresponding upgrade path. The new migration leaves existing note, project, work-item and crew IDs intact. Driver status has a database default and constraint of Unverified. The employee write API has no driver approval field. The earlier Tauri preview rejects the newer migration history, so test fallback with a verified pre-upgrade backup and a compatible build.
 
 
+## Foreman master-data history (#8)
+
+`AddForemanHistory` (`20261122030000`) adds `ForemanChanges` after the Rig schema, without changing existing rows or IDs. Each append records Crew ID, nullable Employee ID (clear), names as recorded and UTC recording time. The highest change ID for a Crew determines its single current Foreman, or Unassigned. A never-appointed Crew has revision zero. The time records when a change was saved; it is not a retrospective scheduling effective date.
+
+Foreign keys retain Crew/Employee references. Database triggers reject history UPDATE and DELETE. Reads show current employee name/active/eligibility alongside immutable change-time snapshots. Later employee or Crew edits do not clear appointments or rewrite history. Home Crew and Driver status are untouched. New appointments require an active, Foreman-eligible employee; cross-Home-Crew appointment is allowed. This is master data, not dispatch or staffing approval. See the owner's bounded decision in the [register](10-CLIENT-DECISIONS.md); Demo D policies remain open.
+
+GET/PUT `/crews/{id}/foreman` read/save the state. PUT requires `employee_id` (integer or null) and `expected_revision` (last change ID or zero). A write reservation covers revision/eligibility checks, append and response snapshot. A stale revision returns 409 without a write; a same-choice save at the current revision adds no history. On an uncertain response, reload before retrying. Failed inserts/migrations roll back. The UI preserves the failed selection until reload and makes discarding it explicit.
+
+Fresh and legacy M0/Project/Crew/Employee/Rig schemas upgrade in the existing transaction. Regression cases retain all note/project/work-item/Crew/Employee/Rig values, force failure after DDL and verify rollback/retry. Earlier previews reject the sixth migration. Preserve a verified consistent pre-upgrade backup; fallback requires that original copy with its compatible build. Do not edit migration history or drop history tables in an operational database. Application backup/restore and production upgrade remain separate RC gates.
+
 ## Rig inventory
 
 The AddRigInventory migration adds Rigs, a unique NOCASE Number index and a DefaultCrewId index in the existing SQLite migration transaction. A rig has a stable generated ID, required number and type, optional notes, optional default Crew reference, and active status. Leading zeroes in the number are preserved. An inactive rig retains its number and references. Crew deactivation keeps the optional association intact. The UI offers inactive crews with an explicit label, and operators may clear the association.
@@ -45,7 +55,7 @@ Synthetic regression tests cover upgrades from the Employee schema, existing not
 
 ## Migration check
 
-The Python backend uses the existing EF Core table and migration identifiers. On a fresh file it creates the demo, Project Master, Crew and Employee schemas. On an M0 file it adds the missing tables and indexes while preserving the note. On a Project Master file it adds the empty Crew and Employee tables in place and preserves project and work-item IDs and values. The schema update runs in a single SQLite write transaction. Unknown migration histories are rejected.
+The Python backend uses the existing EF Core table and migration identifiers. On a fresh file it creates the demo, Project Master, Crew, Employee, Rig and Foreman history schemas. On an M0 file it adds the missing tables and indexes while preserving the note. On a Project Master file it adds the empty resource tables in place and preserves project and work-item IDs and values. The schema update runs in a single SQLite write transaction. Unknown migration histories are rejected.
 
 The Python regression suite uses SQL generated by the checked-in EF migration tooling against the synthetic schema. It verifies fresh startup, note edits and restart, M0 upgrade, Project Master data preservation, constraints, and rollback with retry after a failure inside the schema transaction. It uses temporary databases, including the synthetic copy for the upgrade. Verify application-level backup and clean-PC offline upgrade during packaging before using the Python path with business data.
 

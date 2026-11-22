@@ -79,6 +79,16 @@ async fn save_crew(app: tauri::AppHandle, id: Option<i64>, crew: Value) -> Resul
 }
 
 #[tauri::command]
+async fn read_foreman(app: tauri::AppHandle, crew_id: i64) -> Result<Value, String> {
+    with_sidecar(app, move |service| service.read_foreman(crew_id)).await
+}
+
+#[tauri::command]
+async fn save_foreman(app: tauri::AppHandle, crew_id: i64, change: Value) -> Result<Value, String> {
+    with_sidecar(app, move |service| service.save_foreman(crew_id, &change)).await
+}
+
+#[tauri::command]
 async fn search_rigs(app: tauri::AppHandle, term: String) -> Result<Value, String> {
     with_sidecar(app, move |service| service.search_rigs(&term)).await
 }
@@ -159,6 +169,8 @@ fn main() {
             save_project,
             search_crews,
             save_crew,
+            read_foreman,
+            save_foreman,
             search_employees,
             save_employee,
             search_rigs,

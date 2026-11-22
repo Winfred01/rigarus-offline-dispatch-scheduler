@@ -180,6 +180,21 @@ impl Sidecar {
         self.save_roster_record("/employees", id, employee)
     }
 
+    pub fn read_foreman(&self, crew_id: i64) -> Result<Value, String> {
+        self.send(
+            self.client
+                .get(self.url(&format!("/crews/{crew_id}/foreman"))),
+        )
+    }
+
+    pub fn save_foreman(&self, crew_id: i64, change: &Value) -> Result<Value, String> {
+        self.send(
+            self.client
+                .put(self.url(&format!("/crews/{crew_id}/foreman")))
+                .json(change),
+        )
+    }
+
     pub fn save_rig(&self, id: Option<i64>, rig: &Value) -> Result<Value, String> {
         self.save_roster_record("/rigs", id, rig)
     }
