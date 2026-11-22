@@ -10,8 +10,8 @@
     "windows": [
       {
         "title": "Rigarus Offline Dispatch Scheduler",
-        "width": 1000,
-        "height": 660,
+        "width": 1440,
+        "height": 960,
         "minWidth": 480,
         "minHeight": 420
       }

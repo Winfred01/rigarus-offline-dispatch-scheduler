@@ -146,3 +146,14 @@ powershell.exe -NoProfile -STA -File scripts/Test-TauriDesktop.ps1 -Executable <
 ```
 
 The new switch is opt-in; existing bounded Default waits (GUI 30 s, exit 12 s) and SlowVm waits (GUI 150 s, exit 60 s) remain. Add `-Profile SlowVm -RequireOffline -DiagnosticLog <local-log>` only inside an actually disconnected authorized VM. Use synthetic data; keep raw evidence local. Automated ARIA/UIA checks do not establish a manual screen-reader pass. Record human assistive-technology review, matching installer tests, customer acceptance and production approval separately.
+
+
+## Desktop weekly planning and tools (#16)
+
+Read [the design checklist](design/2026-11-22-issue-16-desktop-checklist.md) and [current engineering evidence](acceptance/2026-11-22-issue-16-desktop-week.md). Original UI 01–15 / 40–47 remain local. Customer Demo B is a separate pending gate.
+
+1. Launch into Schedule / Job Schedule. Verify module order, light local-search bar, bottom Settings/Help and absence of Leads/Timesheets/account routes. Existing Projects/bulk import, People/Foreman and Equipment actions remain accessible.
+2. With nine synthetic Crews and 100+ Projects, compare saved visit IDs in Job Schedule and Crew Board. Scroll via wheel and scrollbar to the last row; dates and roster stay aligned. Exercise horizontal overflow, long Foreman names and inactive references. Home roster/default Rig must not imply actual staffing or approval.
+3. Use Previous / Today / Next and date jump for an empty week, weekend, December 31 / January 1, AM/PM on one day and repeated visits. Open details, create/edit via #14, correct a Crew-slot collision without losing notes, and cancel only after confirmation. Work Items with other active visits stay scheduled; otherwise they return to the queue. Reopen the application and compare IDs/revisions/dates/notes.
+4. Use Ctrl+K, type filters, arrows/Enter and Escape for local stable-ID record routing and empty results. Test appearance preview/Cancel/Save and application-restart retention. Help must name the current view. Publish review and Reports explain missing staffing/safety/immutable-snapshot prerequisites.
+5. Record native runtime/network/tooling conditions. Native WebView developer-protocol screenshots prove the actual Tauri/Rust/sidecar path but exclude the OS frame; they do not prove physical pointer operation or an offline installer pass. The historical `-IncludeAssignments` UIA verifier targets #14's superseded selected-date table and is not a verifier of this weekly board. A matching disconnected installer run and updated full UIA board verifier remain pending. Base/master-data smoke navigation now enters the new modules explicitly.

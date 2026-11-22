@@ -105,6 +105,11 @@ function Get-Sidecar($Process) {
 }
 
 function Invoke-Button($Window, [string]$Label) {
+    # Keep historical master-data smoke actions usable after the #16 module rail.
+    if ($Label -eq 'Projects') { Invoke-Button $Window 'Project Management'; return }
+    if ($Label -eq 'Rigs') { Invoke-Button $Window 'Items'; return }
+    if ($Label -eq 'Crews' -or $Label -eq 'Employees') { Invoke-Button $Window 'People' }
+
     $button = Find-Control $Window $name $Label -Button
     Wait-For "$Label to be enabled" { $button.Current.IsEnabled } | Out-Null
     $button.SetFocus()
@@ -694,6 +699,8 @@ try {
     Write-AcceptanceEvent 'START' $phase $timer 0 (Get-AcceptanceProcessState $process)
     $phase = 'desktop-functional-checks'
     $window = Get-DashboardWindow $process
+    Invoke-Button $window 'Data'
+    Invoke-Button $window 'Demo note'
     Find-Control $window $name 'DEMO-001' | Out-Null
     $sidecar = Wait-For 'sidecar-process' { Get-Sidecar $process }
     $note = (Find-Control $window $automationId 'demo-note').GetCurrentPattern($valuePattern)
@@ -721,6 +728,8 @@ try {
     $process = Start-Dashboard
     Write-AcceptanceEvent 'START' 'desktop-reopen' $timer 0 (Get-AcceptanceProcessState $process)
     $window = Get-DashboardWindow $process
+    Invoke-Button $window 'Data'
+    Invoke-Button $window 'Demo note'
     Find-Control $window $name 'DEMO-001' | Out-Null
     $sidecar = Wait-For 'sidecar-process' { Get-Sidecar $process }
     $note = (Find-Control $window $automationId 'demo-note').GetCurrentPattern($valuePattern)
@@ -781,6 +790,8 @@ try {
     New-Item -ItemType File -Path (Join-Path $root 'data') | Out-Null
     $process = Start-Dashboard
     $window = Get-DashboardWindow $process
+    Invoke-Button $window 'Data'
+    Invoke-Button $window 'Demo note'
     Find-Control $window $name 'Unable to open the local database. Check folder permissions and close other Rigarus windows.' | Out-Null
     Find-Control $window $name 'Retry' | Out-Null
     Close-Dashboard $process
