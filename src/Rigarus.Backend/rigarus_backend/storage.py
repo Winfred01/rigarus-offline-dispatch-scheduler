@@ -9,6 +9,7 @@ PROJECT_MASTER = "20261112072258_AddProjectsAndWorkItems"
 CREW_ROSTER = "20261115031137_AddCrewRoster"
 EMPLOYEE_ROSTER = "20261115130213_AddEmployeeRoster"
 RIG_INVENTORY = "20261119130000_AddRigInventory"
+FOREMAN_HISTORY = "20261122030000_AddForemanHistory"
 EF_VERSION = "10.0.15"
 
 # Keep the on-disk format compatible with the two released EF Core migrations.
@@ -83,6 +84,31 @@ CREATE_RIGS = """
 
 class UnsupportedDatabaseError(RuntimeError):
     """The database needs review before the application can open it."""
+
+
+CREATE_FOREMAN_HISTORY = (
+    """
+    CREATE TABLE ForemanChanges (
+        Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        CrewId INTEGER NOT NULL REFERENCES Crews (Id) ON DELETE RESTRICT,
+        EmployeeId INTEGER REFERENCES Employees (Id) ON DELETE RESTRICT,
+        CrewName TEXT NOT NULL,
+        EmployeeName TEXT,
+        RecordedAt TEXT NOT NULL,
+        CHECK ((EmployeeId IS NULL AND EmployeeName IS NULL)
+            OR (EmployeeId IS NOT NULL AND EmployeeName IS NOT NULL))
+    )
+    """,
+    "CREATE INDEX IX_ForemanChanges_CrewId_Id ON ForemanChanges (CrewId, Id)",
+    """
+    CREATE TRIGGER ForemanChanges_NoUpdate BEFORE UPDATE ON ForemanChanges
+    BEGIN SELECT RAISE(ABORT, 'Foreman history is append-only.'); END
+    """,
+    """
+    CREATE TRIGGER ForemanChanges_NoDelete BEFORE DELETE ON ForemanChanges
+    BEGIN SELECT RAISE(ABORT, 'Foreman history is append-only.'); END
+    """,
+)
 
 
 def connect(path: Path, *, create: bool = False) -> sqlite3.Connection:
@@ -165,11 +191,20 @@ def initialize_database(path: Path) -> None:
                 record_migration(
                     connection, RIG_INVENTORY, product_version="Rigarus 0.1.0"
                 )
-            elif history != (
-                *CREW_HISTORY,
-                EMPLOYEE_ROSTER,
-                RIG_INVENTORY,
-            ) or tables != (CREW_TABLES | {"Employees", "Rigs"}):
+                history = (*CREW_HISTORY, EMPLOYEE_ROSTER, RIG_INVENTORY)
+                tables = CREW_TABLES | {"Employees", "Rigs"}
+
+            rig_history = (*CREW_HISTORY, EMPLOYEE_ROSTER, RIG_INVENTORY)
+            rig_tables = CREW_TABLES | {"Employees", "Rigs"}
+            if history == rig_history and tables == rig_tables:
+                for statement in CREATE_FOREMAN_HISTORY:
+                    connection.execute(statement)
+                record_migration(
+                    connection, FOREMAN_HISTORY, product_version="Rigarus 0.1.0"
+                )
+            elif history != (*rig_history, FOREMAN_HISTORY) or tables != (
+                rig_tables | {"ForemanChanges"}
+            ):
                 raise UnsupportedDatabaseError(
                     "This Rigarus database has an unsupported schema. Open it with a compatible version."
                 )
@@ -188,6 +223,9 @@ def initialize_database(path: Path) -> None:
             )
             connection.execute(
                 "SELECT Id, Number, Type, Notes, DefaultCrewId, Active FROM Rigs LIMIT 0"
+            )
+            connection.execute(
+                "SELECT Id, CrewId, EmployeeId, CrewName, EmployeeName, RecordedAt FROM ForemanChanges LIMIT 0"
             )
 
         mode = connection.execute("PRAGMA journal_mode = WAL").fetchone()

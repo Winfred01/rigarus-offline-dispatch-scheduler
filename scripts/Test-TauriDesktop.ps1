@@ -7,6 +7,7 @@ param(
     [switch]$IncludeProjectSorting,
     [switch]$IncludeBulkProjects,
     [switch]$IncludeCrews,
+    [switch]$IncludeForemen,
     [ValidateSet('Default', 'SlowVm')]
     [string]$Profile = 'Default',
     [ValidateRange(1, 300)]
@@ -181,6 +182,88 @@ function Test-Crews($Window) {
     Find-Control $Window $name 'Edit Synthetic Civil 02' | Out-Null
 }
 
+function Select-FieldIndex($Window, [string]$Id, [int]$Index) {
+    Add-Type -AssemblyName System.Windows.Forms
+    $control = Find-Control $Window $automationId $Id
+    $control.SetFocus()
+    Start-Sleep -Milliseconds 100
+    [Windows.Forms.SendKeys]::SendWait('{HOME}')
+    Start-Sleep -Milliseconds 100
+    for ($i = 0; $i -lt $Index; $i++) { [Windows.Forms.SendKeys]::SendWait('{DOWN}'); Start-Sleep -Milliseconds 100 }
+    [Windows.Forms.SendKeys]::SendWait('{ENTER}')
+    Start-Sleep -Milliseconds 100
+}
+
+function Open-SyntheticForeman($Window) {
+    Invoke-Button $Window 'Crews'
+    Invoke-Button $Window 'Foreman for Synthetic Civil 02'
+    Find-Control $Window $automationId 'foreman-employee' | Out-Null
+}
+
+function Test-Foremen($Window) {
+    Invoke-Button $Window 'Crews'
+    Invoke-Button $Window 'New crew'
+    Set-Field $Window 'crew-name' 'Synthetic Tower Home'
+    Select-FieldIndex $Window 'crew-type' 1
+    Invoke-Button $Window 'Save crew'
+    Find-Control $Window $name 'Crew saved.' | Out-Null
+    foreach ($person in @('Synthetic Foreman A', 'Synthetic Foreman B')) {
+        Invoke-Button $Window 'Employees'
+        Invoke-Button $Window 'New employee'
+        Set-Field $Window 'employee-name' $person
+        Select-FieldIndex $Window 'employee-home-crew' 2
+        Select-FieldIndex $Window 'employee-skill' 1
+        Select-FieldIndex $Window 'employee-foreman-eligible' 1
+        Invoke-Button $Window 'Save employee'
+        Find-Control $Window $name 'Employee saved.' | Out-Null
+    }
+    Open-SyntheticForeman $Window
+    Find-Control $Window $name 'No Foreman changes yet.' | Out-Null
+    Select-FieldIndex $Window 'foreman-employee' 1
+    Invoke-Button $Window 'Save Foreman'
+    Find-Control $Window $name 'Foreman saved.' | Out-Null
+    Assert-TableColumn $Window 'Foreman change records' 2 @('Synthetic Foreman A (#1)')
+    Select-FieldIndex $Window 'foreman-employee' 2
+    Invoke-Button $Window 'Back to Crews'
+    Wait-For 'foreman-return-focus' {
+        (Find-Control $Window $automationId 'crew-foreman-1').Current.HasKeyboardFocus
+    } | Out-Null
+    Open-SyntheticForeman $Window
+    Assert-TableColumn $Window 'Foreman change records' 2 @('Synthetic Foreman A (#1)')
+    Select-FieldIndex $Window 'foreman-employee' 2
+    Invoke-Button $Window 'Save Foreman'
+    Find-Control $Window $name 'Foreman saved.' | Out-Null
+    Assert-TableColumn $Window 'Foreman change records' 2 @('Synthetic Foreman B (#2)', 'Synthetic Foreman A (#1)')
+    Invoke-Button $Window 'Back to Crews'
+    Invoke-Button $Window 'Employees'
+    Invoke-Button $Window 'Edit Synthetic Foreman B'
+    Set-Field $Window 'employee-name' 'Synthetic Foreman B renamed'
+    Select-FieldIndex $Window 'employee-active' 1
+    Select-FieldIndex $Window 'employee-foreman-eligible' 0
+    Invoke-Button $Window 'Save employee'
+    Find-Control $Window $name 'Employee saved.' | Out-Null
+    Open-SyntheticForeman $Window
+    Assert-TableColumn $Window 'Foreman change records' 2 @('Synthetic Foreman B (#2)', 'Synthetic Foreman A (#1)')
+    $retained = Find-Control $Window $automationId 'foreman-current'
+    if ($retained.Current.Name -notmatch 'Synthetic Foreman B renamed.*Inactive.*No longer marked Foreman eligible') {
+        throw 'Current Foreman status or retained ID is missing.'
+    }
+    Select-FieldIndex $Window 'foreman-employee' 0
+    Invoke-Button $Window 'Save Foreman'
+    Find-Control $Window $name 'Foreman saved.' | Out-Null
+    Assert-TableColumn $Window 'Foreman change records' 2 @('Unassigned', 'Synthetic Foreman B (#2)', 'Synthetic Foreman A (#1)')
+    Select-FieldIndex $Window 'foreman-employee' 1
+    Invoke-Button $Window 'Save Foreman'
+    Find-Control $Window $name 'Foreman saved.' | Out-Null
+    Assert-TableColumn $Window 'Foreman change records' 2 @('Synthetic Foreman A (#1)', 'Unassigned', 'Synthetic Foreman B (#2)', 'Synthetic Foreman A (#1)')
+    Invoke-Button $Window 'Back to Crews'
+    Invoke-Button $Window 'Employees'
+    Find-Control $Window $name 'Edit Synthetic Foreman A' | Out-Null
+    Assert-TableColumn $Window 'Employee records' 1 @('Synthetic Tower Home (Tower #2)', 'Synthetic Tower Home (Tower #2)')
+    Assert-TableColumn $Window 'Employee records' 4 @('Unverified', 'Unverified')
+    Write-AcceptanceEvent 'PASS' 'foreman-lifecycle' $timer 0 'appoint=passed replace=passed cancel=preserved clear=passed snapshots=preserved homeCrew=unchanged retainedInactive=visible keyboard=passed'
+}
+
 function Assert-InputFocus($Window, [string]$Id) {
     Wait-For 'invalid-field-visible-and-focused' {
         $control = Find-Control $Window $automationId $Id
@@ -287,14 +370,22 @@ function Test-ProjectValidation($Window) {
 
 function Assert-TableColumn($Window, [string]$TableName, [int]$Column, [string[]]$Expected) {
     $table = Find-Control $Window $name $TableName
-    Wait-For 'synthetic-table-row-order' {
+    $observation = @{ Rows = -1; Values = @() }
+    try { Wait-For 'synthetic-table-row-order' {
         $grid = $table.GetCurrentPattern([Windows.Automation.GridPattern]::Pattern)
+        $observation.Rows = $grid.Current.RowCount
         if ($grid.Current.RowCount -ne $Expected.Count + 1) { return $false }
         $values = for ($row = 1; $row -lt $grid.Current.RowCount; $row++) {
             $grid.GetItem($row, $Column).Current.Name
         }
+        $observation.Values = @($values)
         ($values -join '|') -ceq ($Expected -join '|')
-    } | Out-Null
+    } | Out-Null }
+    catch {
+        # This harness creates synthetic fixtures only; record the observed cells for reproduction.
+        Write-AcceptanceEvent 'INFO' 'synthetic-table-diagnostic' $timer 0 ("rows=$($observation.Rows) expectedRows=$($Expected.Count + 1) actual=$($observation.Values -join '|') expected=$($Expected -join '|')")
+        throw
+    }
 }
 
 function Test-BulkProjects($Window) {
@@ -482,7 +573,8 @@ try {
     if ($IncludeProjectValidation) { Test-ProjectValidation $window }
     if ($IncludeProjectSorting) { Test-ProjectSorting $window }
     if ($IncludeBulkProjects) { Test-BulkProjects $window }
-    if ($IncludeCrews) { Test-Crews $window }
+    if ($IncludeCrews -or $IncludeForemen) { Test-Crews $window }
+    if ($IncludeForemen) { Test-Foremen $window }
     Close-Dashboard $process
     $process.Dispose()
     $process = $null
@@ -528,10 +620,15 @@ try {
         Assert-TableColumn $window 'Project work items' 2 @('4', '6')
         Write-AcceptanceEvent 'PASS' 'project-validation-reopen' $timer 0 'validProjectAndWorkItems=preserved'
     }
-    if ($IncludeCrews) {
+    if ($IncludeCrews -or $IncludeForemen) {
         Invoke-Button $window 'Crews'
         Find-Control $window $name 'Edit Synthetic Civil 02' | Out-Null
         Write-AcceptanceEvent 'PASS' 'crew-roster' $timer 0 'syntheticCrew=reopened'
+    }
+    if ($IncludeForemen) {
+        Open-SyntheticForeman $window
+        Assert-TableColumn $window 'Foreman change records' 2 @('Synthetic Foreman A (#1)', 'Unassigned', 'Synthetic Foreman B (#2)', 'Synthetic Foreman A (#1)')
+        Write-AcceptanceEvent 'PASS' 'foreman-reopen' $timer 0 'appointmentAndFourHistoryEntries=preserved'
     }
     Close-Dashboard $process
     $process.Dispose()

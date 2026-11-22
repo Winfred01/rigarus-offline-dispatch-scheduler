@@ -182,6 +182,7 @@ export function EmployeeRoster() {
                 <label>
                   Foreman eligibility
                   <select
+                    id="employee-foreman-eligible"
                     value={
                       editor.draft.foreman_eligible
                         ? "eligible"
@@ -200,6 +201,7 @@ export function EmployeeRoster() {
                 <label>
                   Status
                   <select
+                    id="employee-active"
                     value={editor.draft.active ? "active" : "inactive"}
                     onChange={(event) =>
                       update({ active: event.target.value === "active" })
@@ -251,7 +253,7 @@ export function EmployeeRoster() {
           </p>
           {employees.length ? (
             <div className="project-table">
-              <table>
+              <table aria-label="Employee records">
                 <thead>
                   <tr>
                     {[

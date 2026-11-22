@@ -16,7 +16,8 @@ Source for this draft is the November 2026 project plan and delivery playbook. C
 | Proposed | Employee entry requires a Home Crew. Retain references when that crew becomes inactive. Confirm whether the roster needs unassigned employees. | Demo A |
 | Proposed | Rig # uses SQLite ASCII NOCASE uniqueness and remains reserved after retirement. Rig type is required free text. A rig may have an optional default Crew link, retained when that crew becomes inactive. Confirm Rig # format, type labels and default vehicle conventions. | Demo A |
 | Proposed | Check an approved driver during each actual work period | Demo D |
-| Open | Qualification criteria, crew sizes and foreman replacement rules | Demo D |
+| Open | Qualification criteria, crew sizes and scheduling/effective-dated foreman replacement rules; bounded master-data appointment scope is recorded separately below | Demo D |
+| Confirmed (owner development scope) | A Crew may have zero or one current Foreman. New appointments select an Active employee marked Foreman eligible, including employees from another Home Crew; appointment never changes Home Crew. Record immediate appointment/replacement/clear operations in append-only history. Retain references and show warnings when the employee is later deactivated or loses eligibility. No retrospective effective dates, dispatch qualification, staffing limits or cross-Crew exclusivity is established by this master-data workflow. | Owner explicitly approved this bounded #8 proposal in the November 21, 2026 development session (November 22 UTC); customer Demo A/D still pending |
 | Open | Who approves weekend work and who records the decision | Demo E |
 | Proposed | Early completion produces an earlier-start suggestion | Demo C |
 | Open | Historical workbook mappings, exceptions and exact report fidelity | Demo F |

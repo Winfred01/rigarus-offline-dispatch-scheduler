@@ -62,6 +62,16 @@ Use a disposable synthetic profile. Create a Civil or Tower crew, open Employees
 
 The backend tests cover invalid skill levels, missing home crews, attempts to set driver approval, and an injected migration failure with safe retry from the Crew-only schema.
 
+## Foreman appointment and history (#8)
+
+In a disposable profile, create two Crews and two active employees marked Foreman eligible with the second Crew as Home Crew. From the first Crew's **Foreman** action, appoint one employee, choose the other then **Back to Crews** without saving, reopen and confirm no change. Replace the Foreman and check newest-first history. Rename/deactivate the current employee and remove eligibility: current status must warn, prior history names and references must remain. Clear the appointment, appoint an eligible employee again and reopen the application. Verify four history entries and unchanged Home Crew/Unverified driver status.
+
+```powershell
+powershell.exe -NoProfile -STA -File scripts/Test-TauriDesktop.ps1 -Executable <candidate-exe> -IncludeForemen
+```
+
+This switch also executes the Crew smoke. Add `-Profile SlowVm -RequireOffline -DiagnosticLog <local-log>` inside an actually disconnected authorized VM. All waits use the existing bounded profiles. Browser-only checks separately exercise empty/loading/no-candidate/error/stale-write states, candidate filtering, keyboard navigation and narrow layouts. Backend tests verify a stale revision returns 409, concurrent saves have one winner, immutable snapshots, foreign keys, insert failure rollback and legacy migration retry. This master-data evidence does not establish staffing eligibility, retrospective scheduling, customer acceptance or production readiness.
+
 ## Tauri Rig inventory engineering check
 
 In a disposable synthetic profile, open Rigs and create SYN-RIG-009 with a type and note. Verify that a rig may be saved with Unassigned as its default Crew. Try the same number in a different ASCII case and confirm the original remains intact. Search by number, type and note, then try a term with no matches.

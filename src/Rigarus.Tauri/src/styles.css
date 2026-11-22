@@ -214,6 +214,36 @@ nav,
   font-size: 14px;
 }
 
+.foreman-editor h2,
+.foreman-editor p {
+  overflow-wrap: anywhere;
+}
+
+.foreman-editor select {
+  min-width: 0;
+  max-width: 100%;
+  text-overflow: ellipsis;
+}
+
+.foreman-editor > section {
+  margin-top: 20px;
+  padding: 16px;
+}
+
+.project-master .foreman-editor .project-table table {
+  min-width: 560px;
+}
+
+.project-master .foreman-editor .project-table :is(th, td) {
+  text-align: left;
+  white-space: normal;
+}
+
+.project-master .foreman-editor .project-table td:first-child {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 .project-table {
   overflow: auto;
   max-height: 300px;

@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from .domain import DemoProject
+from .foreman_api import foreman_router
 from .bulk_project_api import bulk_project_router
 from .import_preview_api import import_preview_router
 from .project_api import project_router
@@ -31,6 +32,7 @@ def create_app(database_path: Path, *, database_initialized: bool = False) -> Fa
     app.include_router(project_router(database_path))
     app.include_router(crew_router(database_path))
     app.include_router(employee_router(database_path))
+    app.include_router(foreman_router(database_path))
     app.include_router(rig_router(database_path))
     app.include_router(import_preview_router(database_path))
     app.include_router(bulk_project_router(database_path))
