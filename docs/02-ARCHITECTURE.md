@@ -10,6 +10,14 @@ Rust owns the sidecar process, token, and port. React invokes Rust commands for 
 
 FastAPI routes validate Project Master inputs and pass drafts to the SQLite store. A project and its work-item changes commit in one transaction. Both desktops use the same existing schema and retain the IDs of previously saved rows.
 
+## Manual Draft assignments (#14)
+
+`assignments.py` holds the local-calendar/AM-PM draft model and revision rule independently of HTTP, UI and SQLite. `assignment_store.py` checks stable references and Crew-slot occupancy under a write reservation. `assignment_api.py` validates strict inputs and maps missing, invalid, conflicting and storage-failure outcomes to 404/422/409/503 without exposing database diagnostics.
+
+React's Schedule form and per-WorkItem Assign action invoke `list_assignments`, `read_assignment`, `save_assignment` and `cancel_assignment` through the existing authenticated Rust/sidecar bridge. Range reads supply persistent data for the later #16 seven-day grid. Work dates remain local ISO strings; UTC edit timestamps never convert the work date.
+
+Every response is Draft/Cancelled with `validation_status: Pending` and `publishable: false`. There is no publish command or endpoint. Actual personnel (#22), driver/time-off/qualification/Rig checks, published versions and a full weekly board (#16) are separate slices. A definite Crew-slot collision permits correction; version conflicts or uncertain responses require reload. Committed writes followed by failed reads report that outcome and clear the stale list. Form Cancel makes no write; explicit saved cancellation retains the record/ID and releases its slot.
+
 ## WPF baseline
 
 | Project | Responsibility | Dependencies |

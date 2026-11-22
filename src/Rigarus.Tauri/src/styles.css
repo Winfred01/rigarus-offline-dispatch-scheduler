@@ -214,6 +214,58 @@ nav,
   font-size: 14px;
 }
 
+.draft-warning {
+  padding: 12px;
+  border: 1px solid #9b650d;
+  color: #684208;
+  background: #fff9ec;
+}
+
+.schedule-drafts > section,
+.schedule-drafts > form {
+  margin-top: 20px;
+}
+
+.schedule-drafts .project-table table {
+  min-width: 800px;
+}
+
+.project-master.schedule-drafts .project-table :is(th, td) {
+  text-align: left;
+  white-space: normal;
+}
+
+.project-master.schedule-drafts .project-table :is(th, td):first-child {
+  min-width: 140px;
+  width: 140px;
+  white-space: nowrap;
+}
+
+.schedule-drafts .project-table button {
+  white-space: nowrap;
+}
+
+.schedule-drafts p,
+.schedule-drafts h2 {
+  overflow-wrap: anywhere;
+}
+
+.schedule-drafts select {
+  min-width: 0;
+  max-width: 100%;
+  text-overflow: ellipsis;
+}
+
+.schedule-drafts tr[aria-current="true"] {
+  outline: 2px solid #205853;
+  outline-offset: -2px;
+}
+
+table[aria-label="Project work items"] :is(th, td):nth-child(3) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .foreman-editor h2,
 .foreman-editor p {
   overflow-wrap: anywhere;

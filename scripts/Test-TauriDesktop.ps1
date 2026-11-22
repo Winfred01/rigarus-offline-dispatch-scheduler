@@ -8,6 +8,7 @@ param(
     [switch]$IncludeBulkProjects,
     [switch]$IncludeCrews,
     [switch]$IncludeForemen,
+    [switch]$IncludeAssignments,
     [ValidateSet('Default', 'SlowVm')]
     [string]$Profile = 'Default',
     [ValidateRange(1, 300)]
@@ -269,6 +270,141 @@ function Assert-InputFocus($Window, [string]$Id) {
         $control = Find-Control $Window $automationId $Id
         $control.Current.HasKeyboardFocus -and -not $control.Current.IsOffscreen
     } | Out-Null
+}
+
+function Assert-SyntheticTextContains($Window, [string]$SyntheticNeedle) {
+    Wait-For 'synthetic-visible-text' {
+        $condition = [Windows.Automation.PropertyCondition]::new(
+            [Windows.Automation.AutomationElement]::ControlTypeProperty,
+            [Windows.Automation.ControlType]::Text)
+        @($Window.FindAll([Windows.Automation.TreeScope]::Descendants, $condition) |
+            Where-Object { ([string]$_.Current.Name).Contains($SyntheticNeedle) }).Count -gt 0
+    } | Out-Null
+}
+
+function Open-SyntheticAssignment($Window, [int]$WorkItemId) {
+    Invoke-Button $Window 'Projects'
+    Set-Field $Window 'project-search' 'SYN-14-UI'
+    Invoke-Button $Window 'Search'
+    Invoke-Button $Window 'SYN-14-UI'
+    Invoke-Button $Window ('Assign Work Item ' + $WorkItemId)
+    Find-Control $Window $automationId 'assignment-date' | Out-Null
+}
+
+function Select-AssignmentChoice($Window, [string]$Id, [string]$Keys, [string]$ExpectedChoice) {
+    Add-Type -AssemblyName System.Windows.Forms
+    $choiceControl = Find-Control $Window $automationId $Id
+    $choiceControl.SetFocus()
+    Wait-For 'assignment-select-focused' { $choiceControl.Current.HasKeyboardFocus } | Out-Null
+    [Windows.Forms.SendKeys]::SendWait($Keys)
+    [Windows.Forms.SendKeys]::SendWait('{TAB}')
+    Wait-For 'assignment-choice-committed' {
+        $observedChoice = $choiceControl.GetCurrentPattern($valuePattern).Current.Value
+        ([string]$observedChoice).StartsWith($ExpectedChoice)
+    } | Out-Null
+}
+
+function Show-SyntheticAssignmentDate($Window, [string]$Date) {
+    Set-Field $Window 'schedule-date' $Date
+    Invoke-Button $Window 'Show date'
+    Assert-SyntheticTextContains $Window $Date
+}
+
+function Test-Assignments($Window) {
+    Invoke-Button $Window 'Crews'
+    Invoke-Button $Window 'New crew'
+    Set-Field $Window 'crew-name' 'Assignment Test Crew'
+    Invoke-Button $Window 'Save crew'
+    Find-Control $Window $name 'Crew saved.' | Out-Null
+    Invoke-Button $Window 'Projects'
+    Invoke-Button $Window 'New project'
+    Set-Field $Window 'job_number' 'SYN-14-UI'
+    Set-Field $Window 'site_id' '0014'
+    Set-Field $Window 'site_name' 'Synthetic scheduling site'
+    Invoke-Button $Window 'Add work item'
+    Select-AssignmentChoice $Window 'type-0' 'c' 'Civil'
+    Invoke-Button $Window 'Add work item'
+    Select-AssignmentChoice $Window 'type-1' 't' 'Tower'
+    Invoke-Button $Window 'Save project'
+    $table = Find-Control $Window $name 'Project work items'
+    $grid = $table.GetCurrentPattern([Windows.Automation.GridPattern]::Pattern)
+    $buttonCondition = [Windows.Automation.PropertyCondition]::new(
+        [Windows.Automation.AutomationElement]::ControlTypeProperty, [Windows.Automation.ControlType]::Button)
+    $civilName = $grid.GetItem(1, 3).FindFirst([Windows.Automation.TreeScope]::Descendants, $buttonCondition).Current.Name
+    $towerName = $grid.GetItem(2, 3).FindFirst([Windows.Automation.TreeScope]::Descendants, $buttonCondition).Current.Name
+    $script:assignmentCivilId = [int]($civilName -replace '^Assign Work Item ', '')
+    $script:assignmentTowerId = [int]($towerName -replace '^Assign Work Item ', '')
+
+    foreach ($slot in @('AM', 'PM')) {
+        Open-SyntheticAssignment $Window $assignmentCivilId
+        Select-AssignmentChoice $Window 'assignment-crew' 'a' 'Assignment Test Crew'
+        Set-Field $Window 'assignment-date' '2026-12-31'
+        Select-AssignmentChoice $Window 'assignment-slot' $(if ($slot -eq 'AM') { '{HOME}' } else { '{END}' }) $slot
+        Set-Field $Window 'assignment-notes' ('Synthetic visit ' + $slot)
+        Invoke-Button $Window 'Save to Draft'
+        Find-Control $Window $name 'Draft saved. Validation pending.' | Out-Null
+    }
+    Assert-TableColumn $Window 'Saved draft assignments' 0 @('2026-12-31 AM', '2026-12-31 PM')
+    $publish = Find-Control $Window $name 'Publish unavailable' -Button
+    if ($publish.Current.IsEnabled) { throw 'Draft publication must remain disabled.' }
+    Open-SyntheticAssignment $Window $assignmentTowerId
+    Select-AssignmentChoice $Window 'assignment-crew' 'a' 'Assignment Test Crew'
+    Set-Field $Window 'assignment-date' '2026-12-31'
+    Set-Field $Window 'assignment-notes' 'Synthetic Tower visit'
+    Invoke-Button $Window 'Save to Draft'
+    Assert-SyntheticTextContains $Window 'already has Draft Assignment #1 on 2026-12-31 AM'
+    if ((Find-Control $Window $automationId 'assignment-notes').GetCurrentPattern($valuePattern).Current.Value -ne 'Synthetic Tower visit') {
+        throw 'Conflict discarded the unsaved assignment notes.'
+    }
+    Set-Field $Window 'assignment-date' '2027-01-01'
+    Invoke-Button $Window 'Save to Draft'
+    Find-Control $Window $name 'Draft saved. Validation pending.' | Out-Null
+    Assert-TableColumn $Window 'Saved draft assignments' 0 @('2027-01-01 AM')
+
+    Open-SyntheticAssignment $Window $assignmentCivilId
+    Select-AssignmentChoice $Window 'assignment-crew' 'a' 'Assignment Test Crew'
+    Set-Field $Window 'assignment-date' '2027-01-02'
+    Set-Field $Window 'assignment-notes' 'Synthetic unsaved cancelled form'
+    Invoke-Button $Window 'Cancel'
+    Show-SyntheticAssignmentDate $Window '2027-01-02'
+    Find-Control $Window $name 'No draft assignments on this date.' | Out-Null
+    Show-SyntheticAssignmentDate $Window '2026-12-31'
+    Invoke-Button $Window 'Edit Draft 2'
+    Set-Field $Window 'assignment-notes' 'Edited synthetic PM visit'
+    Invoke-Button $Window 'Save to Draft'
+    Find-Control $Window $name 'Draft saved. Validation pending.' | Out-Null
+    Invoke-Button $Window 'Cancel Draft 1'
+    Invoke-Button $Window 'Keep draft'
+    Assert-TableColumn $Window 'Saved draft assignments' 0 @('2026-12-31 AM', '2026-12-31 PM')
+    Invoke-Button $Window 'Cancel Draft 1'
+    Invoke-Button $Window 'Confirm cancellation'
+    Find-Control $Window $name 'Draft cancelled. The slot is available again.' | Out-Null
+    Open-SyntheticAssignment $Window $assignmentCivilId
+    Select-AssignmentChoice $Window 'assignment-crew' 'a' 'Assignment Test Crew'
+    Set-Field $Window 'assignment-date' '2026-12-31'
+    Invoke-Button $Window 'Save to Draft'
+    Find-Control $Window $name 'Draft saved. Validation pending.' | Out-Null
+    Assert-TableColumn $Window 'Saved draft assignments' 3 @('Cancelled', 'Draft / Validation pending', 'Draft / Validation pending')
+    Write-AcceptanceEvent 'PASS' 'assignment-lifecycle' $timer 0 'civilAndTower=independent amPm=saved collision=rejected repeatedWorkItem=retained formCancel=noWrite edit=retained savedCancel=retainedId freedSlot=reused publish=disabled'
+}
+
+function Test-AssignmentsReopened($Window) {
+    Invoke-Button $Window 'Schedule'
+    Show-SyntheticAssignmentDate $Window '2026-12-31'
+    Assert-TableColumn $Window 'Saved draft assignments' 0 @('2026-12-31 AM', '2026-12-31 AM', '2026-12-31 PM')
+    Assert-TableColumn $Window 'Saved draft assignments' 3 @('Cancelled', 'Draft / Validation pending', 'Draft / Validation pending')
+    Assert-TableColumn $Window 'Saved draft assignments' 4 @('Synthetic visit AM', ([string][char]0x2014), 'Edited synthetic PM visit')
+    Find-Control $Window $name 'Edit Draft 4' | Out-Null
+    Show-SyntheticAssignmentDate $Window '2027-01-01'
+    Assert-TableColumn $Window 'Saved draft assignments' 0 @('2027-01-01 AM')
+    $table = Find-Control $Window $name 'Saved draft assignments'
+    $towerCell = $table.GetCurrentPattern([Windows.Automation.GridPattern]::Pattern).GetItem(1, 1).Current.Name
+    if (-not $towerCell.Contains('Tower') -or -not $towerCell.Contains('Work Item #' + $assignmentTowerId)) {
+        throw 'The independent Tower Work Item ID was not retained.'
+    }
+    Show-SyntheticAssignmentDate $Window '2027-01-02'
+    Find-Control $Window $name 'No draft assignments on this date.' | Out-Null
+    Write-AcceptanceEvent 'PASS' 'assignment-reopen' $timer 0 'threeDraftVisitsAndOneCancelled=preserved notes=preserved workItemIds=preserved crossYearDates=preserved cancelledForm=absent'
 }
 
 function Assert-NoValidationSummary($Window) {
@@ -575,6 +711,7 @@ try {
     if ($IncludeBulkProjects) { Test-BulkProjects $window }
     if ($IncludeCrews -or $IncludeForemen) { Test-Crews $window }
     if ($IncludeForemen) { Test-Foremen $window }
+    if ($IncludeAssignments) { Test-Assignments $window }
     Close-Dashboard $process
     $process.Dispose()
     $process = $null
@@ -630,6 +767,7 @@ try {
         Assert-TableColumn $window 'Foreman change records' 2 @('Synthetic Foreman A (#1)', 'Unassigned', 'Synthetic Foreman B (#2)', 'Synthetic Foreman A (#1)')
         Write-AcceptanceEvent 'PASS' 'foreman-reopen' $timer 0 'appointmentAndFourHistoryEntries=preserved'
     }
+    if ($IncludeAssignments) { Test-AssignmentsReopened $window }
     Close-Dashboard $process
     $process.Dispose()
     $process = $null

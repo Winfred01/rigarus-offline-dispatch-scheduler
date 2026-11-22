@@ -10,6 +10,7 @@ CREW_ROSTER = "20261115031137_AddCrewRoster"
 EMPLOYEE_ROSTER = "20261115130213_AddEmployeeRoster"
 RIG_INVENTORY = "20261119130000_AddRigInventory"
 FOREMAN_HISTORY = "20261122030000_AddForemanHistory"
+DRAFT_ASSIGNMENTS = "20261122040000_AddDraftAssignments"
 EF_VERSION = "10.0.15"
 
 # Keep the on-disk format compatible with the two released EF Core migrations.
@@ -110,6 +111,29 @@ CREATE_FOREMAN_HISTORY = (
     """,
 )
 
+CREATE_DRAFT_ASSIGNMENTS = (
+    """
+    CREATE TABLE DraftAssignments (
+        Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        WorkItemId INTEGER NOT NULL REFERENCES WorkItems (Id) ON DELETE RESTRICT,
+        CrewId INTEGER NOT NULL REFERENCES Crews (Id) ON DELETE RESTRICT,
+        LocalDate TEXT NOT NULL CHECK (
+            length(LocalDate) = 10 AND LocalDate GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+            AND substr(LocalDate, 1, 4) BETWEEN '0001' AND '9999'
+            AND LocalDate IS strftime('%Y-%m-%d', LocalDate, '+0 days')),
+        Slot TEXT NOT NULL CHECK (Slot IN ('AM', 'PM')),
+        Notes TEXT NOT NULL CHECK (length(Notes) <= 2000 AND instr(Notes, char(0)) = 0),
+        Status TEXT NOT NULL CHECK (Status IN ('Draft', 'Cancelled')),
+        Revision INTEGER NOT NULL CHECK (typeof(Revision) = 'integer' AND Revision >= 1),
+        CreatedAt TEXT NOT NULL,
+        UpdatedAt TEXT NOT NULL
+    )
+    """,
+    "CREATE UNIQUE INDEX IX_DraftAssignments_CrewSlot ON DraftAssignments (CrewId, LocalDate, Slot) WHERE Status = 'Draft'",
+    "CREATE INDEX IX_DraftAssignments_LocalDate ON DraftAssignments (LocalDate, Slot, CrewId, Id)",
+    "CREATE INDEX IX_DraftAssignments_WorkItemId ON DraftAssignments (WorkItemId)",
+)
+
 
 def connect(path: Path, *, create: bool = False) -> sqlite3.Connection:
     location = path if create else f"{path.resolve().as_uri()}?mode=rw"
@@ -202,8 +226,18 @@ def initialize_database(path: Path) -> None:
                 record_migration(
                     connection, FOREMAN_HISTORY, product_version="Rigarus 0.1.0"
                 )
-            elif history != (*rig_history, FOREMAN_HISTORY) or tables != (
-                rig_tables | {"ForemanChanges"}
+                history = (*rig_history, FOREMAN_HISTORY)
+                tables = rig_tables | {"ForemanChanges"}
+            foreman_history = (*rig_history, FOREMAN_HISTORY)
+            foreman_tables = rig_tables | {"ForemanChanges"}
+            if history == foreman_history and tables == foreman_tables:
+                for statement in CREATE_DRAFT_ASSIGNMENTS:
+                    connection.execute(statement)
+                record_migration(
+                    connection, DRAFT_ASSIGNMENTS, product_version="Rigarus 0.1.0"
+                )
+            elif history != (*foreman_history, DRAFT_ASSIGNMENTS) or tables != (
+                foreman_tables | {"DraftAssignments"}
             ):
                 raise UnsupportedDatabaseError(
                     "This Rigarus database has an unsupported schema. Open it with a compatible version."
@@ -226,6 +260,9 @@ def initialize_database(path: Path) -> None:
             )
             connection.execute(
                 "SELECT Id, CrewId, EmployeeId, CrewName, EmployeeName, RecordedAt FROM ForemanChanges LIMIT 0"
+            )
+            connection.execute(
+                "SELECT Id, WorkItemId, CrewId, LocalDate, Slot, Notes, Status, Revision, CreatedAt, UpdatedAt FROM DraftAssignments LIMIT 0"
             )
 
         mode = connection.execute("PRAGMA journal_mode = WAL").fetchone()

@@ -187,6 +187,30 @@ impl Sidecar {
         )
     }
 
+    pub fn list_assignments(&self, query: &Value) -> Result<Value, String> {
+        let url = assignment_query_url(&self.url("/draft-assignments"), query)?;
+        self.send(self.client.get(url))
+    }
+
+    pub fn read_assignment(&self, id: i64) -> Result<Value, String> {
+        self.send(
+            self.client
+                .get(self.url(&format!("/draft-assignments/{id}"))),
+        )
+    }
+
+    pub fn save_assignment(&self, id: Option<i64>, assignment: &Value) -> Result<Value, String> {
+        self.save_roster_record("/draft-assignments", id, assignment)
+    }
+
+    pub fn cancel_assignment(&self, id: i64, expected_revision: i64) -> Result<Value, String> {
+        self.send(
+            self.client
+                .post(self.url(&format!("/draft-assignments/{id}/cancel")))
+                .json(&serde_json::json!({"expected_revision":expected_revision})),
+        )
+    }
+
     pub fn save_foreman(&self, crew_id: i64, change: &Value) -> Result<Value, String> {
         self.send(
             self.client
@@ -235,6 +259,31 @@ impl Sidecar {
     }
 }
 
+fn assignment_query_url(base: &str, query: &Value) -> Result<reqwest::Url, String> {
+    let mut url = reqwest::Url::parse(base).map_err(|_| SERVICE_UNAVAILABLE.to_string())?;
+    let fields = query
+        .as_object()
+        .ok_or("Choose supported draft assignment filters.")?;
+    for (key, value) in fields {
+        if !matches!(
+            key.as_str(),
+            "start_date" | "end_date" | "crew_id" | "include_cancelled"
+        ) {
+            return Err("Choose supported draft assignment filters.".into());
+        }
+        if value.is_null() {
+            continue;
+        }
+        let text = match value {
+            Value::String(value) => value.clone(),
+            Value::Bool(_) | Value::Number(_) => value.to_string(),
+            _ => return Err("Choose scalar draft assignment filters.".into()),
+        };
+        url.query_pairs_mut().append_pair(key, &text);
+    }
+    Ok(url)
+}
+
 fn wait_for_readiness(
     ready: mpsc::Receiver<Result<Ready, serde_json::Error>>,
     startup_error: mpsc::Receiver<String>,
@@ -271,6 +320,31 @@ impl Drop for Sidecar {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn assignment_filters_preserve_local_dates_ids_and_cancelled_visibility() {
+        let url = assignment_query_url("http://127.0.0.1:42000/draft-assignments", &serde_json::json!({
+            "start_date":"2026-12-31", "end_date":"2027-01-01", "crew_id":42, "include_cancelled":true
+        })).unwrap();
+        let values: std::collections::HashMap<_, _> = url.query_pairs().collect();
+        assert_eq!(url.path(), "/draft-assignments");
+        assert_eq!(values.get("start_date").unwrap(), "2026-12-31");
+        assert_eq!(values.get("end_date").unwrap(), "2027-01-01");
+        assert_eq!(values.get("crew_id").unwrap(), "42");
+        assert_eq!(values.get("include_cancelled").unwrap(), "true");
+    }
+
+    #[test]
+    fn assignment_filter_values_cannot_add_another_query_parameter() {
+        let url = assignment_query_url(
+            "http://127.0.0.1:42000/draft-assignments",
+            &serde_json::json!({"start_date":"2026-12-31&include_cancelled=true"}),
+        )
+        .unwrap();
+        assert_eq!(url.query_pairs().count(), 1);
+        assert!(assignment_query_url(url.as_str(), &serde_json::json!({"publish":true})).is_err());
+        assert!(assignment_query_url(url.as_str(), &serde_json::json!({"crew_id":[1,2]})).is_err());
+    }
 
     #[test]
     fn accepts_a_delayed_valid_readiness_signal() {

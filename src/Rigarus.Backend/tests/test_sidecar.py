@@ -13,6 +13,7 @@ import unittest
 from contextlib import closing
 from pathlib import Path
 from test_import_preview import workbook_bytes
+from rigarus_backend.storage import DRAFT_ASSIGNMENTS, initialize_database
 
 
 class SidecarTests(unittest.TestCase):
@@ -174,6 +175,178 @@ class SidecarTests(unittest.TestCase):
         self.assertIsNone(cleared["employee_id"])
         restarted.stdin.close()
         self.assertEqual(restarted.wait(timeout=10), 0)
+
+    def test_assignment_api_is_authenticated_persistent_and_not_publishable(self):
+        token = secrets.token_hex(32)
+        process = self.launch(token)
+        port = self.read_port(process)
+        _, project = self.request(
+            port,
+            "POST",
+            "/projects",
+            token,
+            payload={
+                "job_number": "SYN-14",
+                "site_id": "0014",
+                "site_name": "Synthetic assignment site",
+                "work_items": [
+                    {
+                        "type": "Civil",
+                        "required_crew_count": 1,
+                        "estimated_half_days": 1,
+                    }
+                ],
+            },
+        )
+        _, crew = self.request(
+            port,
+            "POST",
+            "/crews",
+            token,
+            payload={"name": "Synthetic assignment crew", "type": "Civil"},
+        )
+        draft = {
+            "work_item_id": project["work_items"][0]["id"],
+            "crew_id": crew["id"],
+            "local_date": "2026-12-31",
+            "slot": "AM",
+            "notes": "Synthetic sidecar visit",
+        }
+        self.assertEqual(
+            self.request(port, "POST", "/draft-assignments", payload=draft)[0], 401
+        )
+        status, saved = self.request(
+            port, "POST", "/draft-assignments", token, payload=draft
+        )
+        self.assertEqual(status, 201)
+        self.assertFalse(saved["publishable"])
+        self.assertEqual(saved["validation_status"], "Pending")
+        self.assertEqual(
+            self.request(port, "POST", "/draft-assignments", token, payload=draft)[0],
+            409,
+        )
+        self.assertEqual(
+            self.request(
+                port,
+                "POST",
+                "/draft-assignments",
+                token,
+                payload={**draft, "slot": "PM"},
+            )[0],
+            201,
+        )
+        process.stdin.close()
+        self.assertEqual(process.wait(timeout=10), 0)
+        restarted = self.launch(token)
+        next_port = self.read_port(restarted)
+        route = f"/draft-assignments/{saved['id']}"
+        self.assertEqual(self.request(next_port, "GET", route, token), (200, saved))
+        self.assertEqual(
+            len(
+                self.request(
+                    next_port,
+                    "GET",
+                    "/draft-assignments?start_date=2026-12-31&end_date=2027-01-01",
+                    token,
+                )[1]
+            ),
+            2,
+        )
+        status, cancelled = self.request(
+            next_port,
+            "POST",
+            route + "/cancel",
+            token,
+            payload={"expected_revision": 1},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(cancelled["status"], "Cancelled")
+        self.assertEqual(
+            self.request(next_port, "POST", route + "/publish", token)[0], 404
+        )
+        restarted.stdin.close()
+        self.assertEqual(restarted.wait(timeout=10), 0)
+
+    def test_assignment_upgrade_from_six_migrations_preserves_existing_records(self):
+        initialize_database(self.database)
+        with closing(sqlite3.connect(self.database)) as connection, connection:
+            connection.execute("DROP TABLE DraftAssignments")
+            connection.execute(
+                "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?",
+                (DRAFT_ASSIGNMENTS,),
+            )
+            connection.execute(
+                "UPDATE DemoProjects SET Note='Synthetic six-schema note'"
+            )
+            connection.execute(
+                "INSERT INTO Projects VALUES (90,'SYN-OLD14','0090','Synthetic old site')"
+            )
+            connection.execute("INSERT INTO WorkItems VALUES (91,90,'Tower',1,3)")
+            connection.execute(
+                "INSERT INTO Crews VALUES (92,'Synthetic old Crew','Tower',1)"
+            )
+            connection.execute(
+                "INSERT INTO Employees VALUES (93,'Synthetic old employee',92,2,1,1,'Unverified')"
+            )
+            connection.execute(
+                "INSERT INTO Rigs VALUES (94,'0094','Synthetic rig','Retained synthetic rig note',92,1)"
+            )
+            connection.execute(
+                "INSERT INTO ForemanChanges VALUES (95,92,93,'Synthetic old Crew','Synthetic old employee','2026-11-21T00:00:00+00:00')"
+            )
+            tables = (
+                "DemoProjects",
+                "Projects",
+                "WorkItems",
+                "Crews",
+                "Employees",
+                "Rigs",
+                "ForemanChanges",
+            )
+            before = {
+                table: connection.execute(f"SELECT * FROM {table}").fetchall()
+                for table in tables
+            }
+        token = secrets.token_hex(32)
+        process = self.launch(token)
+        port = self.read_port(process)
+        self.assertEqual(
+            self.request(port, "GET", "/demo", token)[1]["note"],
+            "Synthetic six-schema note",
+        )
+        status, saved = self.request(
+            port,
+            "POST",
+            "/draft-assignments",
+            token,
+            payload={
+                "work_item_id": 91,
+                "crew_id": 92,
+                "local_date": "2026-12-31",
+                "slot": "AM",
+            },
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(saved["project_id"], 90)
+        process.stdin.close()
+        self.assertEqual(process.wait(timeout=10), 0)
+        with closing(sqlite3.connect(self.database)) as connection:
+            for table, rows in before.items():
+                self.assertEqual(
+                    connection.execute(f"SELECT * FROM {table}").fetchall(), rows
+                )
+            self.assertEqual(
+                connection.execute(
+                    "SELECT count(*) FROM __EFMigrationsHistory"
+                ).fetchone(),
+                (7,),
+            )
+            self.assertEqual(
+                connection.execute("PRAGMA integrity_check").fetchone(), ("ok",)
+            )
+            self.assertEqual(
+                connection.execute("PRAGMA foreign_key_check").fetchall(), []
+            )
 
     def test_rig_api_is_authenticated_and_persists_across_sidecar_restart(self):
         token = secrets.token_hex(32)

@@ -21,6 +21,26 @@ The `AddProjectsAndWorkItems` migration creates empty tables and indexes and add
 
 Project Master uses the existing schema. Search matches literal substrings in Job #, Site ID and Site Name and follows SQLite's ASCII case handling. The backlog contains all master projects until assignments are introduced. An edit updates the selected project and its work items in one transaction. Existing work items retain their IDs and an omitted item is preserved. A duplicate Job # aborts the save and leaves both projects intact.
 
+## Manual Draft assignments (#14)
+
+Migration `20261122040000_AddDraftAssignments` is additive after Foreman history. `DraftAssignments` stores a stable ID; WorkItem/Crew FKs with RESTRICT deletion; canonical local `YYYY-MM-DD`; provisional `AM`/`PM`; separate assignment notes (up to 2,000 characters, no NUL); `Draft`/`Cancelled` status; positive revision; UTC created/updated timestamps. Existing Projects, WorkItems, demo notes, resources and Foreman history are untouched.
+
+A partial unique index on `(CrewId, LocalDate, Slot) WHERE Status='Draft'` prevents concurrent duplicate occupancy. Date/slot/Crew/ID and WorkItem indexes support week-range reads and repeated visits. This does not assert that estimated duration or a multi-Crew requirement is fulfilled. Inactive Crew references remain readable and marked; master-data status does not invent a new dispatch gate.
+
+| Method / path | Contract |
+| --- | --- |
+| GET `/draft-assignments` | Optional inclusive `start_date`, `end_date`, `crew_id`; `include_cancelled=false` by default. Deterministic date/slot/Crew/ID order, stable IDs and current Project/WorkItem/Crew labels. |
+| GET `/draft-assignments/{id}` | One persisted record, including Cancelled. |
+| POST `/draft-assignments` | Strict WorkItem/Crew IDs, local date, AM/PM, optional notes; status/revision/publication flags cannot be supplied. Creates revision 1. |
+| PUT `/draft-assignments/{id}` | Same fields plus required `expected_revision`; only a Draft can change. |
+| POST `/draft-assignments/{id}/cancel` | Required `expected_revision`; retains IDs/fields/notes, marks Cancelled and increments revision. Already-Cancelled at the current revision is a no-op. |
+
+Writes use `BEGIN IMMEDIATE`. Duplicate occupancy and stale revisions return 409 without overwriting records. Failed inserts/updates/cancellation/migrations roll back. Cancelled rows remain referentially protected but release the slot. Form Cancel before submit makes no write request. Labels are current joins; published snapshots and a full edit-history trail belong to later milestones.
+
+The database allows only Draft/Cancelled. Responses always report `validation_status='Pending'` and `publishable=false`; no publication endpoint exists. AM/PM is owner-approved for this slice, still proposed for final customer use. No hourly boundary or timezone conversion is inferred. Actual-worker, time-off, driver, qualification and Rig compliance remains pending.
+
+Fresh and recognized legacy schemas upgrade inside the existing migration transaction. Tests force a post-DDL failure and verify complete rollback/retry plus existing IDs/notes/values. A real previous-main backend rejects the seventh schema without modifying it; a consistent pre-upgrade backup remains readable by that compatible build. Preserve/verify such a backup before operational upgrades. Never drop tables or edit migration history operationally to downgrade. Application backup/restore and production upgrade remain separate RC gates.
+
 ## Crew roster
 
 The first #8 slice adds the Crews table to the local SQLite database. The stable generated ID survives name, type and status edits. Crew type is Civil or Tower. The roster keeps inactive rows visible and has no hard delete. Search uses literal substrings with SQLite's existing ASCII case behavior. Crew names are labels, so multiple rows may share a name. A roster row is master data and does not establish scheduling eligibility. Employee master data and Foreman appointment history are described below.
@@ -55,7 +75,7 @@ Synthetic regression tests cover upgrades from the Employee schema, existing not
 
 ## Migration check
 
-The Python backend uses the existing EF Core table and migration identifiers. On a fresh file it creates the demo, Project Master, Crew, Employee, Rig and Foreman history schemas. On an M0 file it adds the missing tables and indexes while preserving the note. On a Project Master file it adds the empty resource tables in place and preserves project and work-item IDs and values. The schema update runs in a single SQLite write transaction. Unknown migration histories are rejected.
+The Python backend uses the existing EF Core table and migration identifiers. On a fresh file it creates the demo, Project Master, Crew, Employee, Rig, Foreman history and Draft Assignment schemas. On an M0 file it adds the missing tables and indexes while preserving the note. On a Project Master file it adds the empty resource tables in place and preserves project and work-item IDs and values. The schema update runs in a single SQLite write transaction. Unknown migration histories are rejected.
 
 The Python regression suite uses SQL generated by the checked-in EF migration tooling against the synthetic schema. It verifies fresh startup, note edits and restart, M0 upgrade, Project Master data preservation, constraints, and rollback with retry after a failure inside the schema transaction. It uses temporary databases, including the synthetic copy for the upgrade. Verify application-level backup and clean-PC offline upgrade during packaging before using the Python path with business data.
 
