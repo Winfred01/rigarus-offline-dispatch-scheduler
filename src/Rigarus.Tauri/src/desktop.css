@@ -661,3 +661,52 @@ kbd {
     width: 180px;
   }
 }
+
+/* One multi-day cell covers saved full-day pairs only. The source AM/PM
+   buttons stay in the same physical day columns, with their stable IDs. */
+.multiday-strip {
+  border: 1px solid #cbdcf7;
+  border-left: 3px solid #3c78eb;
+  border-radius: 6px;
+  background: #eaf1ff;
+  color: #183f79;
+  overflow: hidden;
+}
+.strip-heading {
+  padding: 9px 10px;
+  display: grid;
+  gap: 3px;
+  font-size: 12px;
+}
+.strip-heading strong {
+  font-weight: 650;
+}
+.strip-days {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  background: white;
+}
+.strip-day {
+  padding: 8px;
+  border-right: 1px solid #d7e1ef;
+  min-width: 0;
+}
+.strip-day:last-child {
+  border-right: 0;
+}
+.week-grid .strip-day time {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  margin-bottom: 7px;
+}
+.strip-visit {
+  margin-bottom: 5px;
+}
+.tower-strip {
+  background: #fbf0d8;
+  color: #644410;
+  border-color: #ead9b5;
+  border-left-color: #82602a;
+}

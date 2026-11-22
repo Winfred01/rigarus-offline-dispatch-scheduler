@@ -9,6 +9,7 @@
     [switch]$IncludeCrews,
     [switch]$IncludeForemen,
     [switch]$IncludeAssignments,
+    [switch]$IncludeMultiDay,
     [switch]$PreserveSyntheticProfile,
     [ValidateSet('Default', 'SlowVm')]
     [string]$Profile = 'Default',
@@ -20,6 +21,8 @@
 )
 
 $ErrorActionPreference = 'Stop'
+Write-Host ('VerifierSourceSha256=' + (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash)
+if ($IncludeMultiDay) { $IncludeAssignments = $true }
 . (Join-Path $PSScriptRoot 'TauriAcceptanceSupport.ps1')
 $waits = Get-AcceptanceWaits $Profile $PSBoundParameters
 $acceptanceLog = Get-AcceptanceLogPath $DiagnosticLog
@@ -453,7 +456,23 @@ function Assert-WeekAssignmentCards($Window, [string[]]$Expected) {
 }
 
 function Open-WeekAssignment($Window, [int]$Id, [string]$DateSlot) {
-    Invoke-Button $Window ("Draft $Id, SYN-14-UI, $DateSlot, Assignment Test Crew")
+    $label = "Draft $Id, SYN-14-UI, $DateSlot, Assignment Test Crew"
+    $condition = [Windows.Automation.AndCondition]::new(
+        [Windows.Automation.PropertyCondition]::new($name, $label),
+        [Windows.Automation.PropertyCondition]::new([Windows.Automation.AutomationElement]::ControlTypeProperty, [Windows.Automation.ControlType]::Button))
+    $observation = @{ State = 'not-observed' }
+    # A view switch replaces source nodes; do not poll the old provider forever.
+    # Scroll the current card before testing enabled state, as an operator would.
+    try { Wait-For 'weekly-source-visible-and-enabled' {
+        $card = $Window.FindFirst([Windows.Automation.TreeScope]::Descendants, $condition)
+        if (-not $card) { return $false }
+        $observation.State = "id=$Id enabled=$($card.Current.IsEnabled) offscreen=$($card.Current.IsOffscreen) bounds=$($card.Current.BoundingRectangle)"
+        $scrollItem = $null
+        if ($card.TryGetCurrentPattern([Windows.Automation.ScrollItemPattern]::Pattern, [ref]$scrollItem)) { $scrollItem.ScrollIntoView() }
+        $card.Current.IsEnabled -and -not $card.Current.IsOffscreen
+    } | Out-Null }
+    catch { Write-AcceptanceEvent 'INFO' 'weekly-source-diagnostic' $timer 0 $observation.State; throw }
+    Invoke-Button $Window $label
     Find-Control $Window $name ("Edit Draft $Id") -Button | Out-Null
 }
 
@@ -506,6 +525,12 @@ function Assert-SyntheticWeeklyScroll($Window) {
     $scroll.SetScrollPercent(100, 100)
     $observation = @{ State = 'not-observed' }
     try { Wait-For 'last-crew-sticky-header-alignment' {
+        # Switching boards intentionally focuses the selected source after paint.
+        # Reapply the operator scroll if that deferred focus won the first race.
+        if ($scroll.Current.VerticalScrollPercent -lt 99.99 -or $scroll.Current.HorizontalScrollPercent -lt 99.99) {
+            $scroll.SetScrollPercent(100, 100)
+            return $false
+        }
         $bounds = $region.Current.BoundingRectangle
         $roster = $grid.GetItem($lastRow, 0).Current.BoundingRectangle
         $day = $grid.GetItem($lastRow, 7).Current.BoundingRectangle
@@ -519,22 +544,27 @@ function Assert-SyntheticWeeklyScroll($Window) {
     catch { Write-AcceptanceEvent 'INFO' 'weekly-scroll-diagnostic' $timer 0 $observation.State; throw }
     # A wrapped roster can legitimately exceed the body viewport. Check both ends
     # instead of inventing a maximum name/member/row height to make it fit at once.
-    $bounds = $region.Current.BoundingRectangle
-    $roster = $grid.GetItem($lastRow, 0).Current.BoundingRectangle
-    $header = $grid.GetItem(0, 7).Current.BoundingRectangle
-    if ($roster.Top -lt $header.Bottom) {
-        $maximumScroll = $bounds.Height * (100 / $scroll.Current.VerticalViewSize - 1)
-        $target = [Math]::Max(0, 100 - 100 * ($header.Bottom - $roster.Top + 2) / $maximumScroll)
-        $scroll.SetScrollPercent(100, $target)
-    }
-    Wait-For 'last-crew-name-reachable' {
+    # UIA view percentages and the region's outer bounds do not share exact
+    # border/scrollbar rounding. Reobserve after bounded small steps instead of
+    # estimating one percentage that can leave the name under the sticky header.
+    try { Wait-For 'last-crew-name-reachable' {
         $bounds = $region.Current.BoundingRectangle
         $roster = $grid.GetItem($lastRow, 0).Current.BoundingRectangle
         $day = $grid.GetItem($lastRow, 7).Current.BoundingRectangle
         $header = $grid.GetItem(0, 7).Current.BoundingRectangle
+        $observation.State = "row=$lastRow region=$bounds roster=$roster day=$day header=$header vertical=$($scroll.Current.VerticalScrollPercent) horizontal=$($scroll.Current.HorizontalScrollPercent) viewSize=$($scroll.Current.VerticalViewSize)"
+        if ($roster.Top -lt ($header.Bottom - 2)) {
+            $scroll.Scroll([Windows.Automation.ScrollAmount]::NoAmount, [Windows.Automation.ScrollAmount]::SmallDecrement)
+            return $false
+        }
+        if ($roster.Top -ge $bounds.Bottom) {
+            $scroll.Scroll([Windows.Automation.ScrollAmount]::NoAmount, [Windows.Automation.ScrollAmount]::SmallIncrement)
+            return $false
+        }
         $roster.Top -ge ($header.Bottom - 2) -and $roster.Top -lt $bounds.Bottom -and
             [Math]::Abs($roster.Top - $day.Top) -le 2 -and [Math]::Abs($roster.Left - $bounds.Left) -le 3
-    } | Out-Null
+    } | Out-Null }
+    catch { Write-AcceptanceEvent 'INFO' 'weekly-name-scroll-diagnostic' $timer 0 $observation.State; throw }
     $scroll.SetScrollPercent(0, 0)
     Write-AcceptanceEvent 'PASS' 'weekly-scale-scroll' $timer 0 'crews=9 projectsAtLeast=101 lastCrewTopAndBottom=reachable stickyDate=visible stickyRoster=aligned method=UIA-ScrollPattern windowDips=1000x720'
 }
@@ -668,6 +698,118 @@ function Test-AssignmentsReopened($Window) {
     Invoke-Button $Window 'Cancel'
     Close-AssignmentDetails $Window 3
     Write-AcceptanceEvent 'PASS' 'assignment-reopen' $timer 0 'threeDraftVisits=preserved notes=preserved workItemIds=preserved crossYearDates=preserved cancelledCard=absent'
+}
+
+function Set-MultiDayNotes($Window, [string]$Value) {
+    $control = Find-Control $Window $automationId 'assignment-notes'
+    $pattern = $control.GetCurrentPattern($valuePattern)
+    $observed = @{ Matches = 0 }
+    # Wait for two committed native values before Save. A single SetValue can
+    # report before WebView2 finishes committing its last text-input event.
+    Wait-For 'multiday-notes-committed' {
+        if (([string]$pattern.Current.Value) -cne $Value) {
+            $observed.Matches = 0
+            $pattern.SetValue($Value)
+            return $false
+        }
+        $observed.Matches++
+        $observed.Matches -ge 2
+    } | Out-Null
+}
+
+function Assert-MultiDayStrip($Window, [bool]$Expected) {
+    $condition = [Windows.Automation.PropertyCondition]::new($automationId, 'assignment-span-5')
+    Wait-For 'multiday-strip-state' {
+        $matches = $Window.FindAll([Windows.Automation.TreeScope]::Descendants, $condition)
+        if ($Expected) { $matches.Count -eq 1 } else { $matches.Count -eq 0 }
+    } | Out-Null
+    if ($Expected) {
+        $strip = Find-Control $Window $automationId 'assignment-span-5'
+        $table = Find-Control $Window $name 'Job Schedule Sunday–Saturday'
+        $grid = $table.GetCurrentPattern([Windows.Automation.GridPattern]::Pattern)
+        $header = $grid.GetItem(0, 6).Current.BoundingRectangle
+        $bounds = $strip.Current.BoundingRectangle
+        if ($bounds.Width -lt $header.Width * 1.5) { throw 'Consecutive visits did not span both date columns.' }
+    }
+}
+
+function Test-MultiDayAssignments($Window) {
+    # Explicit four saved visits, not an inferred duration. Original #35 fixture
+    # IDs 1–4 and its selected-week assertions remain unchanged.
+    $nextId = 5
+    foreach ($date in @('2027-12-31', '2028-01-01')) {
+        foreach ($slot in @('AM', 'PM')) {
+            Open-SyntheticAssignment $Window $assignmentCivilId
+            Select-AssignmentChoice $Window 'assignment-crew' 'a' 'Assignment Test Crew'
+            Set-Field $Window 'assignment-date' $date
+            Select-AssignmentChoice $Window 'assignment-slot' $(if ($slot -eq 'AM') { '{HOME}' } else { '{END}' }) $slot
+            Set-MultiDayNotes $Window 'Synthetic consecutive full-day visits'
+            Invoke-Button $Window 'Save to Draft'
+            Close-AssignmentDetails $Window $nextId
+            $nextId++
+        }
+    }
+    $am = 'Draft 5, SYN-14-UI, 2027-12-31 AM, Assignment Test Crew'
+    $pm = 'Draft 6, SYN-14-UI, 2027-12-31 PM, Assignment Test Crew'
+    $nextAm = 'Draft 7, SYN-14-UI, 2028-01-01 AM, Assignment Test Crew'
+    $nextPm = 'Draft 8, SYN-14-UI, 2028-01-01 PM, Assignment Test Crew'
+    Assert-WeekAssignmentCards $Window @($am, $pm, $nextAm, $nextPm)
+    Assert-MultiDayStrip $Window $true
+    Invoke-Button $Window 'Crew Board'
+    Find-Control $Window $automationId 'assignment-span-5' | Out-Null
+    foreach ($label in @($am, $pm, $nextAm, $nextPm)) { Find-Control $Window $name $label -Button | Out-Null }
+    Assert-SyntheticWeeklyScroll $Window
+    Invoke-Button $Window 'Job Schedule'
+    Open-WeekAssignment $Window 5 '2027-12-31 AM'
+    Invoke-Button $Window 'Edit Draft 5'
+    Set-MultiDayNotes $Window 'Synthetic note on only one visit'
+    Invoke-Button $Window 'Save to Draft'
+    Close-AssignmentDetails $Window 5
+    Assert-MultiDayStrip $Window $false
+    Assert-WeekAssignmentCards $Window @($am, $pm, $nextAm, $nextPm)
+    Open-WeekAssignment $Window 5 '2027-12-31 AM'
+    Invoke-Button $Window 'Edit Draft 5'
+    Set-MultiDayNotes $Window 'Synthetic consecutive full-day visits'
+    Invoke-Button $Window 'Save to Draft'
+    Close-AssignmentDetails $Window 5
+    Assert-MultiDayStrip $Window $true
+    Open-WeekAssignment $Window 6 '2027-12-31 PM'
+    Invoke-Button $Window 'Cancel Draft 6'
+    Invoke-Button $Window 'Confirm cancellation'
+    Assert-MultiDayStrip $Window $false
+    Assert-WeekAssignmentCards $Window @($am, $nextAm, $nextPm)
+    Open-SyntheticAssignment $Window $assignmentCivilId
+    Select-AssignmentChoice $Window 'assignment-crew' 'a' 'Assignment Test Crew'
+    Set-Field $Window 'assignment-date' '2027-12-31'
+    Select-AssignmentChoice $Window 'assignment-slot' '{END}' 'PM'
+    Set-MultiDayNotes $Window 'Synthetic consecutive full-day visits'
+    Invoke-Button $Window 'Save to Draft'
+    Close-AssignmentDetails $Window 9
+    Assert-MultiDayStrip $Window $true
+    Assert-WeekAssignmentCards $Window @($am, 'Draft 9, SYN-14-UI, 2027-12-31 PM, Assignment Test Crew', $nextAm, $nextPm)
+    Write-AcceptanceEvent 'PASS' 'multiday-lifecycle' $timer 0 'crossYearWeekend=spanned sourceIds=independent bothBoards=shared edit=splits cancel=splits replacement=reforms publish=unchanged'
+}
+
+function Test-MultiDayReopened($Window) {
+    Invoke-Button $Window 'Schedule'
+    Invoke-Button $Window 'Job Schedule'
+    Show-SyntheticAssignmentDate $Window '2027-12-31'
+    Assert-MultiDayStrip $Window $true
+    Assert-WeekAssignmentCards $Window @(
+        'Draft 5, SYN-14-UI, 2027-12-31 AM, Assignment Test Crew',
+        'Draft 9, SYN-14-UI, 2027-12-31 PM, Assignment Test Crew',
+        'Draft 7, SYN-14-UI, 2028-01-01 AM, Assignment Test Crew',
+        'Draft 8, SYN-14-UI, 2028-01-01 PM, Assignment Test Crew')
+    Open-WeekAssignment $Window 5 '2027-12-31 AM'
+    Assert-SyntheticTextContains $Window 'Synthetic consecutive full-day visits'
+    Invoke-Button $Window 'Edit Draft 5'
+    Wait-For 'multiday-work-item-id-reopened' {
+        $choice = Find-Control $Window $automationId 'assignment-work-item'
+        ([string]$choice.GetCurrentPattern($valuePattern).Current.Value).StartsWith("Civil $([char]0x00B7) Work Item #$assignmentCivilId $([char]0x00B7)")
+    } | Out-Null
+    Invoke-Button $Window 'Cancel'
+    Close-AssignmentDetails $Window 5
+    Write-AcceptanceEvent 'PASS' 'multiday-reopen' $timer 0 'strip=restored stableWorkItemId=retained cancelledSource=absent replacementId=retained notes=retained'
 }
 
 function Assert-NoValidationSummary($Window) {
@@ -977,6 +1119,7 @@ try {
     if ($IncludeCrews -or $IncludeForemen) { Test-Crews $window }
     if ($IncludeForemen) { Test-Foremen $window }
     if ($IncludeAssignments) { Test-Assignments $window }
+    if ($IncludeMultiDay) { Test-MultiDayAssignments $window }
     Close-Dashboard $process
     $process.Dispose()
     $process = $null
@@ -1035,6 +1178,7 @@ try {
         Write-AcceptanceEvent 'PASS' 'foreman-reopen' $timer 0 'appointmentAndFourHistoryEntries=preserved'
     }
     if ($IncludeAssignments) { Test-AssignmentsReopened $window }
+    if ($IncludeMultiDay) { Test-MultiDayReopened $window }
     Close-Dashboard $process
     $process.Dispose()
     $process = $null

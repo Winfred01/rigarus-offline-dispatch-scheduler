@@ -16,6 +16,7 @@ import {
 } from "./workspace-data";
 import { weekDays, shiftDay, displayDate, inWeek } from "./week";
 import { Dialog } from "./dialog";
+import { weekCells } from "./week-cells";
 
 type Editor = {
   id: number | null;
@@ -69,7 +70,6 @@ export function Schedule({
   const [status, setStatus] = useState("");
   const [queueOpen, setQueueOpen] = useState(false);
   const alive = useRef(true);
-  const location = useRef<HTMLButtonElement>(null);
   const assignButton = useRef<HTMLButtonElement>(null);
   const days = weekDays(day);
 
@@ -546,41 +546,84 @@ export function Schedule({
                         </small>
                       )}
                     </th>
-                    {days.map((date, index) => (
+                    {weekCells(
+                      days,
+                      rows.filter((row) =>
+                        group.crew
+                          ? row.crew_id === group.id
+                          : row.project_id === group.id,
+                      ),
+                    ).map((cell) => (
                       <td
-                        key={date}
-                        className={index === 0 || index === 6 ? "weekend" : ""}
+                        key={cell.dates[0]}
+                        colSpan={cell.dates.length}
+                        className={
+                          cell.dates.length > 1
+                            ? "multiday-cell"
+                            : cell.start === 0 || cell.start === 6
+                              ? "weekend"
+                              : ""
+                        }
                       >
-                        {rows
-                          .filter(
-                            (row) =>
-                              row.local_date === date &&
-                              (group.crew
-                                ? row.crew_id === group.id
-                                : row.project_id === group.id),
-                          )
-                          .map((row) => (
-                            <button
-                              key={row.id}
-                              id={`assignment-${row.id}`}
-                              ref={selected === row.id ? location : undefined}
-                              className={`schedule-card ${row.work_type === "Tower" ? "tower-work" : "field-work"}`}
-                              aria-label={`Draft ${row.id}, ${row.job_number}, ${row.local_date} ${row.slot}, ${row.crew_name}`}
-                              aria-pressed={selected === row.id}
-                              onClick={() => setSelected(row.id)}
-                            >
+                        {cell.dates.length > 1 ? (
+                          <div
+                            className={`multiday-strip ${cell.assignments[0].work_type === "Tower" ? "tower-strip" : ""}`}
+                            id={`assignment-span-${cell.assignments[0].id}`}
+                            role="group"
+                            aria-label={`Consecutive saved visits, ${cell.dates[0]} to ${cell.dates.at(-1)}, ${cell.assignments.length} Draft visits`}
+                          >
+                            <div className="strip-heading">
                               <strong>
-                                {row.slot} · {row.work_type} · Draft
+                                {cell.assignments[0].work_type} · Draft ·{" "}
+                                {cell.dates.length} dates
                               </strong>
                               <span>
-                                {row.job_number} · Site {row.site_id}
+                                {cell.assignments[0].job_number} · Site{" "}
+                                {cell.assignments[0].site_id} ·{" "}
+                                {cell.assignments[0].site_name} ·{" "}
+                                {cell.assignments[0].crew_name}
                               </span>
-                              {view === "Job Schedule" && (
-                                <span>{row.crew_name}</span>
-                              )}
-                              <span>Actual staffing not assigned</span>
-                            </button>
-                          ))}
+                              <span>
+                                {cell.assignments.length} saved AM/PM visits ·
+                                Actual staffing not assigned
+                              </span>
+                            </div>
+                            <div className="strip-days">
+                              {cell.dates.map((date, offset) => (
+                                <div
+                                  key={date}
+                                  className={`strip-day ${cell.start + offset === 0 || cell.start + offset === 6 ? "weekend" : ""}`}
+                                >
+                                  <time dateTime={date}>
+                                    {displayDate(date)}
+                                  </time>
+                                  {cell.assignments
+                                    .filter((row) => row.local_date === date)
+                                    .map((row) => (
+                                      <ScheduleCard
+                                        key={row.id}
+                                        row={row}
+                                        selected={selected}
+                                        showCrew={false}
+                                        compact
+                                        onSelect={setSelected}
+                                      />
+                                    ))}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          cell.assignments.map((row) => (
+                            <ScheduleCard
+                              key={row.id}
+                              row={row}
+                              selected={selected}
+                              showCrew={view === "Job Schedule"}
+                              onSelect={setSelected}
+                            />
+                          ))
+                        )}
                       </td>
                     ))}
                   </tr>
@@ -751,6 +794,43 @@ export function Schedule({
         </Dialog>
       )}
     </main>
+  );
+}
+
+function ScheduleCard({
+  row,
+  selected,
+  showCrew,
+  compact = false,
+  onSelect,
+}: {
+  row: DraftAssignment;
+  selected?: number;
+  showCrew: boolean;
+  compact?: boolean;
+  onSelect: (id: number) => void;
+}) {
+  return (
+    <button
+      id={`assignment-${row.id}`}
+      className={`schedule-card ${row.work_type === "Tower" ? "tower-work" : "field-work"} ${compact ? "strip-visit" : ""}`}
+      aria-label={`Draft ${row.id}, ${row.job_number}, ${row.local_date} ${row.slot}, ${row.crew_name}`}
+      aria-pressed={selected === row.id}
+      onClick={() => onSelect(row.id)}
+    >
+      <strong>
+        {row.slot} · {compact ? `Draft #${row.id}` : `${row.work_type} · Draft`}
+      </strong>
+      {!compact && (
+        <>
+          <span>
+            {row.job_number} · Site {row.site_id}
+          </span>
+          {showCrew && <span>{row.crew_name}</span>}
+          <span>Actual staffing not assigned</span>
+        </>
+      )}
+    </button>
   );
 }
 
