@@ -18,6 +18,14 @@ React's Schedule form and per-WorkItem Assign action invoke `list_assignments`, 
 
 Every response is Draft/Cancelled with `validation_status: Pending` and `publishable: false`. There is no publish command or endpoint. Actual personnel (#22), driver/time-off/qualification/Rig checks, published versions and a full weekly board (#16) are separate slices. A definite Crew-slot collision permits correction; version conflicts or uncertain responses require reload. Committed writes followed by failed reads report that outcome and clear the stale list. Form Cancel makes no write; explicit saved cancellation retains the record/ID and releases its slot.
 
+## Desktop framework and weekly projection (#16)
+
+The desktop opens Schedule / Job Schedule without an account. The dark module rail retains the existing Project, Crew/Employee/Foreman, Rig, import-preview and demo-note workflows under their new modules. Local search reads existing authenticated commands, indexes supported types with stable IDs and routes to the stored record or assignment week. No external search or calendar service is used. Device appearance preferences use validated, versioned WebView local storage; preview is reversible and only explicit Save persists it.
+
+`workspace-data.ts` bounds concurrent Project-detail and Foreman reads. Job Schedule, Crew Board, the unscheduled queue and Overview derive from the same active Draft Assignment rows. The job grid shows projects with visits (retained across empty weeks); unscheduled work remains in its queue. Calendar arithmetic uses an integer UTC day counter without converting a local work date into an instant. One table owns vertical/horizontal scrolling, sticky dates and roster. Selection scrolls within that table. Assign/edit/cancel reuse #14 commands and revisions; uncertain writes require reload and failed refresh after commit clears stale board data.
+
+Home Crew members/current Foreman are master data. Cross-Home-Crew appointments remain labelled; default Rig is reference data, not actual dated equipment. Dated membership/leave is not fabricated: show Actual staffing not assigned and Time off not configured. Publish review and formal reports explain missing checks/snapshots and have no publishing path. No SQLite migration, domain-rule relaxation or dependency change is introduced.
+
 ## WPF baseline
 
 | Project | Responsibility | Dependencies |

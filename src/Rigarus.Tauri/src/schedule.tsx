@@ -7,15 +7,16 @@ import {
   type AssignmentSeed,
   type DraftAssignment,
 } from "./assignment-fields";
+import {
+  readWorkspace,
+  type Workspace,
+  type Crew,
+  type Project,
+  type WorkItem,
+} from "./workspace-data";
+import { weekDays, shiftDay, displayDate, inWeek } from "./week";
+import { Dialog } from "./dialog";
 
-type Crew = { id: number; name: string; type: string; active: boolean };
-type Project = { id: number; job_number: string; site_name: string };
-type WorkItem = {
-  id: number;
-  type: string;
-  required_crew_count: number;
-  estimated_half_days: number;
-};
 type Editor = {
   id: number | null;
   revision?: number;
@@ -26,84 +27,161 @@ type Editor = {
   slot: "AM" | "PM";
   notes: string;
 };
+export type ScheduleView = "Job Schedule" | "Crew Board" | "Overview";
+const emptyWorkspace: Workspace = {
+  crews: [],
+  people: [],
+  rigs: [],
+  projects: [],
+  assignments: [],
+  foremen: [],
+};
+export const publishBlockers = [
+  "Actual staffing not assigned: dated personnel and time off are not configured (#22).",
+  "Driver approval, qualifications, minimum staffing and Rig availability checks are pending (#15/#23).",
+  "Locks and weekend approval checks are pending. AM/PM remains provisional for Demo B.",
+  "No validated immutable Published snapshot exists (#17/#32). Formal export is unavailable.",
+];
 
-export function Schedule({ seed }: { seed?: AssignmentSeed }) {
+export function Schedule({
+  seed,
+  target,
+  view,
+  onView,
+}: {
+  seed?: AssignmentSeed;
+  target?: { id: number; date: string };
+  view: ScheduleView;
+  onView: (view: ScheduleView) => void;
+}) {
   const [day, setDay] = useState(localToday);
   const [dateField, setDateField] = useState(day);
-  const [crews, setCrews] = useState<Crew[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [rows, setRows] = useState<DraftAssignment[]>([]);
-  const [editor, setEditor] = useState<Editor | undefined>(() =>
-    seed
-      ? {
-          id: null,
-          project_id: seed.projectId,
-          work_item_id: seed.workItemId,
-          crew_id: 0,
-          local_date: day,
-          slot: "AM",
-          notes: "",
-        }
-      : undefined,
-  );
+  const [data, setData] = useState<Workspace>(emptyWorkspace);
+  const [editor, setEditor] = useState<Editor>();
   const [cancelling, setCancelling] = useState<DraftAssignment>();
   const [selected, setSelected] = useState<number>();
+  const [review, setReview] = useState(false);
+  const [crewFilter, setCrewFilter] = useState("");
+  const [projectFilter, setProjectFilter] = useState("");
   const [busy, setBusy] = useState(true);
   const [blocked, setBlocked] = useState(false);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
-  const location = useRef<HTMLParagraphElement>(null);
+  const [queueOpen, setQueueOpen] = useState(false);
+  const alive = useRef(true);
+  const location = useRef<HTMLButtonElement>(null);
   const assignButton = useRef<HTMLButtonElement>(null);
+  const days = weekDays(day);
 
-  async function load(date: string) {
-    const [assignments, crewRows, projectRows] = await Promise.all([
-      invoke<DraftAssignment[]>("list_assignments", {
-        query: { start_date: date, end_date: date, include_cancelled: true },
-      }),
-      invoke<Crew[]>("search_crews", { term: "" }),
-      invoke<Project[]>("search_projects", { term: "" }),
-    ]);
-    setRows(assignments);
-    setCrews(crewRows);
-    setProjects(projectRows);
-    setDay(date);
-    setDateField(date);
-    setBlocked(false);
-  }
-
-  async function refresh(date: string, discard = false) {
-    if (!validLocalDate(date)) {
-      setError("Enter a valid local date as YYYY-MM-DD.");
-      return;
+  async function load() {
+    const loaded = await readWorkspace();
+    if (alive.current) {
+      setData(loaded);
+      setBlocked(false);
     }
+  }
+  async function refresh(discard = false) {
     setBusy(true);
     setError("");
     setStatus("");
     if (discard) {
       setEditor(undefined);
       setCancelling(undefined);
+      setSelected(undefined);
     }
     try {
-      await load(date);
+      await load();
     } catch (failure) {
-      setError(String(failure));
-      setBlocked(true);
+      if (alive.current) {
+        setData(emptyWorkspace);
+        setError(String(failure));
+        setBlocked(true);
+      }
     } finally {
-      setBusy(false);
+      if (alive.current) setBusy(false);
     }
   }
   useEffect(() => {
-    void refresh(day);
+    alive.current = true;
+    void refresh();
+    return () => {
+      alive.current = false;
+    };
   }, []);
   useEffect(() => {
-    if (selected && !editor) location.current?.focus();
-  }, [selected, editor, rows]);
-
+    if (seed) {
+      setEditor({
+        id: null,
+        project_id: seed.projectId,
+        work_item_id: seed.workItemId,
+        crew_id: 0,
+        local_date: day,
+        slot: "AM",
+        notes: "",
+      });
+      setSelected(undefined);
+    }
+  }, [seed]);
+  useEffect(() => {
+    if (!editor && selected && !busy) {
+      const card = document.getElementById(`assignment-${selected}`);
+      const scroll = card?.closest<HTMLElement>(".week-scroll");
+      if (card && scroll) {
+        const box = scroll.getBoundingClientRect();
+        const rect = card.getBoundingClientRect();
+        const headerHeight =
+          scroll.querySelector("thead")?.getBoundingClientRect().height ?? 0;
+        if (rect.top < box.top + headerHeight)
+          scroll.scrollTop += rect.top - box.top - headerHeight;
+        else if (rect.bottom > box.bottom)
+          scroll.scrollTop += rect.bottom - box.bottom;
+        const rosterWidth =
+          scroll.querySelector("th")?.getBoundingClientRect().width ?? 0;
+        if (rect.left < box.left + rosterWidth)
+          scroll.scrollLeft += rect.left - box.left - rosterWidth;
+        else if (rect.right > box.right)
+          scroll.scrollLeft += rect.right - box.right;
+        card.focus({ preventScroll: true });
+      }
+    }
+  }, [editor, selected, busy, view]);
+  useEffect(() => {
+    if (target) {
+      setDay(target.date);
+      setDateField(target.date);
+      setSelected(target.id);
+    }
+  }, [target]);
+  function navigate(date: string) {
+    if (!validLocalDate(date)) {
+      setError("Choose a valid local date (years 0001–9999).");
+      return;
+    }
+    setDay(date);
+    setDateField(date);
+    setSelected(undefined);
+    setError("");
+    setStatus("");
+  }
+  function begin(projectId = 0, workItemId = 0) {
+    setError("");
+    setStatus("");
+    setSelected(undefined);
+    setEditor({
+      id: null,
+      project_id: projectId,
+      work_item_id: workItemId,
+      crew_id: Number(crewFilter),
+      local_date: day,
+      slot: "AM",
+      notes: "",
+    });
+  }
   async function save(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!editor || busy || blocked) return;
     if (!validLocalDate(editor.local_date)) {
-      setError("Enter a valid local date as YYYY-MM-DD.");
+      setError("Enter a valid local date.");
       document.getElementById("assignment-date")?.focus();
       return;
     }
@@ -127,23 +205,24 @@ export function Schedule({ seed }: { seed?: AssignmentSeed }) {
       return;
     }
     setEditor(undefined);
-    setRows([]);
     setSelected(saved.id);
     setDay(saved.local_date);
     setDateField(saved.local_date);
+    setCrewFilter("");
+    setProjectFilter("");
+    setData(emptyWorkspace);
     setStatus("Draft saved. Validation pending.");
     try {
-      await load(saved.local_date);
+      await load();
     } catch {
       setError(
-        "Draft was saved, but the list could not refresh. Reload assignments.",
+        "Draft was saved, but the board could not refresh. Reload assignments.",
       );
       setBlocked(true);
     } finally {
       setBusy(false);
     }
   }
-
   async function cancelSaved() {
     if (!cancelling || busy || blocked) return;
     setBusy(true);
@@ -161,269 +240,568 @@ export function Schedule({ seed }: { seed?: AssignmentSeed }) {
       return;
     }
     setCancelling(undefined);
-    setRows([]);
-    setStatus("Draft cancelled. The slot is available again.");
+    setSelected(undefined);
+    setData(emptyWorkspace);
+    setQueueOpen(true);
+    setStatus(
+      "Draft cancelled. Its slot is available; work without active visits returns to the unscheduled queue.",
+    );
     try {
-      await load(day);
+      await load();
     } catch {
       setError(
-        "Draft was cancelled, but the list could not refresh. Reload assignments.",
+        "Draft was cancelled, but the board could not refresh. Reload assignments.",
       );
       setBlocked(true);
     } finally {
       setBusy(false);
+      requestAnimationFrame(() => assignButton.current?.focus());
     }
   }
-  const selectedRow = rows.find((row) => row.id === selected);
+  const rows = data.assignments.filter(
+    (row) =>
+      inWeek(row.local_date, days) &&
+      (!crewFilter || row.crew_id === Number(crewFilter)) &&
+      (!projectFilter || row.project_id === Number(projectFilter)),
+  );
+  const selectedRow = data.assignments.find((row) => row.id === selected);
+  const assigned = new Set(data.assignments.map((row) => row.work_item_id));
+  const pending = data.projects.flatMap((project) =>
+    project.work_items
+      .filter((item) => !assigned.has(item.id))
+      .map((item) => ({ project, item })),
+  );
+  const groups =
+    view === "Crew Board"
+      ? data.crews
+          .filter((crew) => !crewFilter || crew.id === Number(crewFilter))
+          .map((crew) => ({
+            id: crew.id,
+            title: crew.name,
+            crew,
+            project: undefined as Project | undefined,
+          }))
+      : data.projects
+          .filter(
+            (project) =>
+              (!projectFilter || project.id === Number(projectFilter)) &&
+              (projectFilter ||
+                data.assignments.some((row) => row.project_id === project.id)),
+          )
+          .map((project) => ({
+            id: project.id,
+            title: project.site_name,
+            project,
+            crew: undefined as Crew | undefined,
+          }));
+  const controlsDisabled = busy || !!editor || !!cancelling;
+  const closeEditor = () => {
+    setEditor(undefined);
+    if (!blocked) setError("");
+    setStatus("");
+    requestAnimationFrame(() =>
+      blocked
+        ? document.getElementById("reload-assignments")?.focus()
+        : assignButton.current?.focus(),
+    );
+  };
   return (
-    <main className="frame project-master schedule-drafts">
-      <div className="page-heading">
-        <h1>Schedule</h1>
+    <main className="schedule-page project-master">
+      <p className="breadcrumb">Schedule / {view}</p>
+      <h1>{view}</h1>
+      <nav className="view-tabs" aria-label="Schedule views">
+        {(["Overview", "Job Schedule", "Crew Board"] as const).map((name) => (
+          <button
+            key={name}
+            aria-current={name === view ? "page" : undefined}
+            disabled={controlsDisabled}
+            onClick={() => onView(name)}
+          >
+            {name}
+          </button>
+        ))}
+      </nav>
+      <div className="week-toolbar">
         <button
-          type="button"
-          disabled
-          title="Driver, personnel and Rig validation is pending"
+          aria-label="Previous week"
+          disabled={controlsDisabled || days[0] < "0001-01-08"}
+          onClick={() => navigate(shiftDay(day, -7))}
         >
-          Publish unavailable
+          ‹
         </button>
+        <button
+          disabled={controlsDisabled}
+          onClick={() => navigate(localToday())}
+        >
+          Today
+        </button>
+        <button
+          aria-label="Next week"
+          disabled={controlsDisabled || days[6] > "9999-12-24"}
+          onClick={() => navigate(shiftDay(day, 7))}
+        >
+          ›
+        </button>
+        <strong className="week-range">
+          {displayDate(days[0])} – {displayDate(days[6])}
+        </strong>
+        <form
+          className="date-jump"
+          onSubmit={(event) => {
+            event.preventDefault();
+            navigate(dateField);
+          }}
+        >
+          <label className="sr-only" htmlFor="schedule-date">
+            Jump to local date
+          </label>
+          <input
+            id="schedule-date"
+            type="date"
+            value={dateField}
+            disabled={controlsDisabled}
+            onChange={(event) => setDateField(event.target.value)}
+            required
+          />
+          <button disabled={controlsDisabled}>Go</button>
+        </form>
+        <span className="draft-state">Draft · Validation pending</span>
+        <button disabled={controlsDisabled} onClick={() => setReview(true)}>
+          Review &amp; Publish
+        </button>
+        <label className="filter-label">
+          Crew filter
+          <select
+            aria-label="Crew filter"
+            disabled={controlsDisabled}
+            value={crewFilter}
+            onChange={(event) => {
+              setCrewFilter(event.target.value);
+              setSelected(undefined);
+            }}
+          >
+            <option value="">All crews</option>
+            {data.crews.map((crew) => (
+              <option key={crew.id} value={crew.id}>
+                {crew.name}
+                {!crew.active && " · Inactive"}
+              </option>
+            ))}
+          </select>
+        </label>
+        {view === "Job Schedule" && (
+          <label className="filter-label">
+            Project filter
+            <select
+              aria-label="Project filter"
+              disabled={controlsDisabled}
+              value={projectFilter}
+              onChange={(event) => setProjectFilter(event.target.value)}
+            >
+              <option value="">All projects</option>
+              {data.projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.job_number} · {project.site_name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
-      <p className="draft-warning" id="assignment-safety">
-        Draft / Validation pending. Only Crew/date/half-day occupancy is
-        checked. Driver approval, actual workers, time off, qualifications and
-        Rig compliance are pending. These drafts cannot be published.
-      </p>
-      <p>
-        AM/PM is provisional for Demo B; final scheduling granularity awaits
-        customer confirmation.
-      </p>
-      <div className="actions">
+      <div className="schedule-feedback" aria-live="polite">
+        {busy ? "Loading or saving local schedule…" : status}
+      </div>
+      {!editor && error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="board-actions">
         <button
           ref={assignButton}
           disabled={
-            busy ||
+            controlsDisabled ||
             blocked ||
-            !!editor ||
-            !!cancelling ||
-            !crews.length ||
-            !projects.length
+            !data.crews.length ||
+            !data.projects.length
           }
-          onClick={() => {
-            setError("");
-            setStatus("");
-            setEditor({
-              id: null,
-              project_id: 0,
-              work_item_id: 0,
-              crew_id: 0,
-              local_date: day,
-              slot: "AM",
-              notes: "",
-            });
-          }}
+          onClick={() => begin()}
         >
           Assign Work Item
         </button>
         <button
+          id="reload-assignments"
           className="secondary-button"
           disabled={busy}
-          id="reload-assignments"
-          onClick={() =>
-            void refresh(
-              editor && validLocalDate(editor.local_date)
-                ? editor.local_date
-                : day,
-              true,
-            )
-          }
+          onClick={() => {
+            if (editor && validLocalDate(editor.local_date))
+              navigate(editor.local_date);
+            void refresh(true);
+          }}
         >
           Reload assignments
         </button>
       </div>
-      {error && (
-        <p className="error" role="alert">
-          {error}
-          {blocked && " Reload replaces the current form with saved records."}
-        </p>
-      )}
-      <p role="status">
-        {busy ? "Loading or saving draft assignments…" : status}
-      </p>
-      {editor ? (
-        <AssignmentEditor
-          key={editor.id ?? "new"}
-          value={editor}
-          projects={projects}
-          crews={crews}
-          disabled={busy || blocked}
-          busy={busy}
-          onChange={setEditor}
-          onSubmit={save}
-          onCancel={() => {
-            setEditor(undefined);
-            if (!blocked) setError("");
-            setStatus("");
-            requestAnimationFrame(() =>
-              blocked
-                ? document.getElementById("reload-assignments")?.focus()
-                : assignButton.current?.focus(),
-            );
-          }}
-        />
+      {view === "Overview" ? (
+        <section className="schedule-overview">
+          <dl>
+            <div>
+              <dt>Scheduled visits this week</dt>
+              <dd>{rows.length}</dd>
+            </div>
+            <div>
+              <dt>Crews with visits</dt>
+              <dd>{new Set(rows.map((row) => row.crew_id)).size}</dd>
+            </div>
+            <div>
+              <dt>Actual staffing not assigned</dt>
+              <dd>{rows.length}</dd>
+            </div>
+          </dl>
+          <button onClick={() => onView("Job Schedule")}>
+            Open Job Schedule
+          </button>
+        </section>
       ) : (
         <>
-          <form
-            className="project-search"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!busy) void refresh(dateField);
-            }}
+          <details
+            className="unscheduled"
+            open={queueOpen}
+            onToggle={(event) => setQueueOpen(event.currentTarget.open)}
           >
-            <label htmlFor="schedule-date">Local date (YYYY-MM-DD)</label>
-            <div className="search-controls">
-              <input
-                id="schedule-date"
-                value={dateField}
-                onChange={(event) => setDateField(event.target.value)}
-                maxLength={10}
-                required
-              />
-              <button disabled={busy}>Show date</button>
-            </div>
-          </form>
-          <section aria-labelledby="assignment-list-title">
-            <h2 id="assignment-list-title">Draft assignments — {day}</h2>
-            {selectedRow && (
-              <p id="assignment-location" ref={location} tabIndex={-1}>
-                Selected slot: {selectedRow.crew_name} (#{selectedRow.crew_id})
-                · {selectedRow.local_date} {selectedRow.slot} · Work Item #
-                {selectedRow.work_item_id} · {selectedRow.status} #
-                {selectedRow.id}
-              </p>
-            )}
-            {!busy && (!projects.length || !crews.length) && (
-              <p>
-                Add a Project with Work Items and a Crew before assigning work.
-              </p>
-            )}
-            {rows.length ? (
-              <div className="project-table">
-                <table aria-label="Saved draft assignments">
-                  <thead>
-                    <tr>
-                      {[
-                        "Date / half-day",
-                        "Project / Work Item",
-                        "Crew",
-                        "State",
-                        "Notes",
-                        "Action",
-                      ].map((title) => (
-                        <th key={title} scope="col">
-                          {title}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row) => (
-                      <tr
-                        key={row.id}
-                        aria-current={selected === row.id ? "true" : undefined}
+            <summary>
+              Unscheduled work items · {busy ? "Loading…" : pending.length}
+            </summary>
+            <p>
+              No active visits on any date. Additional visits can always be
+              assigned by Work Item ID; estimates are not automatically
+              deducted.
+            </p>
+            <ul>
+              {pending.map(({ project, item }) => (
+                <li key={item.id}>
+                  <span>
+                    {project.job_number} · Site {project.site_id} ·{" "}
+                    {project.site_name} · {item.type} #{item.id} ·{" "}
+                    {item.estimated_half_days} half-days
+                  </span>
+                  <button
+                    disabled={controlsDisabled || blocked}
+                    onClick={() => begin(project.id, item.id)}
+                  >
+                    Assign
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {!busy && !pending.length && <p>No unscheduled work items.</p>}
+          </details>
+          <div
+            className="week-scroll"
+            tabIndex={0}
+            aria-label="Scrollable weekly schedule"
+            aria-busy={busy}
+          >
+            <table className="week-grid" aria-label={`${view} Sunday–Saturday`}>
+              <thead>
+                <tr>
+                  <th scope="col">
+                    {view === "Crew Board"
+                      ? "Crew / Rig / Home roster"
+                      : "Project / Job number"}
+                  </th>
+                  {days.map((date, index) => (
+                    <th
+                      key={date}
+                      scope="col"
+                      className={`${index === 0 || index === 6 ? "weekend" : ""} ${date === localToday() ? "today" : ""}`}
+                    >
+                      <span>
+                        {
+                          ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][
+                            index
+                          ]
+                        }
+                      </span>
+                      <time dateTime={date}>
+                        {date.slice(8)}
+                        <small>{date.slice(0, 7)}</small>
+                      </time>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {groups.map((group) => (
+                  <tr key={group.id}>
+                    <th scope="row">
+                      <strong>{group.title}</strong>
+                      {group.crew ? (
+                        <HomeRoster crew={group.crew} data={data} />
+                      ) : (
+                        <small>
+                          {group.project?.job_number} · Site{" "}
+                          {group.project?.site_id}
+                        </small>
+                      )}
+                    </th>
+                    {days.map((date, index) => (
+                      <td
+                        key={date}
+                        className={index === 0 || index === 6 ? "weekend" : ""}
                       >
-                        <td>
-                          {row.local_date} {row.slot}
-                        </td>
-                        <td>
-                          {row.job_number} · {row.site_id} · {row.site_name}
-                          <br />
-                          {row.work_type} · Work Item #{row.work_item_id}
-                          <br />
-                          Requires {row.required_crew_count} Crew(s) · Estimate{" "}
-                          {row.estimated_half_days} half-day(s)
-                        </td>
-                        <td>
-                          {row.crew_name} (#{row.crew_id})
-                          {!row.crew_active && " · Inactive"}
-                        </td>
-                        <td>
-                          {row.status === "Draft"
-                            ? "Draft / Validation pending"
-                            : "Cancelled"}
-                        </td>
-                        <td>{row.notes || "—"}</td>
-                        <td>
-                          {row.status === "Draft" && (
-                            <>
-                              <button
-                                aria-label={`Edit Draft ${row.id}`}
-                                disabled={busy || blocked || !!cancelling}
-                                onClick={() => {
-                                  setEditor({
-                                    id: row.id,
-                                    revision: row.revision,
-                                    project_id: row.project_id,
-                                    work_item_id: row.work_item_id,
-                                    crew_id: row.crew_id,
-                                    local_date: row.local_date,
-                                    slot: row.slot,
-                                    notes: row.notes,
-                                  });
-                                  setError("");
-                                  setStatus("");
-                                }}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                className="secondary-button"
-                                aria-label={`Cancel Draft ${row.id}`}
-                                disabled={busy || blocked || !!cancelling}
-                                onClick={() => setCancelling(row)}
-                              >
-                                Cancel draft
-                              </button>
-                            </>
-                          )}
-                        </td>
-                      </tr>
+                        {rows
+                          .filter(
+                            (row) =>
+                              row.local_date === date &&
+                              (group.crew
+                                ? row.crew_id === group.id
+                                : row.project_id === group.id),
+                          )
+                          .map((row) => (
+                            <button
+                              key={row.id}
+                              id={`assignment-${row.id}`}
+                              ref={selected === row.id ? location : undefined}
+                              className={`schedule-card ${row.work_type === "Tower" ? "tower-work" : "field-work"}`}
+                              aria-label={`Draft ${row.id}, ${row.job_number}, ${row.local_date} ${row.slot}, ${row.crew_name}`}
+                              aria-pressed={selected === row.id}
+                              onClick={() => setSelected(row.id)}
+                            >
+                              <strong>
+                                {row.slot} · {row.work_type} · Draft
+                              </strong>
+                              <span>
+                                {row.job_number} · Site {row.site_id}
+                              </span>
+                              {view === "Job Schedule" && (
+                                <span>{row.crew_name}</span>
+                              )}
+                              <span>Actual staffing not assigned</span>
+                            </button>
+                          ))}
+                      </td>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              !busy && !error && <p>No draft assignments on this date.</p>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!busy && !groups.length && (
+              <p className="board-empty">
+                {blocked
+                  ? "Schedule unavailable. Reload assignments to retry."
+                  : data.projects.length && data.crews.length
+                    ? "No scheduled Projects. Expand Unscheduled work items or Assign Work Item to begin."
+                    : "Add Projects with Work Items and Crews to begin planning."}
+              </p>
             )}
-            {cancelling && (
-              <section aria-labelledby="cancel-draft-title">
-                <h3 id="cancel-draft-title">
-                  Cancel saved Draft #{cancelling.id}?
-                </h3>
-                <p>
-                  This releases {cancelling.crew_name} on{" "}
-                  {cancelling.local_date} {cancelling.slot}. The cancelled
-                  record and its ID remain.
-                </p>
-                <div className="actions">
-                  <button
-                    disabled={busy || blocked}
-                    onClick={() => void cancelSaved()}
-                  >
-                    Confirm cancellation
-                  </button>
-                  <button
-                    className="secondary-button"
-                    disabled={busy}
-                    onClick={() => setCancelling(undefined)}
-                  >
-                    Keep draft
-                  </button>
-                </div>
-              </section>
-            )}
-          </section>
+          </div>
+          {!busy && !blocked && !rows.length && (
+            <p>No assignments in this view for the selected week.</p>
+          )}
         </>
       )}
+      <p className="schedule-footnote" id="assignment-safety">
+        AM/PM is provisional for Demo B. Home roster and default Rig are
+        reference data. Actual staffing not assigned; time off not configured.
+        Drafts are not publishable.
+      </p>
+      {editor && (
+        <Dialog
+          title={
+            editor.id === null ? "Assign work item" : `Edit draft #${editor.id}`
+          }
+          busy={busy}
+          onClose={closeEditor}
+        >
+          {error && (
+            <p className="error" role="alert">
+              {error}
+              {blocked && " Reload assignments before retrying."}
+            </p>
+          )}
+          <AssignmentEditor
+            key={editor.id ?? "new"}
+            value={editor}
+            projects={data.projects}
+            crews={data.crews}
+            disabled={busy || blocked}
+            busy={busy}
+            onChange={setEditor}
+            onSubmit={save}
+            onCancel={closeEditor}
+          />
+        </Dialog>
+      )}
+      {selectedRow && !editor && !cancelling && (
+        <Dialog
+          title={`${selectedRow.work_type} · Draft #${selectedRow.id}`}
+          onClose={() => setSelected(undefined)}
+        >
+          <dl className="record-detail">
+            <dt>Project</dt>
+            <dd>
+              {selectedRow.job_number} · {selectedRow.site_name}
+            </dd>
+            <dt>Job / Site</dt>
+            <dd>
+              {selectedRow.job_number} · {selectedRow.site_id}
+            </dd>
+            <dt>Work Item</dt>
+            <dd>
+              #{selectedRow.work_item_id} · Estimate{" "}
+              {selectedRow.estimated_half_days} half-days · Requires{" "}
+              {selectedRow.required_crew_count} crews
+            </dd>
+            <dt>Date / slot</dt>
+            <dd>
+              {displayDate(selectedRow.local_date)} · {selectedRow.slot}
+            </dd>
+            <dt>Crew</dt>
+            <dd>
+              {selectedRow.crew_name}
+              {!selectedRow.crew_active && " · Inactive"}
+            </dd>
+            <dt>Actual staffing</dt>
+            <dd>Actual staffing not assigned</dd>
+            <dt>Actual Rig</dt>
+            <dd>Not assigned. Default Rig is reference only.</dd>
+            <dt>State</dt>
+            <dd>
+              Draft · Validation pending · Revision {selectedRow.revision}
+            </dd>
+            <dt>Notes</dt>
+            <dd className="preserve-lines">{selectedRow.notes || "—"}</dd>
+            <dt>Locks / history</dt>
+            <dd>Not configured. Current revision is preserved.</dd>
+          </dl>
+          <div className="actions">
+            <button
+              aria-label={`Edit Draft ${selectedRow.id}`}
+              disabled={busy || blocked}
+              onClick={() => {
+                setError("");
+                setEditor({
+                  id: selectedRow.id,
+                  revision: selectedRow.revision,
+                  project_id: selectedRow.project_id,
+                  work_item_id: selectedRow.work_item_id,
+                  crew_id: selectedRow.crew_id,
+                  local_date: selectedRow.local_date,
+                  slot: selectedRow.slot,
+                  notes: selectedRow.notes,
+                });
+              }}
+            >
+              Edit draft
+            </button>
+            <button
+              className="secondary-button"
+              aria-label={`Cancel Draft ${selectedRow.id}`}
+              disabled={busy || blocked}
+              onClick={() => setCancelling(selectedRow)}
+            >
+              Cancel draft
+            </button>
+          </div>
+        </Dialog>
+      )}
+      {cancelling && (
+        <Dialog
+          title={`Cancel saved Draft #${cancelling.id}?`}
+          busy={busy}
+          onClose={() => setCancelling(undefined)}
+        >
+          <p>
+            This releases {cancelling.crew_name} on {cancelling.local_date}{" "}
+            {cancelling.slot}. The cancelled record and stable ID remain. A Work
+            Item with other active visits stays scheduled.
+          </p>
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="actions">
+            <button
+              disabled={busy || blocked}
+              onClick={() => void cancelSaved()}
+            >
+              Confirm cancellation
+            </button>
+            <button disabled={busy} onClick={() => setCancelling(undefined)}>
+              Keep draft
+            </button>
+          </div>
+        </Dialog>
+      )}
+      {review && (
+        <Dialog title="Publish review" onClose={() => setReview(false)}>
+          <p>
+            {displayDate(days[0])} – {displayDate(days[6])} · Draft
+          </p>
+          <p>{rows.length} visits in current filters. Validation pending.</p>
+          <ul>
+            {publishBlockers.map((reason) => (
+              <li key={reason}>{reason}</li>
+            ))}
+          </ul>
+          <button disabled>Publish schedule unavailable</button>
+        </Dialog>
+      )}
     </main>
+  );
+}
+
+function HomeRoster({ crew, data }: { crew: Crew; data: Workspace }) {
+  const foreman = data.foremen.find((row) => row.crew_id === crew.id);
+  const members = data.people
+    .filter((person) => person.home_crew_id === crew.id)
+    .sort(
+      (a, b) =>
+        Number(b.id === foreman?.employee_id) -
+          Number(a.id === foreman?.employee_id) ||
+        a.name.localeCompare(b.name) ||
+        a.id - b.id,
+    );
+  const rigs = data.rigs.filter((rig) => rig.default_crew_id === crew.id);
+  return (
+    <div className="home-roster">
+      <small>
+        {crew.type}
+        {!crew.active && " · Inactive crew"}
+      </small>
+      <small>
+        Default Rig:{" "}
+        {rigs
+          .map((rig) => `${rig.number}${rig.active ? "" : " (inactive)"}`)
+          .join(", ") || "Not configured"}
+      </small>
+      <small>Home roster</small>
+      {foreman?.employee_id && (
+        <strong className="foreman">
+          Foreman · {foreman.employee_name}
+          {foreman.employee_active === false && " · Inactive"}
+          {foreman.employee_eligible === false && " · Eligibility removed"}
+          {!members.some((person) => person.id === foreman.employee_id) &&
+            " · Other Home Crew"}
+        </strong>
+      )}
+      {members
+        .filter((person) => person.id !== foreman?.employee_id)
+        .map((person) => (
+          <span key={person.id}>
+            {person.id === foreman?.employee_id ? (
+              <strong>{person.name}</strong>
+            ) : (
+              person.name
+            )}
+            {!person.active && " · Inactive"}
+          </span>
+        ))}
+      {!members.length && <small>No Home Crew members</small>}
+      <small>Time off not configured</small>
+    </div>
   );
 }
 
