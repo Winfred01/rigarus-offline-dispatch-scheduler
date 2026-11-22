@@ -21,6 +21,7 @@
 )
 
 $ErrorActionPreference = 'Stop'
+Write-Host ('VerifierSourceSha256=' + (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash)
 if ($IncludeMultiDay) { $IncludeAssignments = $true }
 . (Join-Path $PSScriptRoot 'TauriAcceptanceSupport.ps1')
 $waits = Get-AcceptanceWaits $Profile $PSBoundParameters
@@ -508,6 +509,12 @@ function Assert-SyntheticWeeklyScroll($Window) {
     $scroll.SetScrollPercent(100, 100)
     $observation = @{ State = 'not-observed' }
     try { Wait-For 'last-crew-sticky-header-alignment' {
+        # Switching boards intentionally focuses the selected source after paint.
+        # Reapply the operator scroll if that deferred focus won the first race.
+        if ($scroll.Current.VerticalScrollPercent -lt 99.99 -or $scroll.Current.HorizontalScrollPercent -lt 99.99) {
+            $scroll.SetScrollPercent(100, 100)
+            return $false
+        }
         $bounds = $region.Current.BoundingRectangle
         $roster = $grid.GetItem($lastRow, 0).Current.BoundingRectangle
         $day = $grid.GetItem($lastRow, 7).Current.BoundingRectangle
@@ -521,22 +528,27 @@ function Assert-SyntheticWeeklyScroll($Window) {
     catch { Write-AcceptanceEvent 'INFO' 'weekly-scroll-diagnostic' $timer 0 $observation.State; throw }
     # A wrapped roster can legitimately exceed the body viewport. Check both ends
     # instead of inventing a maximum name/member/row height to make it fit at once.
-    $bounds = $region.Current.BoundingRectangle
-    $roster = $grid.GetItem($lastRow, 0).Current.BoundingRectangle
-    $header = $grid.GetItem(0, 7).Current.BoundingRectangle
-    if ($roster.Top -lt $header.Bottom) {
-        $maximumScroll = $bounds.Height * (100 / $scroll.Current.VerticalViewSize - 1)
-        $target = [Math]::Max(0, 100 - 100 * ($header.Bottom - $roster.Top + 2) / $maximumScroll)
-        $scroll.SetScrollPercent(100, $target)
-    }
-    Wait-For 'last-crew-name-reachable' {
+    # UIA view percentages and the region's outer bounds do not share exact
+    # border/scrollbar rounding. Reobserve after bounded small steps instead of
+    # estimating one percentage that can leave the name under the sticky header.
+    try { Wait-For 'last-crew-name-reachable' {
         $bounds = $region.Current.BoundingRectangle
         $roster = $grid.GetItem($lastRow, 0).Current.BoundingRectangle
         $day = $grid.GetItem($lastRow, 7).Current.BoundingRectangle
         $header = $grid.GetItem(0, 7).Current.BoundingRectangle
+        $observation.State = "row=$lastRow region=$bounds roster=$roster day=$day header=$header vertical=$($scroll.Current.VerticalScrollPercent) horizontal=$($scroll.Current.HorizontalScrollPercent) viewSize=$($scroll.Current.VerticalViewSize)"
+        if ($roster.Top -lt ($header.Bottom - 2)) {
+            $scroll.Scroll([Windows.Automation.ScrollAmount]::NoAmount, [Windows.Automation.ScrollAmount]::SmallDecrement)
+            return $false
+        }
+        if ($roster.Top -ge $bounds.Bottom) {
+            $scroll.Scroll([Windows.Automation.ScrollAmount]::NoAmount, [Windows.Automation.ScrollAmount]::SmallIncrement)
+            return $false
+        }
         $roster.Top -ge ($header.Bottom - 2) -and $roster.Top -lt $bounds.Bottom -and
             [Math]::Abs($roster.Top - $day.Top) -le 2 -and [Math]::Abs($roster.Left - $bounds.Left) -le 3
-    } | Out-Null
+    } | Out-Null }
+    catch { Write-AcceptanceEvent 'INFO' 'weekly-name-scroll-diagnostic' $timer 0 $observation.State; throw }
     $scroll.SetScrollPercent(0, 0)
     Write-AcceptanceEvent 'PASS' 'weekly-scale-scroll' $timer 0 'crews=9 projectsAtLeast=101 lastCrewTopAndBottom=reachable stickyDate=visible stickyRoster=aligned method=UIA-ScrollPattern windowDips=1000x720'
 }
