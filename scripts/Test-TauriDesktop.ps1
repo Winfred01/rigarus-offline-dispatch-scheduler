@@ -12,6 +12,7 @@
     [switch]$IncludeMultiDay,
     [switch]$IncludeStaffing,
     [switch]$IncludeAvailability,
+    [switch]$IncludeEmployeeWeek,
     [switch]$PreserveSyntheticProfile,
     [ValidateSet('Default', 'SlowVm')]
     [string]$Profile = 'Default',
@@ -25,6 +26,7 @@
 $ErrorActionPreference = 'Stop'
 Write-Host ('VerifierSourceSha256=' + (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash)
 if ($IncludeMultiDay) { $IncludeAssignments = $true }
+if ($IncludeEmployeeWeek) { $IncludeAvailability = $true }
 if ($IncludeAvailability) { $IncludeStaffing = $true }
 if ($IncludeStaffing) { $IncludeAssignments = $true; $IncludeCrews = $true }
 $staffingWorkerAName = if ($IncludeForemen) { 'Synthetic Foreman A' } else { 'Synthetic Staffing A' }
@@ -786,6 +788,35 @@ function Test-AvailabilityReopened($Window) {
     Write-AcceptanceEvent 'PASS' 'availability-reopen' $timer 0 'threeStates=preserved explicitRange=preserved existingHomeCrewAndDraft=unchanged'
 }
 
+function Test-EmployeeWeek($Window) {
+    $timer = [Diagnostics.Stopwatch]::StartNew()
+    $employeeWeekBefore = Get-SyntheticAssignmentDigest
+    Invoke-Button $Window 'Schedule'
+    Invoke-Button $Window 'Job Schedule'
+    Show-SyntheticAssignmentDate $Window '2026-12-31'
+    Invoke-Button $Window 'Employee Week'
+    Select-AssignmentChoice $Window 'employee-week-person' '' "$staffingWorkerAName (#1)"
+    Find-Control $Window $automationId 'employee-visit-4' -Button | Out-Null
+    Assert-SyntheticTextContains $Window 'AM: Unavailable'
+    Invoke-Button $Window 'Export preview'
+    Find-Control $Window $name 'DRAFT – NOT CONFIRMED' | Out-Null
+    foreach ($label in @('Export PDF','Export Excel')) {
+        $button = Find-Control $Window $name $label -Button
+        if ($button.Current.IsEnabled) { throw 'Formal employee export unexpectedly enabled.' }
+    }
+    Invoke-Button $Window 'Close preview'
+    Select-AssignmentChoice $Window 'employee-week-person' '' "$staffingWorkerBName (#2)"
+    Find-Control $Window $name 'No actual assignments for this employee this week.' | Out-Null
+    $visitCondition = [Windows.Automation.PropertyCondition]::new($automationId, 'employee-visit-4')
+    if ($Window.FindAll([Windows.Automation.TreeScope]::Descendants,$visitCondition).Count) { throw 'Previous employee visit remained visible.' }
+    Invoke-Button $Window 'People'
+    Invoke-Button $Window ('Open employee week for ' + $staffingWorkerAName)
+    Find-Control $Window $automationId 'employee-visit-4' -Button | Out-Null
+    Invoke-Button $Window 'Job Schedule'
+    if ((Get-SyntheticAssignmentDigest) -cne $employeeWeekBefore) { throw 'Read-only employee week changed synthetic SQLite/WAL.' }
+    Write-AcceptanceEvent 'PASS' 'employee-week' $timer 0 'explicitWorker=shown borrowedCrew=retained emptyEmployee=clear availability=recorded preview=draft export=disabled handoff=week-retained'
+}
+
 function Set-SyntheticWorker($Window, [string]$Label, [bool]$Selected) {
     $control = Find-Control $Window $name $Label
     $toggle = $control.GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern)
@@ -1263,6 +1294,7 @@ try {
     if ($IncludeMultiDay) { Test-MultiDayAssignments $window }
     if ($IncludeAvailability) { Test-Availability $window }
     if ($IncludeStaffing) { Test-Staffing $window }
+    if ($IncludeEmployeeWeek) { Test-EmployeeWeek $window }
     Close-Dashboard $process
     $process.Dispose()
     $process = $null
@@ -1324,6 +1356,7 @@ try {
     if ($IncludeMultiDay) { Test-MultiDayReopened $window }
     if ($IncludeStaffing) { Test-StaffingReopened $window }
     if ($IncludeAvailability) { Test-AvailabilityReopened $window }
+    if ($IncludeEmployeeWeek) { Test-EmployeeWeek $window }
     Close-Dashboard $process
     $process.Dispose()
     $process = $null

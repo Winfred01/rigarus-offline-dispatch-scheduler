@@ -35,7 +35,11 @@ function crewLabel(crew: HomeCrew) {
   );
 }
 
-export function EmployeeRoster() {
+export function EmployeeRoster({
+  onOpenWeek,
+}: {
+  onOpenWeek: (id: number) => void;
+}) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [crews, setCrews] = useState<HomeCrew[]>([]);
   const [search, setSearch] = useState("");
@@ -276,7 +280,16 @@ export function EmployeeRoster() {
                     const crew = crewsById.get(employee.home_crew_id);
                     return (
                       <tr key={employee.id}>
-                        <td>{employee.name}</td>
+                        <td>
+                          <button
+                            className="job-link"
+                            aria-label={`Open employee week for ${employee.name}`}
+                            disabled={busy}
+                            onClick={() => onOpenWeek(employee.id)}
+                          >
+                            {employee.name}
+                          </button>
+                        </td>
                         <td>
                           {crew
                             ? crewLabel(crew)

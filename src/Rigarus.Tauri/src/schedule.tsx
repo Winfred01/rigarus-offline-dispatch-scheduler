@@ -18,6 +18,7 @@ import { weekDays, shiftDay, displayDate, inWeek } from "./week";
 import { Dialog } from "./dialog";
 import { weekCells } from "./week-cells";
 import { StaffingPanel, staffingLabel } from "./staffing";
+import { EmployeeWeek } from "./employee-week";
 
 type Editor = {
   id: number | null;
@@ -29,7 +30,8 @@ type Editor = {
   slot: "AM" | "PM";
   notes: string;
 };
-export type ScheduleView = "Job Schedule" | "Crew Board" | "Overview";
+export type ScheduleView =
+  "Job Schedule" | "Crew Board" | "Overview" | "Employee Week";
 const emptyWorkspace: Workspace = {
   crews: [],
   people: [],
@@ -50,14 +52,25 @@ export function Schedule({
   target,
   view,
   onView,
+  day,
+  onDay,
+  employeeId,
+  onEmployee,
 }: {
   seed?: AssignmentSeed;
   target?: { id: number; date: string };
   view: ScheduleView;
   onView: (view: ScheduleView) => void;
+  day: string;
+  onDay: (value: string) => void;
+  employeeId: number;
+  onEmployee: (id: number) => void;
 }) {
-  const [day, setDay] = useState(localToday);
+  const setDay = onDay;
   const [dateField, setDateField] = useState(day);
+  useEffect(() => {
+    setDateField(day);
+  }, [day]);
   const [data, setData] = useState<Workspace>(emptyWorkspace);
   const [editor, setEditor] = useState<Editor>();
   const [cancelling, setCancelling] = useState<DraftAssignment>();
@@ -312,7 +325,9 @@ export function Schedule({
       <p className="breadcrumb">Schedule / {view}</p>
       <h1>{view}</h1>
       <nav className="view-tabs" aria-label="Schedule views">
-        {(["Overview", "Job Schedule", "Crew Board"] as const).map((name) => (
+        {(
+          ["Overview", "Job Schedule", "Crew Board", "Employee Week"] as const
+        ).map((name) => (
           <button
             key={name}
             aria-current={name === view ? "page" : undefined}
@@ -368,10 +383,13 @@ export function Schedule({
           <button disabled={controlsDisabled}>Go</button>
         </form>
         <span className="draft-state">Draft · Validation pending</span>
-        <button disabled={controlsDisabled} onClick={() => setReview(true)}>
+        <button
+          disabled={controlsDisabled || view === "Employee Week"}
+          onClick={() => setReview(true)}
+        >
           Review &amp; Publish
         </button>
-        <label className="filter-label">
+        <label className="filter-label" hidden={view === "Employee Week"}>
           Crew filter
           <select
             aria-label="Crew filter"
@@ -391,7 +409,8 @@ export function Schedule({
             ))}
           </select>
         </label>
-        {(view === "Job Schedule" || projectFilter) && (
+        {(view === "Job Schedule" ||
+          (projectFilter && view !== "Employee Week")) && (
           <label className="filter-label">
             Project filter
             <select
@@ -418,7 +437,7 @@ export function Schedule({
           {error}
         </p>
       )}
-      <div className="board-actions">
+      <div className="board-actions" hidden={view === "Employee Week"}>
         <button
           ref={assignButton}
           disabled={
@@ -444,7 +463,18 @@ export function Schedule({
           Reload assignments
         </button>
       </div>
-      {view === "Overview" ? (
+      {view === "Employee Week" ? (
+        <EmployeeWeek
+          people={data.people}
+          crews={data.crews}
+          days={days}
+          employeeId={employeeId}
+          onEmployee={onEmployee}
+          rosterBusy={busy}
+          rosterError={blocked}
+          onRosterReload={() => void refresh(true)}
+        />
+      ) : view === "Overview" ? (
         <section className="schedule-overview">
           <dl>
             <div>

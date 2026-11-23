@@ -794,3 +794,39 @@ kbd {
 .worker-availability {
   display: block;
 }
+
+/* Employee Week retains seven dates and explicit per-visit IDs. */
+.employee-week .search-controls {
+  margin: 16px 0;
+}
+.employee-week-grid .employee-day {
+  min-height: 160px;
+}
+.employee-day .schedule-card {
+  width: 100%;
+  margin-bottom: 8px;
+}
+.employee-week-grid th small {
+  display: block;
+  font-weight: 400;
+}
+.employee-availability {
+  font-size: 12px;
+  color: var(--muted);
+}
+.employee-availability span {
+  display: block;
+}
+.employee-unscheduled {
+  color: var(--muted);
+}
+.board-actions[hidden],
+.filter-label[hidden] {
+  display: none;
+}
+
+.employee-week {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}

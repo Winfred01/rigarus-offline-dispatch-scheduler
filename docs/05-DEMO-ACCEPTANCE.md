@@ -194,3 +194,18 @@ powershell.exe -NoProfile -STA -File scripts/Test-TauriDesktop.ps1 -Executable <
 ```
 
 `-IncludeMultiDay` implies the existing `-IncludeAssignments` scenario and preserves its original checks. Add `-Profile SlowVm -RequireOffline -PreserveSyntheticProfile -DiagnosticLog <local-log>` only in a verified disconnected synthetic VM. Keep raw logs/profiles local and distinguish developer-host execution from matching installed-package evidence.
+
+## Employee Week first engineering slice (#71)
+
+Read [the Design-First checklist](design/2026-11-22-issue-71-employee-week-checklist.md) and [candidate evidence](acceptance/2026-11-22-issue-71-employee-week.md). Open Schedule → Employee Week. Choose one of two employees with the same Home Crew; only the explicitly saved worker has cards. Borrow into a different Crew: the dated card shows that Crew and Borrowed, while Home Crew stays unchanged. Check local cross-year Sun–Sat, AM/PM, independent repeated visits and recorded availability. An empty employee/week retains all seven dates and Unscheduled cells. Inactive status and Unverified driver remain visible; no approval is inferred.
+
+1. Open a card and compare IDs, date/slot, Job #, Site text identifiers, actual Crew, revision/notes and Actual Rig: Not assigned. Default Rig never supplies dated equipment.
+2. Export preview must retain the same selected employee/week/visits and show DRAFT – NOT CONFIRMED. Export PDF and Export Excel remain disabled. Close/Escape, card view, week navigation and previews must not change SQLite/WAL.
+3. From People / Employees choose a worker's name. From global search open a Person and use Open employee week. Both preserve the selected Schedule week and route the stable employee ID. Switch to an empty/inactive employee; previous cards must disappear. Test delayed responses, assignment/availability/roster errors and retry, narrow internal scroll and keyboard focus.
+4. Reopen and verify saved explicit worker IDs, Home Crew, notes, AM/PM dates and recorded availability. UI date/employee selection itself is in-memory navigation, not a persisted preference.
+
+```powershell
+powershell.exe -NoProfile -STA -File scripts/Test-TauriDesktop.ps1 -Executable <candidate-exe> -IncludeEmployeeWeek -PreserveSyntheticProfile -DiagnosticLog <local-log>
+```
+
+The switch implies availability/staffing/assignment/Crew fixtures. Default GUI/exit bounds remain 30/12 seconds; SlowVm uses 150/60 seconds. Use -RequireOffline only on an actually disconnected authorized environment. No new migration; schema nine and all prior compatibility gates remain. This is an internal read-only planning/preview slice; actual PDF/XLSX, validated Published snapshots, leave/driver/resource safety, installation, customer acceptance and production remain separate.

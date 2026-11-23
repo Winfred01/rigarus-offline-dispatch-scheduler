@@ -17,7 +17,7 @@ import {
 import { applyAppearance, parseAppearance, appearanceKey } from "./appearance";
 import { readWorkspace } from "./workspace-data";
 import { Dialog } from "./dialog";
-import type { AssignmentSeed } from "./assignment-fields";
+import { localToday, type AssignmentSeed } from "./assignment-fields";
 import "./styles.css";
 import "./desktop.css";
 
@@ -183,6 +183,8 @@ function NavIcon({ kind }: { kind: string }) {
 function App() {
   const [module, setModule] = useState<Module>("Schedule");
   const [view, setView] = useState<ScheduleView>("Job Schedule");
+  const [scheduleDay, setScheduleDay] = useState(localToday);
+  const [employeeId, setEmployeeId] = useState(0);
   const [panel, setPanel] = useState("Employees");
   const [assignmentSeed, setAssignmentSeed] = useState<AssignmentSeed>();
   const [target, setTarget] = useState<{ id: number; date: string }>();
@@ -268,6 +270,14 @@ function App() {
     setPanel(value.type === "Crew" ? "Crews" : "Employees");
     setRecord(value);
   }
+  function openEmployeeWeek(id: number) {
+    setEmployeeId(id);
+    setRecord(undefined);
+    setAssignmentSeed(undefined);
+    setTarget(undefined);
+    setModule("Schedule");
+    setView("Employee Week");
+  }
   return (
     <div className="desktop-shell">
       <aside className="module-rail">
@@ -322,6 +332,10 @@ function App() {
               target={target}
               view={view}
               onView={setView}
+              day={scheduleDay}
+              onDay={setScheduleDay}
+              employeeId={employeeId}
+              onEmployee={setEmployeeId}
             />
           )}
           {module === "Project Management" && (
@@ -352,7 +366,7 @@ function App() {
               ) : panel === "Availability" ? (
                 <AvailabilityCalendar />
               ) : (
-                <EmployeeRoster />
+                <EmployeeRoster onOpenWeek={openEmployeeWeek} />
               )}
             </>
           )}
@@ -441,6 +455,11 @@ function App() {
             Home Crew, default Rig and driver status are master data. Actual
             staffing not assigned.
           </p>
+          {record.type === "Person" && !recordError && !!details.length && (
+            <button onClick={() => openEmployeeWeek(record.id)}>
+              Open employee week
+            </button>
+          )}
           <button onClick={() => setRecord(undefined)}>Back to {module}</button>
         </Dialog>
       )}
