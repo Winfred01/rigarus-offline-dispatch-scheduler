@@ -248,3 +248,24 @@ powershell.exe -NoProfile -STA -File scripts/Test-TauriDesktop.ps1 -Executable <
 This opt-in reduced case creates exactly two Crews and one Project/WorkItem, saves an AM Draft, reopens Assign, reselects the original Crew and chooses the other Crew, then cancels. It cannot be combined with any `-Include*` scope; use a separate fresh run for the complete `-IncludeEmployeeWeek` chain. Test normal and hidden supervision separately and record each result. A hidden supervisor still requires an interactive desktop: the tool restores only its owned application window and checks that process's HWND ownership before doing so. It does not change security, session, WebView2 or power policies.
 
 Crew/other native choices use one existing GUI deadline for the complete interaction: Default 30 seconds or SlowVm 150, with finite overrides unchanged. Each probe resolves current controls/patterns again and verifies the committed label. Recognized UIA operation refusals are logged as retrying; a persistent refusal still times out, and unknown/denied/unsupported failures remain fatal. This retry does not cover Save buttons, API/storage writes or product assertions. A successful CI harness run does not establish native or offline acceptance. See [the current Design-First diagnosis](design/2026-11-23-issue-35-uia-checklist.md).
+
+## Supervisor progress JSON (#35)
+
+Windows PowerShell 5.1 attaches filesystem Provider/Drive properties to strings returned by `Get-Content`. Do not place that extended object directly into a JSON progress record: deep serialization can traverse the attached object graph and stop the supervisor's polling, deadline and final exit report while its native worker continues independently. This is a test-tool failure, not proof that the product is stuck or that a worker's last PASS implies aggregate exit zero.
+
+Use the support reader to materialize a plain string before building a primitive-only record:
+
+```powershell
+. scripts/TauriAcceptanceSupport.ps1
+$lastEvent = Read-AcceptanceProgressText -Path $localEventLog
+if ($null -ne $lastEvent) {
+    @{ phase = 'native-progress'; lastEvent = $lastEvent } |
+        ConvertTo-Json -Depth 4 -Compress
+}
+```
+
+The reader returns no event for a missing/empty/non-file path. A real read failure propagates; it is not a fabricated PASS or unknown state. Keep the event text, paths and detailed diagnostics local; publish reviewed summaries only. Do not serialize a Process, UIA control, provider object or arbitrary diagnostic object graph. Retain the worker timeout and an independent outer watchdog so a synchronous diagnostic call cannot disable every deadline. Original installer/executable hashes and native assertions must remain unchanged.
+
+`Write-AcceptanceEvent` uses an explicit append stream with read/write sharing so the single verifier can append while its supervisor reads. It preserves UTF-8 detection and earlier lines; real write failures still fail. Do not replace it with Windows PowerShell 5.1 `Add-Content`, whose sharing behavior reproduced a fatal `0x80070020` writer failure with a live reader. An advisory live poll may log a narrowly recognized sharing/lock violation as busy and defer to the next existing bounded poll; it must not retry native saves, fabricate a PASS or hide other errors. The native exit code and final evidence remain required.
+
+Run `scripts/Test-TauriAcceptanceHarness.ps1` in Windows PowerShell 5.1. Its real-file regression verifies the extended-string fixture, the plain final event, a depth-12 JSON round trip without Provider/Drive metadata, absent/empty/non-file inputs and an actual locked-file read error. It also holds a reader open during append, checks retained Unicode/lines and a single UTF-8 preamble, and verifies exclusive-lock write failure. See [the resumed checklist](design/2026-11-23-issue-35-supervisor-checklist.md) and [separate engineering evidence](acceptance/2026-11-23-issue-35-supervisor-finalization.md). Only a completed native run and captured exit code can remove the aggregate BLOCKED status; CI alone cannot.

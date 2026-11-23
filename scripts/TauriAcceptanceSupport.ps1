@@ -9,6 +9,17 @@ function Get-AcceptanceLogPath([string]$Path) {
     $Path
 }
 
+function Read-AcceptanceProgressText([string]$Path) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+    $line = Get-Content -LiteralPath $Path -Tail 1 -ErrorAction Stop
+    if ($null -ne $line) {
+        # Windows PowerShell strings from Get-Content carry Provider/Drive metadata.
+        # Deep JSON serialization can traverse that graph instead of reporting text.
+        # Explicitly materialize text before placing it in a progress record.
+        return $line.ToString()
+    }
+}
+
 function Get-AcceptanceWaits([string]$Profile, [System.Collections.IDictionary]$Overrides) {
     $waits = if ($Profile -eq 'SlowVm') {
         @{ InstallTimeoutSeconds = 900; GuiTimeoutSeconds = 150; ExitTimeoutSeconds = 60 }
@@ -27,7 +38,19 @@ function Write-AcceptanceEvent([string]$Status, [string]$Phase, $Timer, [int]$Li
     $limit = if ($LimitSeconds) { " limitSeconds=$LimitSeconds" } else { '' }
     $line = "status=$Status phase=$Phase elapsedMs=$elapsed$limit state=$State"
     Write-Host $line
-    if ($acceptanceLog) { Add-Content -LiteralPath $acceptanceLog -Value $line -Encoding UTF8 }
+    if ($acceptanceLog) {
+        # Windows PowerShell Add-Content can reject an existing supervisor reader.
+        # One verifier appends while its supervisor reads; real I/O failures still throw.
+        $stream = [IO.File]::Open($acceptanceLog, 'Append', 'Write', 'ReadWrite')
+        $writer = $null
+        try {
+            $writer = [IO.StreamWriter]::new($stream, [Text.UTF8Encoding]::new($true))
+            $writer.WriteLine($line)
+        }
+        finally {
+            if ($writer) { $writer.Dispose() } else { $stream.Dispose() }
+        }
+    }
 }
 
 function Stop-Acceptance([string]$Status, [string]$Phase, $Timer, [int]$LimitSeconds, [string]$State) {

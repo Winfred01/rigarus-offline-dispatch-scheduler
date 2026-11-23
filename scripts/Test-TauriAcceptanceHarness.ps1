@@ -27,6 +27,68 @@ function Test-InstallerProcess([string]$Command, [int]$Seconds, [int]$Code, [str
 }
 
 try {
+    # Real Get-Content output is an extended string on Windows PowerShell 5.1.
+    # Passing it directly to a deep JSON progress record traverses Provider/Drive.
+    $progressPath = Join-Path $testRoot 'progress with spaces.log'
+    if ($null -ne (Read-AcceptanceProgressText $progressPath)) { throw 'Missing progress must remain absent.' }
+    New-Item -ItemType File -Path $progressPath | Out-Null
+    if ($null -ne (Read-AcceptanceProgressText $progressPath)) { throw 'Empty progress must remain absent.' }
+    $expectedProgress = 'status=PASS phase=desktop-smoke elapsedMs=23 state=synthetic'
+    @('status=START phase=desktop-smoke', $expectedProgress) | Set-Content -LiteralPath $progressPath -Encoding UTF8
+    $providerLine = Get-Content -LiteralPath $progressPath -Tail 1
+    if ($PSVersionTable.PSVersion.Major -eq 5 -and -not $providerLine.PSObject.Properties['PSPath']) {
+        throw 'Regression fixture did not supply the Windows PowerShell extended string.'
+    }
+    $progress = Read-AcceptanceProgressText $progressPath
+    if ($progress -isnot [string] -or $progress -ne $expectedProgress -or
+        @($progress.PSObject.Properties | Where-Object MemberType -eq NoteProperty).Count -ne 0) {
+        throw 'Progress reader retained metadata or changed the final event.'
+    }
+    $progressJson = @{ phase = 'native-progress'; lastEvent = $progress } | ConvertTo-Json -Depth 12 -Compress
+    $roundTrip = $progressJson | ConvertFrom-Json
+    if ($roundTrip.lastEvent -isnot [string] -or $roundTrip.lastEvent -ne $expectedProgress -or
+        $progressJson -match 'PSPath|PSDrive|PSProvider|PSCredential' -or $progressJson.Length -gt 256) {
+        throw 'Progress JSON crossed the primitive-only boundary.'
+    }
+    if ($null -ne (Read-AcceptanceProgressText $testRoot)) {
+        throw 'Directory progress must remain absent.'
+    }
+    $lockedProgress = [IO.File]::Open($progressPath, 'Open', 'ReadWrite', 'None')
+    $readFailed = $false
+    try {
+        try { Read-AcceptanceProgressText $progressPath | Out-Null }
+        catch { $readFailed = $true }
+    }
+    finally { $lockedProgress.Dispose() }
+    if (-not $readFailed) { throw 'A real progress read failure was hidden.' }
+    Write-Host 'Verified primitive-only progress, missing/empty input and deep JSON round trip.'
+
+    # Keep a real reader open: the old Windows PowerShell Add-Content writer
+    # rejected this even though the reader permitted writes (Win32 sharing violation).
+    $progressReader = [IO.File]::Open($acceptanceLog, 'Open', 'Read', 'ReadWrite')
+    try { Write-AcceptanceEvent 'PASS' 'shared-progress' $null 0 'synthetic-进度' }
+    finally { $progressReader.Dispose() }
+    Write-AcceptanceEvent 'PASS' 'shared-progress' $null 0 'synthetic-second'
+    $sharedLines = @(Get-Content -LiteralPath $acceptanceLog)
+    $sharedBytes = [IO.File]::ReadAllBytes($acceptanceLog)
+    if ($sharedLines.Count -ne 2 -or $sharedLines[0] -notmatch 'state=synthetic-进度$' -or
+        $sharedLines[1] -notmatch 'state=synthetic-second$' -or
+        ($sharedLines -join '').Contains([string][char]0xFEFF) -or
+        $sharedBytes[0] -ne 239 -or $sharedBytes[1] -ne 187 -or $sharedBytes[2] -ne 191) {
+        throw 'Shared append lost a line, Unicode, or the single UTF-8 preamble.'
+    }
+    $exclusiveLog = [IO.File]::Open($acceptanceLog, 'Open', 'ReadWrite', 'None')
+    $writeFailed = $false
+    try {
+        try { Write-AcceptanceEvent 'INFO' 'shared-progress' $null 0 'synthetic-locked' }
+        catch { $writeFailed = $true }
+    }
+    finally { $exclusiveLog.Dispose() }
+    if (-not $writeFailed -or @(Get-Content -LiteralPath $acceptanceLog).Count -ne 2) {
+        throw 'A real log write failure was hidden or appended partial data.'
+    }
+    Write-Host 'Verified live-reader append, Unicode/preamble, retained lines and explicit write failure.'
+
     $defaults = Get-AcceptanceWaits 'Default' @{}
     $slow = Get-AcceptanceWaits 'SlowVm' @{ GuiTimeoutSeconds = 120 }
     if ($defaults.InstallTimeoutSeconds -ne 300 -or $defaults.GuiTimeoutSeconds -ne 30 -or
