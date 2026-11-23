@@ -80,6 +80,20 @@ powershell.exe -NoProfile -STA -File scripts/Test-TauriDesktop.ps1 -Executable <
 
 The switch implies the existing assignment and Crew scenarios and creates its own minimal synthetic employees; it may also reuse `-IncludeForemen` fixtures when that scenario is explicitly requested. Existing bounded Default/SlowVm waits remain. Use `-RequireOffline` only on an actually disconnected authorized VM; host/native screenshots do not prove offline installation. Preserve a consistent pre-upgrade backup: migration eight requires a compatible build, not an in-place downgrade. Customer acceptance and production approval remain separate.
 
+## Recorded employee availability engineering check (#77)
+
+Read [the availability Design-First checklist](design/2026-11-22-issue-77-availability-checklist.md) and [candidate evidence](acceptance/2026-11-22-issue-77-availability.md). In **People → Availability**, select a synthetic employee. Empty dates, including weekends, must show **Not recorded**, never assumed Available. Record an inclusive December 31–January 1 range as Full day / Available. Set December 31 AM to Unavailable; PM must remain Available. Open PM, choose Not recorded, then Cancel and confirm no write. Repeat and Save: PM becomes Not recorded; January 1 stays Available. Switching employee must not show the previous employee's cells.
+
+1. Open change history, check the three revisions and reopen the application. Confirm stable employee IDs, Home Crew, driver state, previous projects/notes and all Draft worker choices. An unchanged save makes no new history event. Clearing records is explicit and retains history.
+2. From a saved December 31 AM Draft, **Choose workers**: the same employee displays **Availability: Unavailable**. This is advisory; explicit existing selection stays checked. Not recorded and Available never approve attendance, leave, weekend work, driver eligibility or dispatch. Publish remains unavailable.
+3. Test reversed/invalid dates, the 366-date per-operation bound, AM-only/PM-only, year boundaries, keyboard focus/Escape, empty roster, inactive labels, search and narrow horizontal calendar scrolling. A failed read must show an error, not a fabricated unknown state. Stale/uncertain writes require reload even after closing the editor. A committed save followed by failed calendar refresh clears stale cells and identifies the saved outcome.
+
+```powershell
+powershell.exe -NoProfile -STA -File scripts/Test-TauriDesktop.ps1 -Executable <candidate-exe> -IncludeAvailability -PreserveSyntheticProfile -DiagnosticLog <local-log>
+```
+
+The opt-in switch includes the existing staffing, assignment and Crew scenarios and creates only synthetic records. Default GUI/exit limits remain 30/12 seconds; `-Profile SlowVm` uses 150/60 seconds. Add `-RequireOffline` only in an actually disconnected authorized environment. All waits are bounded. This checks the packaged desktop lifecycle, not installation, missing-WebView2 setup or human acceptance. For schema nine, retain a consistent schema-eight backup and its compatible build before upgrade; never drop tables or migration records to downgrade a live database. Full leave/working-calendar, eligibility and #71 actual-job calendar/export remain separate.
+
 ## Tauri Crew roster engineering check
 
 In a disposable profile, open Crews and add a synthetic Civil or Tower crew. Search for it, edit its name or status, close the application and check that the edits appear after reopening. An inactive crew remains editable in the roster. The backend tests also cover invalid data, deactivation and reactivation on the same ID, and migration rollback with retry.

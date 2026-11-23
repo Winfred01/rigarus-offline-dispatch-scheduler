@@ -17,6 +17,7 @@ RIGS = "20261119130000_AddRigInventory"
 FOREMEN = "20261122030000_AddForemanHistory"
 ASSIGNMENTS = "20261122040000_AddDraftAssignments"
 STAFFING = "20261122200000_AddAssignmentStaffing"
+AVAILABILITY = "20261123010000_AddEmployeeAvailability"
 
 
 class BackendTests(unittest.TestCase):
@@ -85,6 +86,7 @@ class BackendTests(unittest.TestCase):
                     FOREMEN,
                     ASSIGNMENTS,
                     STAFFING,
+                    AVAILABILITY,
                 ],
             )
             self.assertEqual(
@@ -128,6 +130,7 @@ class BackendTests(unittest.TestCase):
                     FOREMEN,
                     ASSIGNMENTS,
                     STAFFING,
+                    AVAILABILITY,
                 ],
             )
             connection.execute("PRAGMA foreign_keys = ON")
@@ -168,6 +171,7 @@ class BackendTests(unittest.TestCase):
                     FOREMEN,
                     ASSIGNMENTS,
                     STAFFING,
+                    AVAILABILITY,
                 ],
             )
             self.assertEqual(
@@ -217,6 +221,7 @@ class BackendTests(unittest.TestCase):
                     FOREMEN,
                     ASSIGNMENTS,
                     STAFFING,
+                    AVAILABILITY,
                 ],
             )
 

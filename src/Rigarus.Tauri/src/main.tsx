@@ -3,6 +3,7 @@ import { ImportPreview } from "./import-preview";
 import { useEffect, useState, type SubmitEvent } from "react";
 import { createRoot } from "react-dom/client";
 import { EmployeeRoster } from "./employees";
+import { AvailabilityCalendar } from "./availability";
 import { CrewRoster } from "./roster";
 import { RigInventory } from "./rigs";
 import { ProjectMaster } from "./projects";
@@ -336,7 +337,7 @@ function App() {
           {module === "People" && (
             <>
               <nav className="view-tabs section-tabs" aria-label="People views">
-                {["Employees", "Crews"].map((name) => (
+                {["Employees", "Crews", "Availability"].map((name) => (
                   <button
                     key={name}
                     aria-current={panel === name ? "page" : undefined}
@@ -346,7 +347,13 @@ function App() {
                   </button>
                 ))}
               </nav>
-              {panel === "Crews" ? <CrewRoster /> : <EmployeeRoster />}
+              {panel === "Crews" ? (
+                <CrewRoster />
+              ) : panel === "Availability" ? (
+                <AvailabilityCalendar />
+              ) : (
+                <EmployeeRoster />
+              )}
             </>
           )}
           {module === "Items" && <RigInventory />}

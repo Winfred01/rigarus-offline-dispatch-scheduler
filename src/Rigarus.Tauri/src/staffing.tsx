@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { availabilityText, type SlotAvailability } from "./availability-fields";
 import type { DraftAssignment } from "./assignment-fields";
 import type { Crew, Person } from "./workspace-data";
 
@@ -57,6 +58,48 @@ export function StaffingPanel({
   const [history, setHistory] = useState<Change[]>();
   const [historyError, setHistoryError] = useState("");
   const [historyBusy, setHistoryBusy] = useState(false);
+  const [availability, setAvailability] = useState<SlotAvailability>();
+  const [availabilityError, setAvailabilityError] = useState("");
+  const [availabilityRetry, setAvailabilityRetry] = useState(0);
+  const [availabilityLoading, setAvailabilityLoading] = useState(true);
+  useEffect(() => {
+    let active = true;
+    setAvailability(undefined);
+    setAvailabilityError("");
+    setAvailabilityLoading(true);
+    void invoke<SlotAvailability>("read_availability_on_slot", {
+      localDate: row.local_date,
+      slot: row.slot,
+    })
+      .then((data) => {
+        if (active) setAvailability(data);
+      })
+      .catch((failure) => {
+        if (active) setAvailabilityError(String(failure));
+      })
+      .finally(() => {
+        if (active) setAvailabilityLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [row.local_date, row.slot, availabilityRetry]);
+  const availabilityCurrent =
+    availability?.local_date === row.local_date &&
+    availability.slot === row.slot
+      ? availability
+      : undefined;
+  function recordedAvailability(employeeId: number) {
+    return availabilityLoading
+      ? "Loading…"
+      : availabilityError || !availabilityCurrent
+        ? "Could not read"
+        : availabilityText(
+            availabilityCurrent.employees.find(
+              (e) => e.employee_id === employeeId,
+            )?.state ?? "Unknown",
+          );
+  }
   async function save() {
     if (busy || requiresReload) return;
     setBusy(true);
@@ -110,6 +153,24 @@ export function StaffingPanel({
         off, double booking, driver and qualification checks are pending. This
         is not confirmed attendance or dispatch approval.
       </p>
+      <p>
+        Recorded availability for {row.local_date} {row.slot} is advisory only.
+        Available does not approve dispatch; Unavailable or Not recorded never
+        silently removes a Draft worker.
+      </p>
+      <button
+        type="button"
+        className="secondary-button"
+        disabled={busy || availabilityLoading}
+        onClick={() => setAvailabilityRetry((n) => n + 1)}
+      >
+        Reload worker availability
+      </button>
+      {availabilityError && (
+        <p className="error" role="alert">
+          Could not read availability. {availabilityError}
+        </p>
+      )}
       {!editing ? (
         <button
           type="button"
@@ -175,6 +236,7 @@ export function StaffingPanel({
                         " · Borrowed for this visit"}
                       {!person.active && " · Inactive; validation pending"} ·
                       Driver: {person.driver_status}
+                      <span className="worker-availability">{`Availability: ${recordedAvailability(person.id)}`}</span>
                     </small>
                   </span>
                 </label>

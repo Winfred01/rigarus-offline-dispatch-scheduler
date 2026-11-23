@@ -11,6 +11,7 @@
     [switch]$IncludeAssignments,
     [switch]$IncludeMultiDay,
     [switch]$IncludeStaffing,
+    [switch]$IncludeAvailability,
     [switch]$PreserveSyntheticProfile,
     [ValidateSet('Default', 'SlowVm')]
     [string]$Profile = 'Default',
@@ -24,6 +25,7 @@
 $ErrorActionPreference = 'Stop'
 Write-Host ('VerifierSourceSha256=' + (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash)
 if ($IncludeMultiDay) { $IncludeAssignments = $true }
+if ($IncludeAvailability) { $IncludeStaffing = $true }
 if ($IncludeStaffing) { $IncludeAssignments = $true; $IncludeCrews = $true }
 $staffingWorkerAName = if ($IncludeForemen) { 'Synthetic Foreman A' } else { 'Synthetic Staffing A' }
 $staffingWorkerBName = if ($IncludeForemen) { 'Synthetic Foreman B renamed' } else { 'Synthetic Staffing B' }
@@ -708,19 +710,80 @@ function Initialize-SyntheticStaffingPeople($Window) {
     Invoke-Button $Window 'Crews'
     Invoke-Button $Window 'New crew'
     Set-Field $Window 'crew-name' 'Synthetic Tower Home'
-    Select-FieldIndex $Window 'crew-type' 1
+    Select-AssignmentChoice $Window 'crew-type' '' 'Tower'
     Invoke-Button $Window 'Save crew'
     Find-Control $Window $name 'Crew saved.' | Out-Null
     foreach ($person in @('Synthetic Staffing A', 'Synthetic Staffing B')) {
         Invoke-Button $Window 'Employees'
         Invoke-Button $Window 'New employee'
         Set-Field $Window 'employee-name' $person
-        Select-FieldIndex $Window 'employee-home-crew' 2
-        if ($person -eq 'Synthetic Staffing B') { Select-FieldIndex $Window 'employee-active' 1 }
-        Select-FieldIndex $Window 'employee-skill' 1
+        Select-AssignmentChoice $Window 'employee-home-crew' '' 'Synthetic Tower Home (Tower #2)'
+        if ($person -eq 'Synthetic Staffing B') { Select-AssignmentChoice $Window 'employee-active' '' 'Inactive' }
+        Select-AssignmentChoice $Window 'employee-skill' '' '1'
         Invoke-Button $Window 'Save employee'
         Find-Control $Window $name 'Employee saved.' | Out-Null
     }
+}
+
+function Assert-AvailabilityCell($Window, [string]$Date, [string]$Slot, [string]$State) {
+    Wait-For 'availability-cell-state' {
+        $cell = Find-Control $Window $automationId "availability-cell-$Date-$Slot"
+        $cell.Current.Name -ceq "$Date ${Slot}: $State"
+    } | Out-Null
+}
+
+function Open-SyntheticAvailability($Window) {
+    Invoke-Button $Window 'People'
+    Invoke-Button $Window 'Availability'
+    Find-Control $Window $automationId 'availability-date' | Out-Null
+    Set-Field $Window 'availability-date' '2026-12-31'
+    Invoke-Button $Window 'Go to availability date'
+}
+
+function Test-Availability($Window) {
+    Open-SyntheticAvailability $Window
+    Assert-AvailabilityCell $Window '2026-12-31' 'AM' 'Not recorded'
+    Invoke-Button $Window 'Record availability'
+    Set-Field $Window 'availability-start' '2026-12-31'
+    Set-Field $Window 'availability-end' '2027-01-01'
+    Invoke-Button $Window 'Save availability'
+    Assert-AvailabilityCell $Window '2026-12-31' 'AM' 'Available'
+    Assert-AvailabilityCell $Window '2026-12-31' 'PM' 'Available'
+    Assert-AvailabilityCell $Window '2027-01-01' 'AM' 'Available'
+    Assert-AvailabilityCell $Window '2027-01-01' 'PM' 'Available'
+    Invoke-Button $Window '2026-12-31 AM: Available'
+    Select-AssignmentChoice $Window 'availability-state' '' 'Unavailable'
+    Invoke-Button $Window 'Save availability'
+    Assert-AvailabilityCell $Window '2026-12-31' 'AM' 'Unavailable'
+    Invoke-Button $Window '2026-12-31 PM: Available'
+    Select-AssignmentChoice $Window 'availability-state' '' 'Not recorded'
+    $before = Get-SyntheticAssignmentDigest
+    Invoke-Button $Window 'Cancel availability changes'
+    if ((Get-SyntheticAssignmentDigest) -cne $before) { throw 'Availability Cancel modified synthetic SQLite/WAL.' }
+    Assert-AvailabilityCell $Window '2026-12-31' 'PM' 'Available'
+    Invoke-Button $Window '2026-12-31 PM: Available'
+    Select-AssignmentChoice $Window 'availability-state' '' 'Not recorded'
+    Invoke-Button $Window 'Save availability'
+    Assert-AvailabilityCell $Window '2026-12-31' 'PM' 'Not recorded'
+    Assert-AvailabilityCell $Window '2026-12-31' 'AM' 'Unavailable'
+    Select-AssignmentChoice $Window 'availability-employee' '' "$staffingWorkerBName (#2)"
+    Assert-AvailabilityCell $Window '2026-12-31' 'AM' 'Not recorded'
+    Assert-AvailabilityCell $Window '2027-01-01' 'AM' 'Not recorded'
+    Select-AssignmentChoice $Window 'availability-employee' '' "$staffingWorkerAName (#1)"
+    Assert-AvailabilityCell $Window '2026-12-31' 'AM' 'Unavailable'
+    Invoke-Button $Window 'Schedule'
+    Invoke-Button $Window 'Job Schedule'
+    Show-SyntheticAssignmentDate $Window '2026-12-31'
+    Write-AcceptanceEvent 'PASS' 'availability-lifecycle' $timer 0 'fullDay=inclusive crossYear=retained amPm=independent clear=historyRetained cancel=dbAndWalUnchanged employeeSwitch=isolated'
+}
+
+function Test-AvailabilityReopened($Window) {
+    Open-SyntheticAvailability $Window
+    Assert-AvailabilityCell $Window '2026-12-31' 'AM' 'Unavailable'
+    Assert-AvailabilityCell $Window '2026-12-31' 'PM' 'Not recorded'
+    Assert-AvailabilityCell $Window '2027-01-01' 'AM' 'Available'
+    Assert-AvailabilityCell $Window '2027-01-01' 'PM' 'Available'
+    Write-AcceptanceEvent 'PASS' 'availability-reopen' $timer 0 'threeStates=preserved explicitRange=preserved existingHomeCrewAndDraft=unchanged'
 }
 
 function Set-SyntheticWorker($Window, [string]$Label, [bool]$Selected) {
@@ -736,6 +799,7 @@ function Test-Staffing($Window) {
     Open-WeekAssignment $Window 4 '2026-12-31 AM'
     Invoke-Button $Window 'Choose workers'
     Set-SyntheticWorker $Window "Select worker 1, $staffingWorkerAName" $true
+    if ($IncludeAvailability) { Assert-SyntheticTextContains $Window 'Availability: Unavailable' }
     Set-SyntheticWorker $Window "Select worker 2, $staffingWorkerBName" $true
     $before = Get-SyntheticAssignmentDigest
     Invoke-Button $Window 'Cancel worker changes'
@@ -1197,6 +1261,7 @@ try {
     if ($IncludeStaffing -and -not $IncludeForemen) { Initialize-SyntheticStaffingPeople $window }
     if ($IncludeAssignments) { Test-Assignments $window }
     if ($IncludeMultiDay) { Test-MultiDayAssignments $window }
+    if ($IncludeAvailability) { Test-Availability $window }
     if ($IncludeStaffing) { Test-Staffing $window }
     Close-Dashboard $process
     $process.Dispose()
@@ -1258,6 +1323,7 @@ try {
     if ($IncludeAssignments) { Test-AssignmentsReopened $window }
     if ($IncludeMultiDay) { Test-MultiDayReopened $window }
     if ($IncludeStaffing) { Test-StaffingReopened $window }
+    if ($IncludeAvailability) { Test-AvailabilityReopened $window }
     Close-Dashboard $process
     $process.Dispose()
     $process = $null

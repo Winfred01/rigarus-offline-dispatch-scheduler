@@ -341,7 +341,7 @@ class SidecarTests(unittest.TestCase):
                 connection.execute(
                     "SELECT count(*) FROM __EFMigrationsHistory"
                 ).fetchone(),
-                (8,),
+                (9,),
             )
             self.assertEqual(
                 connection.execute("PRAGMA integrity_check").fetchone(), ("ok",)
@@ -429,6 +429,60 @@ class SidecarTests(unittest.TestCase):
             ]["members"][0]["employee_id"],
             person["id"],
         )
+        self.assertEqual(request("GET", "/employees"), [person])
+        process.stdin.close()
+        self.assertEqual(process.wait(timeout=10), 0)
+
+    def test_availability_is_authenticated_and_survives_pipe_restart(self):
+        token = secrets.token_hex(32)
+        process = self.launch(token)
+        port = self.read_port(process)
+
+        def request(method, route, payload=None):
+            status, value = self.request(port, method, route, token, payload=payload)
+            self.assertIn(status, (200, 201), value)
+            return value
+
+        crew = request(
+            "POST", "/crews", {"name": "Synthetic availability Crew", "type": "Civil"}
+        )
+        person = request(
+            "POST",
+            "/employees",
+            {
+                "name": "Synthetic availability employee",
+                "home_crew_id": crew["id"],
+                "skill_level": 1,
+                "foreman_eligible": False,
+            },
+        )
+        route = f"/employees/{person['id']}/availability"
+        payload = {
+            "start_date": "2026-12-31",
+            "end_date": "2027-01-01",
+            "slot": "FullDay",
+            "state": "Unavailable",
+            "expected_revision": 0,
+        }
+        self.assertEqual(
+            self.request(port, "PUT", route, "incorrect", payload=payload)[0], 401
+        )
+        saved = request("PUT", route, payload)
+        self.assertEqual(len(saved["entries"]), 4)
+        process.stdin.close()
+        self.assertEqual(process.wait(timeout=10), 0)
+        process = self.launch(token)
+        port = self.read_port(process)
+        self.assertEqual(
+            request("GET", route + "?start_date=2026-12-31&end_date=2027-01-01"), saved
+        )
+        self.assertEqual(
+            request("GET", "/employee-availability?local_date=2026-12-31&slot=AM")[
+                "employees"
+            ],
+            [{"employee_id": person["id"], "state": "Unavailable"}],
+        )
+        self.assertEqual(request("GET", route + "/history")[0]["revision"], 1)
         self.assertEqual(request("GET", "/employees"), [person])
         process.stdin.close()
         self.assertEqual(process.wait(timeout=10), 0)
