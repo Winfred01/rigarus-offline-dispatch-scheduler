@@ -38,7 +38,19 @@ function Write-AcceptanceEvent([string]$Status, [string]$Phase, $Timer, [int]$Li
     $limit = if ($LimitSeconds) { " limitSeconds=$LimitSeconds" } else { '' }
     $line = "status=$Status phase=$Phase elapsedMs=$elapsed$limit state=$State"
     Write-Host $line
-    if ($acceptanceLog) { Add-Content -LiteralPath $acceptanceLog -Value $line -Encoding UTF8 }
+    if ($acceptanceLog) {
+        # Windows PowerShell Add-Content can reject an existing supervisor reader.
+        # One verifier appends while its supervisor reads; real I/O failures still throw.
+        $stream = [IO.File]::Open($acceptanceLog, 'Append', 'Write', 'ReadWrite')
+        $writer = $null
+        try {
+            $writer = [IO.StreamWriter]::new($stream, [Text.UTF8Encoding]::new($true))
+            $writer.WriteLine($line)
+        }
+        finally {
+            if ($writer) { $writer.Dispose() } else { $stream.Dispose() }
+        }
+    }
 }
 
 function Stop-Acceptance([string]$Status, [string]$Phase, $Timer, [int]$LimitSeconds, [string]$State) {

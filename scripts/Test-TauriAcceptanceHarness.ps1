@@ -63,6 +63,32 @@ try {
     if (-not $readFailed) { throw 'A real progress read failure was hidden.' }
     Write-Host 'Verified primitive-only progress, missing/empty input and deep JSON round trip.'
 
+    # Keep a real reader open: the old Windows PowerShell Add-Content writer
+    # rejected this even though the reader permitted writes (Win32 sharing violation).
+    $progressReader = [IO.File]::Open($acceptanceLog, 'Open', 'Read', 'ReadWrite')
+    try { Write-AcceptanceEvent 'PASS' 'shared-progress' $null 0 'synthetic-进度' }
+    finally { $progressReader.Dispose() }
+    Write-AcceptanceEvent 'PASS' 'shared-progress' $null 0 'synthetic-second'
+    $sharedLines = @(Get-Content -LiteralPath $acceptanceLog)
+    $sharedBytes = [IO.File]::ReadAllBytes($acceptanceLog)
+    if ($sharedLines.Count -ne 2 -or $sharedLines[0] -notmatch 'state=synthetic-进度$' -or
+        $sharedLines[1] -notmatch 'state=synthetic-second$' -or
+        ($sharedLines -join '').Contains([string][char]0xFEFF) -or
+        $sharedBytes[0] -ne 239 -or $sharedBytes[1] -ne 187 -or $sharedBytes[2] -ne 191) {
+        throw 'Shared append lost a line, Unicode, or the single UTF-8 preamble.'
+    }
+    $exclusiveLog = [IO.File]::Open($acceptanceLog, 'Open', 'ReadWrite', 'None')
+    $writeFailed = $false
+    try {
+        try { Write-AcceptanceEvent 'INFO' 'shared-progress' $null 0 'synthetic-locked' }
+        catch { $writeFailed = $true }
+    }
+    finally { $exclusiveLog.Dispose() }
+    if (-not $writeFailed -or @(Get-Content -LiteralPath $acceptanceLog).Count -ne 2) {
+        throw 'A real log write failure was hidden or appended partial data.'
+    }
+    Write-Host 'Verified live-reader append, Unicode/preamble, retained lines and explicit write failure.'
+
     $defaults = Get-AcceptanceWaits 'Default' @{}
     $slow = Get-AcceptanceWaits 'SlowVm' @{ GuiTimeoutSeconds = 120 }
     if ($defaults.InstallTimeoutSeconds -ne 300 -or $defaults.GuiTimeoutSeconds -ne 30 -or
