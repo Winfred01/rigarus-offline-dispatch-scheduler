@@ -10,6 +10,7 @@
     [switch]$IncludeForemen,
     [switch]$IncludeAssignments,
     [switch]$IncludeMultiDay,
+    [switch]$IncludeStaffing,
     [switch]$PreserveSyntheticProfile,
     [ValidateSet('Default', 'SlowVm')]
     [string]$Profile = 'Default',
@@ -23,6 +24,9 @@
 $ErrorActionPreference = 'Stop'
 Write-Host ('VerifierSourceSha256=' + (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash)
 if ($IncludeMultiDay) { $IncludeAssignments = $true }
+if ($IncludeStaffing) { $IncludeAssignments = $true; $IncludeCrews = $true }
+$staffingWorkerAName = if ($IncludeForemen) { 'Synthetic Foreman A' } else { 'Synthetic Staffing A' }
+$staffingWorkerBName = if ($IncludeForemen) { 'Synthetic Foreman B renamed' } else { 'Synthetic Staffing B' }
 . (Join-Path $PSScriptRoot 'TauriAcceptanceSupport.ps1')
 $waits = Get-AcceptanceWaits $Profile $PSBoundParameters
 $acceptanceLog = Get-AcceptanceLogPath $DiagnosticLog
@@ -700,6 +704,78 @@ function Test-AssignmentsReopened($Window) {
     Write-AcceptanceEvent 'PASS' 'assignment-reopen' $timer 0 'threeDraftVisits=preserved notes=preserved workItemIds=preserved crossYearDates=preserved cancelledCard=absent'
 }
 
+function Initialize-SyntheticStaffingPeople($Window) {
+    Invoke-Button $Window 'Crews'
+    Invoke-Button $Window 'New crew'
+    Set-Field $Window 'crew-name' 'Synthetic Tower Home'
+    Select-FieldIndex $Window 'crew-type' 1
+    Invoke-Button $Window 'Save crew'
+    Find-Control $Window $name 'Crew saved.' | Out-Null
+    foreach ($person in @('Synthetic Staffing A', 'Synthetic Staffing B')) {
+        Invoke-Button $Window 'Employees'
+        Invoke-Button $Window 'New employee'
+        Set-Field $Window 'employee-name' $person
+        Select-FieldIndex $Window 'employee-home-crew' 2
+        if ($person -eq 'Synthetic Staffing B') { Select-FieldIndex $Window 'employee-active' 1 }
+        Select-FieldIndex $Window 'employee-skill' 1
+        Invoke-Button $Window 'Save employee'
+        Find-Control $Window $name 'Employee saved.' | Out-Null
+    }
+}
+
+function Set-SyntheticWorker($Window, [string]$Label, [bool]$Selected) {
+    $control = Find-Control $Window $name $Label
+    $toggle = $control.GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern)
+    $wanted = if ($Selected) { [Windows.Automation.ToggleState]::On } else { [Windows.Automation.ToggleState]::Off }
+    if ($toggle.Current.ToggleState -ne $wanted) { $toggle.Toggle() }
+    Wait-For 'worker-checkbox-state' { $toggle.Current.ToggleState -eq $wanted } | Out-Null
+}
+
+function Test-Staffing($Window) {
+    Show-SyntheticAssignmentDate $Window '2026-12-31'
+    Open-WeekAssignment $Window 4 '2026-12-31 AM'
+    Invoke-Button $Window 'Choose workers'
+    Set-SyntheticWorker $Window "Select worker 1, $staffingWorkerAName" $true
+    Set-SyntheticWorker $Window "Select worker 2, $staffingWorkerBName" $true
+    $before = Get-SyntheticAssignmentDigest
+    Invoke-Button $Window 'Cancel worker changes'
+    if ((Get-SyntheticAssignmentDigest) -cne $before) { throw 'Worker form Cancel modified the synthetic SQLite database/WAL.' }
+    Invoke-Button $Window 'Choose workers'
+    Set-SyntheticWorker $Window "Select worker 1, $staffingWorkerAName" $true
+    Invoke-Button $Window 'Save workers to Draft'
+    Find-Control $Window $name 'Choose workers' -Button | Out-Null
+    Assert-SyntheticTextContains $Window "$staffingWorkerAName (borrowed)"
+    Close-AssignmentDetails $Window 4
+    Invoke-Button $Window 'Crew Board'
+    Open-WeekAssignment $Window 4 '2026-12-31 AM'
+    Assert-SyntheticTextContains $Window "$staffingWorkerAName (borrowed)"
+    Close-AssignmentDetails $Window 4
+    Open-WeekAssignment $Window 2 '2026-12-31 PM'
+    Invoke-Button $Window 'Choose workers'
+    $worker = Find-Control $Window $name "Select worker 1, $staffingWorkerAName"
+    if ($worker.GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern).Current.ToggleState -ne [Windows.Automation.ToggleState]::Off) { throw 'AM staffing leaked into PM.' }
+    Invoke-Button $Window 'Cancel worker changes'
+    Close-AssignmentDetails $Window 2
+    Write-AcceptanceEvent 'PASS' 'staffing-lifecycle' $timer 0 'explicitWorker=saved borrowed=labelled homeRoster=separate amPm=independent cancel=dbAndWalUnchanged'
+}
+
+function Test-StaffingReopened($Window) {
+    Show-SyntheticAssignmentDate $Window '2026-12-31'
+    Open-WeekAssignment $Window 4 '2026-12-31 AM'
+    Assert-SyntheticTextContains $Window "$staffingWorkerAName (borrowed)"
+    Invoke-Button $Window 'Choose workers'
+    foreach ($check in @(@("Select worker 1, $staffingWorkerAName", [Windows.Automation.ToggleState]::On), @("Select worker 2, $staffingWorkerBName", [Windows.Automation.ToggleState]::Off))) {
+        $worker = Find-Control $Window $name $check[0]
+        if ($worker.GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern).Current.ToggleState -ne $check[1]) { throw 'Explicit worker IDs were not retained after restart.' }
+    }
+    Invoke-Button $Window 'Cancel worker changes'
+    Close-AssignmentDetails $Window 4
+    Invoke-Button $Window 'Employees'
+    Assert-TableColumn $Window 'Employee records' 1 @('Synthetic Tower Home (Tower #2)', 'Synthetic Tower Home (Tower #2)')
+    Assert-TableColumn $Window 'Employee records' 4 @('Unverified', 'Unverified')
+    Write-AcceptanceEvent 'PASS' 'staffing-reopen' $timer 0 'explicitWorkerIds=retained homeCrew=unchanged driver=Unverified'
+}
+
 function Set-MultiDayNotes($Window, [string]$Value) {
     $control = Find-Control $Window $automationId 'assignment-notes'
     $pattern = $control.GetCurrentPattern($valuePattern)
@@ -1118,8 +1194,10 @@ try {
     if ($IncludeBulkProjects) { Test-BulkProjects $window }
     if ($IncludeCrews -or $IncludeForemen) { Test-Crews $window }
     if ($IncludeForemen) { Test-Foremen $window }
+    if ($IncludeStaffing -and -not $IncludeForemen) { Initialize-SyntheticStaffingPeople $window }
     if ($IncludeAssignments) { Test-Assignments $window }
     if ($IncludeMultiDay) { Test-MultiDayAssignments $window }
+    if ($IncludeStaffing) { Test-Staffing $window }
     Close-Dashboard $process
     $process.Dispose()
     $process = $null
@@ -1179,6 +1257,7 @@ try {
     }
     if ($IncludeAssignments) { Test-AssignmentsReopened $window }
     if ($IncludeMultiDay) { Test-MultiDayReopened $window }
+    if ($IncludeStaffing) { Test-StaffingReopened $window }
     Close-Dashboard $process
     $process.Dispose()
     $process = $null

@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+from migration_fixture import remove_staffing_schema
 from rigarus_backend.api import create_app
 from rigarus_backend.assignment_store import AssignmentStore
 from rigarus_backend.assignments import AssignmentConflict, AssignmentDraft, local_date
@@ -361,6 +362,7 @@ class AssignmentTests(unittest.TestCase):
         ).raise_for_status()
         with closing(sqlite3.connect(self.database)) as connection:
             with connection:
+                remove_staffing_schema(connection)
                 connection.execute("DROP TABLE DraftAssignments")
                 connection.execute(
                     "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?",
@@ -408,7 +410,7 @@ class AssignmentTests(unittest.TestCase):
                 connection.execute(
                     "SELECT count(*) FROM __EFMigrationsHistory"
                 ).fetchone(),
-                (7,),
+                (8,),
             )
             self.assertEqual(
                 connection.execute("PRAGMA integrity_check").fetchone(), ("ok",)

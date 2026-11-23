@@ -14,6 +14,7 @@ from .assignments import (
     HalfDay,
 )
 from .roster_api import RosterId
+from .staffing_store import StaffingStore
 
 SafeId = Annotated[int, Field(strict=True, ge=1, le=9_007_199_254_740_991)]
 
@@ -36,9 +37,14 @@ class AssignmentCancel(BaseModel):
     expected_revision: SafeId
 
 
+class StaffingInput(AssignmentCancel):
+    employee_ids: list[SafeId]
+
+
 def assignment_router(database_path: Path) -> APIRouter:
     router = APIRouter(prefix="/draft-assignments")
     store = AssignmentStore(database_path)
+    staffing = StaffingStore(database_path)
 
     def execute(operation: Callable):
         try:
@@ -61,9 +67,12 @@ def assignment_router(database_path: Path) -> APIRouter:
         end_date: str | None = None,
         crew_id: RosterId | None = None,
         include_cancelled: bool = False,
+        employee_id: RosterId | None = None,
     ) -> list[DraftAssignment]:
         return execute(
-            lambda: store.list(start_date, end_date, crew_id, include_cancelled)
+            lambda: store.list(
+                start_date, end_date, crew_id, include_cancelled, employee_id
+            )
         )
 
     @router.get("/{assignment_id}")
@@ -87,5 +96,19 @@ def assignment_router(database_path: Path) -> APIRouter:
     @router.post("/{assignment_id}/cancel")
     def cancel(assignment_id: RosterId, request: AssignmentCancel) -> DraftAssignment:
         return execute(lambda: store.cancel(assignment_id, request.expected_revision))
+
+    @router.put("/{assignment_id}/staffing")
+    def save_staffing(
+        assignment_id: RosterId, request: StaffingInput
+    ) -> DraftAssignment:
+        return execute(
+            lambda: staffing.save(
+                assignment_id, request.employee_ids, request.expected_revision
+            )
+        )
+
+    @router.get("/{assignment_id}/staffing-history")
+    def staffing_history(assignment_id: RosterId):
+        return execute(lambda: staffing.history(assignment_id))
 
     return router

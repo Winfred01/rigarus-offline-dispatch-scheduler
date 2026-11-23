@@ -24,7 +24,13 @@ The desktop opens Schedule / Job Schedule without an account. The dark module ra
 
 `workspace-data.ts` bounds concurrent Project-detail and Foreman reads. Job Schedule, Crew Board, the unscheduled queue and Overview derive from the same active Draft Assignment rows. The job grid shows projects with visits (retained across empty weeks); unscheduled work remains in its queue. Calendar arithmetic uses an integer UTC day counter without converting a local work date into an instant. One table owns vertical/horizontal scrolling, sticky dates and roster. Selection scrolls within that table. Assign/edit/cancel reuse #14 commands and revisions; uncertain writes require reload and failed refresh after commit clears stale board data.
 
-Home Crew members/current Foreman are master data. Cross-Home-Crew appointments remain labelled; default Rig is reference data, not actual dated equipment. Dated membership/leave is not fabricated: show Actual staffing not assigned and Time off not configured. Publish review and formal reports explain missing checks/snapshots and have no publishing path. No SQLite migration, domain-rule relaxation or dependency change is introduced.
+Home Crew members/current Foreman are master data. Cross-Home-Crew appointments remain labelled; default Rig is reference data, not actual dated equipment. Dated membership is explicit only: show Actual staffing not assigned until workers are saved for that visit. Leave is not fabricated: show Time off not configured. Publish review and formal reports explain missing checks/snapshots and have no publishing path. No SQLite migration, domain-rule relaxation or dependency change is introduced.
+
+## Explicit Draft workers (#22)
+
+The first persisted-membership slice separates pure staffing types/ID validation (`staffing.py`), SQLite snapshot helpers (`staffing_persistence.py`), transactional writes/history (`staffing_store.py`) and the existing assignment HTTP router. Assignment reads include explicit staffing under the same read transaction; `employee_id` range filtering follows only the latest configured selection. Saves share the visit revision and never update Home Crew. Date/slot/Crew/WorkItem edits require staffing reconfirmation; note edits retain it. Audit/context and selection commit together.
+
+Rust adds authenticated `save_staffing` and `read_staffing_history` commands; the existing assignment query bridge allows the employee filter. React's detail dialog embeds an explicit Draft workers editor; both weekly projections consume the same saved workers, including individual multi-day source buttons. History preserves saved names/Home Crew snapshots while current labels reflect live master data. No inferred attendance, leave, qualification, actual Rig, publish or export capability is added. Uncertain writes require reload; post-commit refresh clears stale data and reports failure distinctly.
 
 ## WPF baseline
 

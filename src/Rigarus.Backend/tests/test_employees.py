@@ -6,6 +6,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from migration_fixture import remove_staffing_schema
 from rigarus_backend.api import create_app
 from rigarus_backend.storage import EMPLOYEE_ROSTER, RIG_INVENTORY, initialize_database
 
@@ -99,6 +100,7 @@ class EmployeeRosterTests(unittest.TestCase):
         initialize_database(self.database)
         with closing(sqlite3.connect(self.database)) as connection:
             with connection:
+                remove_staffing_schema(connection)
                 connection.execute("DROP TABLE DraftAssignments")
                 connection.execute(
                     "DELETE FROM __EFMigrationsHistory WHERE MigrationId LIKE '%AddDraftAssignments'"

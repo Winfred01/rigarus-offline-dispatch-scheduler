@@ -60,6 +60,16 @@ async fn list_assignments(app: tauri::AppHandle, query: Value) -> Result<Value, 
 }
 
 #[tauri::command]
+async fn save_staffing(app: tauri::AppHandle, id: i64, staffing: Value) -> Result<Value, String> {
+    with_sidecar(app, move |service| service.save_staffing(id, &staffing)).await
+}
+
+#[tauri::command]
+async fn read_staffing_history(app: tauri::AppHandle, id: i64) -> Result<Value, String> {
+    with_sidecar(app, move |service| service.read_staffing_history(id)).await
+}
+
+#[tauri::command]
 async fn read_assignment(app: tauri::AppHandle, id: i64) -> Result<Value, String> {
     with_sidecar(app, move |service| service.read_assignment(id)).await
 }
@@ -197,6 +207,8 @@ fn main() {
             save_demo_note,
             search_projects,
             list_assignments,
+            save_staffing,
+            read_staffing_history,
             read_assignment,
             save_assignment,
             cancel_assignment,

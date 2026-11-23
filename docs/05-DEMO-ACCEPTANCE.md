@@ -65,6 +65,21 @@ powershell.exe -NoProfile -STA -File scripts/Test-TauriDesktop.ps1 -Executable <
 
 Add `-Profile SlowVm -RequireOffline -DiagnosticLog <local-log>` only in an actually disconnected authorized VM. The flag is opt-in; existing wait limits remain bounded. Record the candidate hash, OS, connectivity, native outcomes and conditions. Browser testing through a test-only IPC proxy does not replace the native Rust or offline run. #16's weekly board is now merged; the updated verifier follows its actual cards/modals, shared Job Schedule/Crew Board, empty week and native scroll area. #22's actual dated staffing/time off remain separate. See the historical [#14 Design-First record](design/2026-11-21-issue-14-manual-draft-checklist.md) and current [#35 native/offline verification](acceptance/2026-11-22-issue-35-weekly-offline.md).
 
+## Explicit Draft workers engineering check (#22)
+
+Read [the current design checklist](design/2026-11-22-issue-22-draft-workers-checklist.md) and [candidate-specific evidence](acceptance/2026-11-22-issue-22-draft-workers.md). Open a saved Draft card and **Choose workers**. Search by employee/name/Home Crew, explicitly select one employee and Save workers to Draft. Both boards and the individual AM/PM buttons in a multi-day strip must show that same choice. Home roster does not imply attendance. Borrowing labels the other Home Crew and never changes master data.
+
+1. Create two synthetic workers in one Home Crew, the second inactive. Select only the first on an AM visit in another Crew. Open PM: no employee is automatically selected. Cancel checkbox changes and compare SQLite/WAL to confirm no write. Reopen the app and compare employee IDs, Home Crew, Unverified driver status and saved history.
+2. Save an empty selection and check the explicit no-workers / Validation pending state. Select the inactive worker and check its warning; this is not dispatch eligibility. Correct selection, search with no match and confirm hidden selections are retained. Check keyboard focus, Escape, failure/reload, long names and narrow layout.
+3. Read Staffing change history. Note-only edits keep selection. Change date/slot/Crew/WorkItem and verify current staffing requires reconfirmation while old snapshots remain. Concurrent/stale or uncertain writes require reload, including after closing/reopening the worker editor. A successful save followed by failed refresh reports the committed outcome and clears stale rows.
+4. Query selected employee and local date range through the existing assignment read: only explicit latest configured associations appear. Cancelled visits are excluded by default. Empty query returns no records; Home Crew tasks must not be fabricated. All rows remain Draft / Validation pending, Publish unavailable. Full #15/#23 and leave workflow are separate.
+
+```powershell
+powershell.exe -NoProfile -STA -File scripts/Test-TauriDesktop.ps1 -Executable <candidate-exe> -IncludeStaffing -PreserveSyntheticProfile -DiagnosticLog <local-log>
+```
+
+The switch implies the existing assignment and Crew scenarios and creates its own minimal synthetic employees; it may also reuse `-IncludeForemen` fixtures when that scenario is explicitly requested. Existing bounded Default/SlowVm waits remain. Use `-RequireOffline` only on an actually disconnected authorized VM; host/native screenshots do not prove offline installation. Preserve a consistent pre-upgrade backup: migration eight requires a compatible build, not an in-place downgrade. Customer acceptance and production approval remain separate.
+
 ## Tauri Crew roster engineering check
 
 In a disposable profile, open Crews and add a synthetic Civil or Tower crew. Search for it, edit its name or status, close the application and check that the edits appear after reopening. An inactive crew remains editable in the roster. The backend tests also cover invalid data, deactivation and reactivation on the same ID, and migration rollback with retry.
