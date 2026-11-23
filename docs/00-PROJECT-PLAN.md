@@ -10,6 +10,22 @@ Option C gives the operator explainable proposals to preview and approve. Preser
 
 ## Milestones
 
+Milestone numbers describe delivery and customer-demo gates, not mandatory coding order. The owner confirmed this dependency-driven sequence on November 23, 2026:
+
+| Priority | Issues | Next required outcome |
+| --- | --- | --- |
+| 1 | #26 | Persist and edit Crew/Project work calendars; all WorkItems inherit their Project; connect date/AM-PM assessments to Draft planning |
+| 2 | #15, #23, #25 | Actual personnel conflicts, approved drivers, staffing, skills and verified qualifications |
+| 3 | #24, #27 | Actual Rig occupancy/unavailability and consent from actual weekend workers |
+| 4 | #18, #28 | Pure explainable candidates and earliest-start/earliest-finish comparison, using independently validated constraints |
+| 5 | #19, #20, #29 | Delay propagation, locks, before/after options and explicit transaction Apply with revalidation |
+| 6 | #17, #71, #32 | Validated immutable Published schedules and consistent personal/company PDF/XLSX output |
+| 7 | #30–#40 | Complete remaining historical migration, performance, backup/restore, UAT and delivery gates |
+
+Cross-cutting privacy, migration recovery, offline reliability and tests remain required for every affected slice; step 7 consolidates their final acceptance rather than deferring safeguards. #32 also belongs to the final range and is implemented at its earlier export dependency. Existing Issue-specific dependencies still apply: for example Rig collision validation needs actual dated Rig records from #24. The calendar foundation may precede the complete #18 engine; calendar persistence does not depend on first delivering automatic proposals. Do not infer that a milestone or Issue is complete from a scaffold, green CI or its position in this sequence.
+
+PR #83 began with a pure calendar calculation foundation. Full #26 additionally requires storage, editing, inherited Project dates, Draft feedback and matching engineering evidence. Employee availability is one input only; it never replaces personnel, driver, qualification, actual Rig or weekend-consent checks. Calendar-matched Drafts remain unpublishable until all independent hard gates and operator approval exist.
+
 | Milestone | Outcome |
 | --- | --- |
 | M0 | Private repository, native WPF shell, SQLite migration and synthetic fixture, Windows CI and a restart persistence check |

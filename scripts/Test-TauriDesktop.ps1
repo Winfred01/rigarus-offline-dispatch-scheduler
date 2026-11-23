@@ -13,6 +13,7 @@
     [switch]$IncludeStaffing,
     [switch]$IncludeAvailability,
     [switch]$IncludeEmployeeWeek,
+    [switch]$IncludeWorkingCalendars,
     [switch]$ReproduceCrewChoice,
     [switch]$PreserveSyntheticProfile,
     [ValidateSet('Default', 'SlowVm')]
@@ -28,6 +29,7 @@
 $ErrorActionPreference = 'Stop'
 Write-Host ('VerifierSourceSha256=' + (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash)
 if ($IncludeMultiDay) { $IncludeAssignments = $true }
+if ($IncludeWorkingCalendars) { $IncludeAssignments = $true }
 if ($IncludeEmployeeWeek) { $IncludeAvailability = $true }
 if ($IncludeAvailability) { $IncludeStaffing = $true }
 if ($IncludeStaffing) { $IncludeAssignments = $true; $IncludeCrews = $true }
@@ -812,6 +814,97 @@ function Test-AssignmentsReopened($Window) {
     Write-AcceptanceEvent 'PASS' 'assignment-reopen' $timer 0 'threeDraftVisits=preserved notes=preserved workItemIds=preserved crossYearDates=preserved cancelledCard=absent'
 }
 
+function Open-SyntheticWorkingCalendar($Window, [string]$Scope, [string]$Owner) {
+    Invoke-Button $Window 'Schedule'
+    Invoke-Button $Window 'Working calendars'
+    Select-AssignmentChoice $Window 'working-scope' '' $Scope
+    if ($Scope -eq 'Project') {
+        # Large native select popups expose disabled DOM proxies rather than
+        # selectable option providers under this WebView2 UIA tree. Exercise the
+        # normal keyboard path only after verifying our owned foreground/focus.
+        $control = Find-Control $Window $automationId 'working-owner'
+        $control.SetFocus()
+        Get-UiaElementSnapshot $Window | Out-Null
+        Wait-For 'working-owner-keyboard-focus' {
+            $focused = [Windows.Automation.AutomationElement]::FocusedElement
+            $control.Current.IsEnabled -and $focused.Current.AutomationId -eq 'working-owner' -and
+                [RigarusUiaWindowState]::GetForegroundWindow() -eq $script:uiaOwnedHandle
+        } | Out-Null
+        Add-Type -AssemblyName System.Windows.Forms
+        [Windows.Forms.SendKeys]::SendWait('SYN-14-UI{ENTER}')
+        Wait-For 'working-project-choice-verified' {
+            $live = Find-Control $Window $automationId 'working-owner'
+            $observed = [string]$live.GetCurrentPattern($valuePattern).Current.Value
+            Test-UiaChoiceLabel $observed $Owner
+        } | Out-Null
+    }
+    else { Select-AssignmentChoice $Window 'working-owner' '' $Owner }
+    Set-Field $Window 'working-date' '2026-12-31'
+    Invoke-Button $Window 'Go to date'
+}
+
+function Test-WorkingCalendars($Window) {
+    $projectLabel = 'SYN-14-UI ' + [char]0x00B7 + ' Synthetic scheduling site'
+    Open-SyntheticWorkingCalendar $Window 'Project' $projectLabel
+    Find-Control $Window $name '2026-12-31 AM: Not recorded' -Button | Out-Null
+    Invoke-Button $Window 'Record working dates'
+    Set-Field $Window 'working-start' '2026-12-31'
+    Set-Field $Window 'working-end' '2027-01-01'
+    Invoke-Button $Window 'Save working dates'
+    Find-Control $Window $name '2027-01-01 PM: Can work' -Button | Out-Null
+    Invoke-Button $Window '2026-12-31 AM: Can work'
+    Select-AssignmentChoice $Window 'working-state' '' 'Cannot work'
+    Invoke-Button $Window 'Save working dates'
+    Find-Control $Window $name '2026-12-31 AM: Cannot work' -Button | Out-Null
+    Find-Control $Window $name '2026-12-31 PM: Can work' -Button | Out-Null
+    Invoke-Button $Window '2026-12-31 PM: Can work'
+    Select-AssignmentChoice $Window 'working-state' '' 'Not recorded (clear)'
+    $before = Get-SyntheticAssignmentDigest
+    Invoke-Button $Window 'Cancel'
+    $after = Get-SyntheticAssignmentDigest
+    if ($before -ne $after) { throw 'Working-calendar Cancel changed SQLite/WAL.' }
+    Invoke-Button $Window '2026-12-31 PM: Can work'
+    Select-AssignmentChoice $Window 'working-state' '' 'Not recorded (clear)'
+    Invoke-Button $Window 'Save working dates'
+    Find-Control $Window $name '2026-12-31 PM: Not recorded' -Button | Out-Null
+    Invoke-Button $Window 'Calendar change history'
+    Assert-SyntheticTextContains $Window 'Revision 3:'
+    Invoke-Button $Window 'Close dialog'
+    Open-SyntheticWorkingCalendar $Window 'Crew' 'Assignment Test Crew'
+    Invoke-Button $Window 'Record working dates'
+    Set-Field $Window 'working-start' '2026-12-31'
+    Set-Field $Window 'working-end' '2027-01-01'
+    Invoke-Button $Window 'Save working dates'
+    Find-Control $Window $name '2027-01-01 PM: Can work' -Button | Out-Null
+    Invoke-Button $Window 'Job Schedule'
+    Show-SyntheticAssignmentDate $Window '2026-12-31'
+    Open-WeekAssignment $Window 4 '2026-12-31 AM'
+    Assert-SyntheticTextContains $Window 'Calendar conflict:'
+    Close-AssignmentDetails $Window 4
+    Open-WeekAssignment $Window 2 '2026-12-31 PM'
+    Assert-SyntheticTextContains $Window 'Calendar pending:'
+    Invoke-Button $Window 'Edit Draft 2'
+    Assert-SyntheticTextContains $Window 'Calendar pending:'
+    Invoke-Button $Window 'Save to Draft'
+    Close-AssignmentDetails $Window 2
+    Open-WeekAssignment $Window 3 '2027-01-01 AM'
+    Assert-SyntheticTextContains $Window 'Calendar matched:'
+    Close-AssignmentDetails $Window 3
+    Write-AcceptanceEvent 'PASS' 'working-calendars' $timer 0 'projectShared=true crewIndependent=true AMPM=isolated cancel=noWrite draft=advisory'
+}
+
+function Test-WorkingCalendarsReopened($Window) {
+    $projectLabel = 'SYN-14-UI ' + [char]0x00B7 + ' Synthetic scheduling site'
+    Open-SyntheticWorkingCalendar $Window 'Project' $projectLabel
+    Find-Control $Window $name '2026-12-31 AM: Cannot work' -Button | Out-Null
+    Find-Control $Window $name '2026-12-31 PM: Not recorded' -Button | Out-Null
+    Find-Control $Window $name '2027-01-01 AM: Can work' -Button | Out-Null
+    Invoke-Button $Window 'Calendar change history'
+    Assert-SyntheticTextContains $Window 'Revision 3:'
+    Invoke-Button $Window 'Close dialog'
+    Write-AcceptanceEvent 'PASS' 'working-calendar-reopen' $timer 0 'projectCalendar=preserved sparseClear=preserved history=preserved'
+}
+
 function Initialize-SyntheticStaffingPeople($Window) {
     Invoke-Button $Window 'Crews'
     Invoke-Button $Window 'New crew'
@@ -1409,6 +1502,7 @@ try {
     if ($IncludeAvailability) { Test-Availability $window }
     if ($IncludeStaffing) { Test-Staffing $window }
     if ($IncludeEmployeeWeek) { Test-EmployeeWeek $window }
+    if ($IncludeWorkingCalendars) { Test-WorkingCalendars $window }
     Close-Dashboard $process
     $process.Dispose()
     $process = $null
@@ -1471,6 +1565,7 @@ try {
     if ($IncludeStaffing) { Test-StaffingReopened $window }
     if ($IncludeAvailability) { Test-AvailabilityReopened $window }
     if ($IncludeEmployeeWeek) { Test-EmployeeWeek $window }
+    if ($IncludeWorkingCalendars) { Test-WorkingCalendarsReopened $window }
     Close-Dashboard $process
     $process.Dispose()
     $process = $null

@@ -830,3 +830,69 @@ kbd {
   border: 0;
   padding: 0;
 }
+.working-cell {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  white-space: normal;
+}
+.working-Working {
+  background: #e9f3ee;
+  color: #185435;
+}
+.working-NotWorking {
+  background: #fff0ed;
+  color: #882c25;
+}
+.calendar-feedback {
+  margin: 16px 0;
+  border-left: 3px solid #b8872c;
+  padding: 0 12px;
+}
+.calendar-feedback p {
+  margin: 6px 0;
+}
+.working-calendar-page .working-cell {
+  background: #f6f8fb;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  min-height: 44px;
+}
+.working-calendar-page .working-cell.working-Working {
+  background: #e9f3ee;
+  color: #185435;
+}
+.working-calendar-page .working-cell.working-NotWorking {
+  background: #fff0ed;
+  color: #882c25;
+}
+.working-calendar-page .week-grid {
+  min-width: 900px;
+}
+.working-calendar-page .week-grid th:first-child {
+  width: 100px;
+}
+.working-calendar-page .week-grid td {
+  height: auto;
+  padding: 14px 10px;
+}
+.working-calendar-page .board-actions button:not(:first-child) {
+  background: white;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+.working-calendar-page .week-toolbar {
+  display: grid;
+  grid-template-columns: 150px minmax(200px, 1fr) auto auto auto 150px auto;
+  align-items: end;
+}
+@media (max-width: 1150px) {
+  .working-calendar-page .week-toolbar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 650px) {
+  .working-calendar-page .week-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

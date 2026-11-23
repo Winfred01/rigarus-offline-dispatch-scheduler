@@ -212,7 +212,7 @@ The switch implies availability/staffing/assignment/Crew fixtures. Default GUI/e
 
 ## Working-calendar calculation foundation (#26)
 
-This is an internal Python model, not a new app workflow. Read [the Design-First checklist](design/2026-11-23-issue-26-calendar-checklist.md) and [engineering record](acceptance/2026-11-23-issue-26-calendar-model.md). Run the synthetic model/compatibility tests from `src/Rigarus.Backend`:
+The initial `7435f35` slice was an internal Python model. The follow-up below connects Project-shared calendars to the app. Read [the Design-First checklist](design/2026-11-23-issue-26-calendar-checklist.md) and [engineering record](acceptance/2026-11-23-issue-26-calendar-model.md). Run the synthetic model/compatibility tests from `src/Rigarus.Backend`:
 
 ```powershell
 uv sync --locked --group bundle
@@ -221,7 +221,21 @@ uv run --locked python -m unittest discover -s tests -p test_work_calendars.py -
 
 Check all Crew/WorkItem state pairs, independent AM/PM, different Crew calendars, explicit closure/conflict reasons, unknown weekdays/weekends/holidays, inclusive cross-year/leap/DST dates and bounded invalid ranges. Even a weekend Working/Working match retains WEEKEND_APPROVAL_PENDING. Calculation makes no file/socket/SQL call; existing saved Draft, employee availability, Unverified driver and the complete logical SQLite snapshot stay unchanged.
 
-All results remain Validation pending / unpublishable. A matched calendar does not validate personnel collisions, driver qualifications, actual Rig occupancy or other safety rules. No calendar entry/persistence/API/Tauri UI, full #26, #27 consent, #28 recommendations or #29 Apply workflow is claimed. Native GUI/install/upgrade acceptance does not apply to this unconnected calculation-only slice; previous package results do not certify it. Customer Demo E and production approval remain pending.
+All results remain Validation pending / unpublishable. A matched calendar does not validate personnel collisions, driver qualifications, actual Rig occupancy or other safety rules. That initial model-only result did not establish calendar entry/persistence/API/Tauri UI or full #26. The following engineering check covers the later integration; #27 consent, #28 recommendations and #29 Apply remain separate. Native GUI/install/upgrade acceptance does not apply to this unconnected calculation-only slice; previous package results do not certify it. Customer Demo E and production approval remain pending.
+
+## Project-shared working calendars engineering check (#26)
+
+Read [the resumed Design-First record](design/2026-11-23-issue-26-project-calendar-checklist.md) and [follow-up evidence](acceptance/2026-11-23-issue-26-project-calendars.md). Open Schedule → Working calendars, choose Project, select a synthetic two-WorkItem project and jump to December 31. Empty weekday/weekend/holiday dates must remain Not recorded. Record December 31–January 1 as Full day / Can work, change December 31 AM to Cannot work, then try clearing PM and Cancel. Compare SQLite/WAL: Cancel does not write. Repeat and explicitly Save clear; PM becomes Not recorded while January 1 stays Can work. History retains all three range changes.
+
+Select a Crew and record its dates independently. Return to Job Schedule. Saved Civil/Tower WorkItems inherit the same parent Project calendar; no WorkItem override exists. Draft details/form/cards show matched/conflict/pending feedback for the selected local date/AM-PM. Explicit calendar closure or unknown remains saveable as Draft; the existing Crew-slot occupancy rejection still holds. Editing a calendar never moves existing dates or changes visit IDs/notes/workers. Reopen and confirm cells, revisions, history and original Draft data remain.
+
+```powershell
+powershell.exe -NoProfile -STA -File scripts/Test-TauriDesktop.ps1 -Executable <candidate-exe> -IncludeWorkingCalendars -Profile SlowVm -PreserveSyntheticProfile -DiagnosticLog <local-log>
+```
+
+This opt-in switch implies existing assignment scenarios, adds working-calendar normal/Cancel/history/form-feedback cases and verifies calendar/Draft reopen. Existing Default/SlowVm wait bounds remain. Add `-RequireOffline` only on an actually disconnected authorized test environment; a connected developer-host native pass does not establish offline installation/upgrade. Also exercise stale/concurrent writes, delayed owner/date responses, storage read failure, uncertain save/reload, committed-save/failed-refresh, keyboard/Escape, focus restoration and internal horizontal scrolling. All fixtures must be synthetic; retain raw logs/databases/screenshots locally.
+
+Calendar Matched remains Draft / Validation pending and unpublishable. Employee Available is separate from actual staffing/personnel conflict, approved driver, skills, actual Rig availability and weekend consent. No automatic recommendation/Apply, publication or formal export is delivered. Schema ten operational fallback requires a consistent schema-nine backup and compatible build, not table/history edits. Customer Demo E and production approval stay separate.
 
 ## Native UIA Crew-choice diagnosis (#35)
 

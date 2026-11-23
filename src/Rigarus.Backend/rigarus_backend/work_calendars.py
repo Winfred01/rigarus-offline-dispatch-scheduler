@@ -4,13 +4,13 @@ No inferred workweek, holiday feed, override precedence, persistence or I/O.
 Callers must supply separate crew/work-item snapshots for the intended IDs.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from typing import Literal
 
 from .assignments import AssignmentDraft, HalfDay, local_date
 
-CalendarScope = Literal["Crew", "WorkItem"]
+CalendarScope = Literal["Crew", "WorkItem", "Project"]
 WorkState = Literal["Working", "NotWorking", "Unknown"]
 CalendarStatus = Literal["Matched", "Blocked", "Pending"]
 
@@ -36,8 +36,10 @@ class WorkCalendar:
     cells: tuple[WorkCalendarCell, ...] = ()
 
     def __post_init__(self):
-        if self.scope not in ("Crew", "WorkItem"):
-            raise ValueError("Calendar scope must be Crew or WorkItem.")
+        if self.scope not in ("Crew", "WorkItem", "Project"):
+            raise ValueError(
+                "Calendar scope must be Crew, Project or an inherited WorkItem projection."
+            )
         if type(self.entity_id) is not int or not 1 <= self.entity_id <= 2**53 - 1:
             raise ValueError("Use a stable Crew or WorkItem ID.")
         if type(self.cells) is not tuple or any(
@@ -65,7 +67,7 @@ class WorkCalendar:
 @dataclass(frozen=True)
 class CalendarReason:
     code: str
-    scope: Literal["Crew", "WorkItem", "Combined", "Weekend"]
+    scope: Literal["Crew", "WorkItem", "Project", "Combined", "Weekend"]
     entity_id: int | None
 
 
@@ -79,6 +81,7 @@ class CalendarAssessment:
     work_item_state: WorkState
     status: CalendarStatus
     reasons: tuple[CalendarReason, ...]
+    project_id: int | None = None
     # Matched means only the two explicit calendar cells agree on Working.
     # Neither callers nor calendar matching may supply a positive safety flag.
     validation_status: Literal["Pending"] = field(default="Pending", init=False)
@@ -137,6 +140,32 @@ def assess_draft_calendar(
         work_state,
         status,
         tuple(reasons),
+    )
+
+
+def assess_project_calendar(
+    draft: AssignmentDraft, crew: WorkCalendar, project: WorkCalendar
+) -> CalendarAssessment:
+    """Project cells are inherited, never overridden by a WorkItem calendar.
+
+    Persistence must resolve the WorkItem's parent Project using its stable FK.
+    The old pure WorkItem model is used only as an in-memory inherited projection;
+    no WorkItem calendar storage or write API exists.
+    """
+    if not isinstance(project, WorkCalendar) or project.scope != "Project":
+        raise ValueError("Supply the WorkItem's parent Project calendar.")
+    result = assess_draft_calendar(
+        draft, crew, WorkCalendar("WorkItem", draft.work_item_id, project.cells)
+    )
+    return replace(
+        result,
+        project_id=project.entity_id,
+        reasons=tuple(
+            CalendarReason(reason.code, "Project", project.entity_id)
+            if reason.scope == "WorkItem"
+            else reason
+            for reason in result.reasons
+        ),
     )
 
 

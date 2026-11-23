@@ -328,10 +328,17 @@ function App() {
         <div className="desktop-content">
           {module === "Schedule" && (
             <Schedule
+              key={view === "Working calendars" ? "calendars" : "schedule"}
               seed={assignmentSeed}
               target={target}
               view={view}
-              onView={setView}
+              onView={(next) => {
+                if (next === "Working calendars") {
+                  setAssignmentSeed(undefined);
+                  setTarget(undefined);
+                }
+                setView(next);
+              }}
               day={scheduleDay}
               onDay={setScheduleDay}
               employeeId={employeeId}

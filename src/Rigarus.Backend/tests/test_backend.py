@@ -1,3 +1,4 @@
+from rigarus_backend.calendar_migration import WORKING_CALENDARS
 import sqlite3
 import tempfile
 import unittest
@@ -87,6 +88,7 @@ class BackendTests(unittest.TestCase):
                     ASSIGNMENTS,
                     STAFFING,
                     AVAILABILITY,
+                    WORKING_CALENDARS,
                 ],
             )
             self.assertEqual(
@@ -131,6 +133,7 @@ class BackendTests(unittest.TestCase):
                     ASSIGNMENTS,
                     STAFFING,
                     AVAILABILITY,
+                    WORKING_CALENDARS,
                 ],
             )
             connection.execute("PRAGMA foreign_keys = ON")
@@ -172,6 +175,7 @@ class BackendTests(unittest.TestCase):
                     ASSIGNMENTS,
                     STAFFING,
                     AVAILABILITY,
+                    WORKING_CALENDARS,
                 ],
             )
             self.assertEqual(
@@ -222,6 +226,7 @@ class BackendTests(unittest.TestCase):
                     ASSIGNMENTS,
                     STAFFING,
                     AVAILABILITY,
+                    WORKING_CALENDARS,
                 ],
             )
 

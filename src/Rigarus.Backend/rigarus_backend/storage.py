@@ -3,6 +3,11 @@ from contextlib import closing
 from pathlib import Path
 
 from .domain import DemoProject, validate_note
+from .calendar_migration import (
+    WORKING_CALENDARS,
+    CALENDAR_TABLES,
+    CREATE_WORKING_CALENDARS,
+)
 
 INITIAL_DEMO = "20261112045924_InitialDemo"
 PROJECT_MASTER = "20261112072258_AddProjectsAndWorkItems"
@@ -325,9 +330,24 @@ def initialize_database(path: Path) -> None:
                 record_migration(
                     connection, EMPLOYEE_AVAILABILITY, product_version="Rigarus 0.1.0"
                 )
-            elif history != (*staffing_history, EMPLOYEE_AVAILABILITY) or tables != (
-                staffing_tables
-                | {"EmployeeAvailabilityChanges", "EmployeeAvailability"}
+                history = (*staffing_history, EMPLOYEE_AVAILABILITY)
+                tables = staffing_tables | {
+                    "EmployeeAvailabilityChanges",
+                    "EmployeeAvailability",
+                }
+            availability_history = (*staffing_history, EMPLOYEE_AVAILABILITY)
+            availability_tables = staffing_tables | {
+                "EmployeeAvailabilityChanges",
+                "EmployeeAvailability",
+            }
+            if history == availability_history and tables == availability_tables:
+                for statement in CREATE_WORKING_CALENDARS:
+                    connection.execute(statement)
+                record_migration(
+                    connection, WORKING_CALENDARS, product_version="Rigarus 0.1.0"
+                )
+            elif history != (*availability_history, WORKING_CALENDARS) or tables != (
+                availability_tables | CALENDAR_TABLES
             ):
                 raise UnsupportedDatabaseError(
                     "This Rigarus database has an unsupported schema. Open it with a compatible version."

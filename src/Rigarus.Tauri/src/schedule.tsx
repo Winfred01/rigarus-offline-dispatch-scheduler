@@ -19,6 +19,11 @@ import { Dialog } from "./dialog";
 import { weekCells } from "./week-cells";
 import { StaffingPanel, staffingLabel } from "./staffing";
 import { EmployeeWeek } from "./employee-week";
+import {
+  WorkingCalendar,
+  CalendarFeedback,
+  DraftCalendarPreview,
+} from "./working-calendar";
 
 type Editor = {
   id: number | null;
@@ -31,7 +36,11 @@ type Editor = {
   notes: string;
 };
 export type ScheduleView =
-  "Job Schedule" | "Crew Board" | "Overview" | "Employee Week";
+  | "Job Schedule"
+  | "Crew Board"
+  | "Overview"
+  | "Employee Week"
+  | "Working calendars";
 const emptyWorkspace: Workspace = {
   crews: [],
   people: [],
@@ -320,24 +329,35 @@ export function Schedule({
         : assignButton.current?.focus(),
     );
   };
+  const navigation = (
+    <nav className="view-tabs" aria-label="Schedule views">
+      {(
+        [
+          "Overview",
+          "Job Schedule",
+          "Crew Board",
+          "Employee Week",
+          "Working calendars",
+        ] as const
+      ).map((name) => (
+        <button
+          key={name}
+          aria-current={name === view ? "page" : undefined}
+          disabled={controlsDisabled}
+          onClick={() => onView(name)}
+        >
+          {name}
+        </button>
+      ))}
+    </nav>
+  );
+  if (view === "Working calendars")
+    return <WorkingCalendar navigation={navigation} />;
   return (
     <main className="schedule-page project-master">
       <p className="breadcrumb">Schedule / {view}</p>
       <h1>{view}</h1>
-      <nav className="view-tabs" aria-label="Schedule views">
-        {(
-          ["Overview", "Job Schedule", "Crew Board", "Employee Week"] as const
-        ).map((name) => (
-          <button
-            key={name}
-            aria-current={name === view ? "page" : undefined}
-            disabled={controlsDisabled}
-            onClick={() => onView(name)}
-          >
-            {name}
-          </button>
-        ))}
-      </nav>
+      {navigation}
       <div className="week-toolbar">
         <button
           aria-label="Previous week"
@@ -758,6 +778,7 @@ export function Schedule({
             <dt>Locks / history</dt>
             <dd>Not configured. Current revision is preserved.</dd>
           </dl>
+          <CalendarFeedback value={selectedRow.calendar_assessment} />
           <StaffingPanel
             key={selectedRow.id}
             row={selectedRow}
@@ -888,6 +909,15 @@ function ScheduleCard({
         {row.slot} · {compact ? `Draft #${row.id}` : `${row.work_type} · Draft`}
       </strong>
       {compact && <span>{staffingLabel(row)}</span>}
+      {row.calendar_assessment && (
+        <small>
+          {row.calendar_assessment.status === "Blocked"
+            ? "Calendar conflict"
+            : row.calendar_assessment.status === "Pending"
+              ? "Calendar pending"
+              : "Calendar matched · Validation pending"}
+        </small>
+      )}
       {!compact && (
         <>
           <span>
@@ -1133,6 +1163,12 @@ function AssignmentEditor({
             </p>
           )}
         </fieldset>
+        <DraftCalendarPreview
+          workItemId={value.work_item_id}
+          crewId={value.crew_id}
+          day={value.local_date}
+          slot={value.slot}
+        />
         <div className="actions">
           <button
             disabled={
