@@ -12,6 +12,7 @@ from .assignments import (
 )
 from .storage import connect
 from .staffing_persistence import read_staffing, append_staffing
+from .working_calendar_store import assessment
 
 SELECT_ASSIGNMENTS = """
     SELECT a.Id, a.WorkItemId, a.CrewId, a.LocalDate, a.Slot, a.Notes,
@@ -34,7 +35,12 @@ def read_assignment(connection, assignment_id: int) -> DraftAssignment:
             "This draft assignment no longer exists. Reload assignments."
         )
     return DraftAssignment(
-        *row[:-1], bool(row[-1]), staffing=read_staffing(connection, assignment_id)
+        *row[:-1],
+        bool(row[-1]),
+        staffing=read_staffing(connection, assignment_id),
+        calendar_assessment=assessment(
+            connection, AssignmentDraft(row[1], row[2], row[3], row[4])
+        ),
     )
 
 
@@ -82,7 +88,12 @@ class AssignmentStore:
             )
             return [
                 DraftAssignment(
-                    *row[:-1], bool(row[-1]), staffing=read_staffing(connection, row[0])
+                    *row[:-1],
+                    bool(row[-1]),
+                    staffing=read_staffing(connection, row[0]),
+                    calendar_assessment=assessment(
+                        connection, AssignmentDraft(row[1], row[2], row[3], row[4])
+                    ),
                 )
                 for row in rows
             ]

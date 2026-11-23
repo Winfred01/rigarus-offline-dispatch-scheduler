@@ -192,6 +192,62 @@ impl Sidecar {
         self.send(self.client.get(url))
     }
 
+    pub fn read_working_calendar(
+        &self,
+        scope: &str,
+        id: i64,
+        start: &str,
+        end: &str,
+    ) -> Result<Value, String> {
+        let path = working_calendar_path(scope, id)?;
+        let url = local_query_url(
+            &self.url(&path),
+            &[("start_date", start), ("end_date", end)],
+        )?;
+        self.send(self.client.get(url))
+    }
+
+    pub fn save_working_calendar(
+        &self,
+        scope: &str,
+        id: i64,
+        value: &Value,
+    ) -> Result<Value, String> {
+        self.send(
+            self.client
+                .put(self.url(&working_calendar_path(scope, id)?))
+                .json(value),
+        )
+    }
+
+    pub fn read_working_calendar_history(&self, scope: &str, id: i64) -> Result<Value, String> {
+        self.send(
+            self.client
+                .get(self.url(&format!("{}/history", working_calendar_path(scope, id)?))),
+        )
+    }
+
+    pub fn read_calendar_assessment(
+        &self,
+        work_item_id: i64,
+        crew_id: i64,
+        day: &str,
+        slot: &str,
+    ) -> Result<Value, String> {
+        let work = work_item_id.to_string();
+        let crew = crew_id.to_string();
+        let url = local_query_url(
+            &self.url("/working-calendars/assessment"),
+            &[
+                ("work_item_id", &work),
+                ("crew_id", &crew),
+                ("local_date", day),
+                ("slot", slot),
+            ],
+        )?;
+        self.send(self.client.get(url))
+    }
+
     pub fn read_availability(
         &self,
         employee_id: i64,
@@ -310,6 +366,13 @@ impl Sidecar {
     }
 }
 
+fn working_calendar_path(scope: &str, id: i64) -> Result<String, String> {
+    if !matches!(scope, "Crew" | "Project") || !(1..=9_007_199_254_740_991).contains(&id) {
+        return Err("Select an existing Crew or Project calendar.".to_string());
+    }
+    Ok(format!("/working-calendars/{scope}/{id}"))
+}
+
 fn local_query_url(base: &str, fields: &[(&str, &str)]) -> Result<reqwest::Url, String> {
     let mut url = reqwest::Url::parse(base).map_err(|_| SERVICE_UNAVAILABLE.to_string())?;
     url.query_pairs_mut().extend_pairs(fields.iter().copied());
@@ -376,6 +439,24 @@ impl Drop for Sidecar {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn working_calendar_paths_allow_only_shared_project_or_crew_owners() {
+        assert_eq!(
+            super::working_calendar_path("Project", 17).unwrap(),
+            "/working-calendars/Project/17"
+        );
+        assert!(super::working_calendar_path("Crew", 7).is_ok());
+        for scope in [
+            "WorkItem",
+            "Employee",
+            "Project/../employees",
+            "Project?publish=true",
+        ] {
+            assert!(super::working_calendar_path(scope, 7).is_err());
+        }
+        assert!(super::working_calendar_path("Project", 0).is_err());
+        assert!(super::working_calendar_path("Crew", 9_007_199_254_740_992).is_err());
+    }
     use super::*;
 
     #[test]

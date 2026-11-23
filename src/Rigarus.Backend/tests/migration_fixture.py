@@ -1,6 +1,7 @@
 """Test-only reconstruction of legacy fixtures, never an operational downgrade."""
 
 from rigarus_backend.storage import ASSIGNMENT_STAFFING, EMPLOYEE_AVAILABILITY
+from rigarus_backend.calendar_migration import WORKING_CALENDARS
 
 
 def remove_staffing_schema(connection):
@@ -13,9 +14,18 @@ def remove_staffing_schema(connection):
 
 
 def remove_availability_schema(connection):
+    remove_working_calendar_schema(connection)
     connection.execute("DROP TABLE EmployeeAvailability")
     connection.execute("DROP TABLE EmployeeAvailabilityChanges")
     connection.execute(
         "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?",
         (EMPLOYEE_AVAILABILITY,),
+    )
+
+
+def remove_working_calendar_schema(connection):
+    for table in ("WorkingCalendarCells", "WorkingCalendarChanges", "WorkingCalendars"):
+        connection.execute(f"DROP TABLE IF EXISTS {table}")
+    connection.execute(
+        "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?", (WORKING_CALENDARS,)
     )

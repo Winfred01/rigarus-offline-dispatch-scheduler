@@ -81,6 +81,76 @@ class SidecarTests(unittest.TestCase):
             response = connection.getresponse()
             return response.status, json.loads(response.read())
 
+    def test_project_working_calendar_authentication_inheritance_and_restart(self):
+        token = secrets.token_hex(32)
+        process = self.launch(token)
+        port = self.read_port(process)
+        project = self.request(
+            port,
+            "POST",
+            "/projects",
+            token,
+            payload={
+                "job_number": "SYN-CALENDAR",
+                "site_id": "0007",
+                "site_name": "Synthetic calendar site",
+                "work_items": [
+                    {
+                        "type": "Civil",
+                        "required_crew_count": 1,
+                        "estimated_half_days": 1,
+                    },
+                    {
+                        "type": "Tower",
+                        "required_crew_count": 1,
+                        "estimated_half_days": 2,
+                    },
+                ],
+            },
+        )[1]
+        crew = self.request(
+            port,
+            "POST",
+            "/crews",
+            token,
+            payload={"name": "Synthetic calendar Crew", "type": "Civil"},
+        )[1]
+        route = f"/working-calendars/Project/{project['id']}"
+        query = "?start_date=2026-12-31&end_date=2027-01-01"
+        self.assertEqual(self.request(port, "GET", route + query)[0], 401)
+        payload = {
+            "start_date": "2026-12-31",
+            "end_date": "2027-01-01",
+            "slot": "FullDay",
+            "state": "NotWorking",
+            "expected_revision": 0,
+        }
+        self.assertEqual(
+            self.request(port, "PUT", route, "wrong", payload=payload)[0], 401
+        )
+        saved = self.request(port, "PUT", route, token, payload=payload)
+        self.assertEqual(saved[0], 200)
+        for item in project["work_items"]:
+            result = self.request(
+                port,
+                "GET",
+                f"/working-calendars/assessment?work_item_id={item['id']}&crew_id={crew['id']}&local_date=2026-12-31&slot=AM",
+                token,
+            )[1]
+            self.assertEqual(result["project_id"], project["id"])
+            self.assertEqual(result["status"], "Blocked")
+            self.assertFalse(result["publishable"])
+        process.stdin.close()
+        process.stdin = None
+        process.wait(timeout=10)
+        self.assertEqual(process.returncode, 0)
+        reopened = self.launch(token)
+        port = self.read_port(reopened)
+        self.assertEqual(self.request(port, "GET", route + query, token), saved)
+        self.assertEqual(
+            len(self.request(port, "GET", route + "/history", token)[1]), 1
+        )
+
     def test_authenticated_demo_roundtrip_across_parent_pipe_shutdown(self):
         token = secrets.token_hex(32)
         process = self.launch(token)
@@ -341,7 +411,7 @@ class SidecarTests(unittest.TestCase):
                 connection.execute(
                     "SELECT count(*) FROM __EFMigrationsHistory"
                 ).fetchone(),
-                (9,),
+                (10,),
             )
             self.assertEqual(
                 connection.execute("PRAGMA integrity_check").fetchone(), ("ok",)

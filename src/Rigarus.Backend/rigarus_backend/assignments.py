@@ -68,6 +68,7 @@ class DraftAssignment:
     validation_status: Literal["Pending"] = "Pending"
     publishable: bool = False
     staffing: StaffingState = field(default_factory=StaffingState)
+    calendar_assessment: dict | None = None
 
 
 class AssignmentNotFound(ValueError):
