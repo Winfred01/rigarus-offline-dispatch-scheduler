@@ -40,6 +40,12 @@ The People Availability page first provides independent management and a selecte
 
 Rust bridges read/save/history plus one bulk employee-status read for a local date/slot. Draft worker selection consumes that same recorded status as advisory information, with loading/error/retry distinct from Not recorded. It never edits Home Crew, workers or visits and never grants leave/weekend/driver/dispatch approval. No new external service or dependency is used.
 
+## Employee Week planning projection (#71 first slice)
+
+Employee Week reads existing `list_assignments` with employee_id and inclusive local dates, plus independent recorded availability. Only latest explicit configured staffing associations supply cards; Home Crew never expands into attendance. A defensive pure projection excludes other workers, cancelled and out-of-week visits. Stable ID/detail/revision, actual dated Crew and borrowed marker stay separate from Home Crew/default Rig. No schema, HTTP/Rust contract or dependency changes.
+
+The app retains the selected Schedule date and employee in memory across directory/search handoffs. Loading/read errors clear the old identity's cards; delayed responses are cancelled and keyed by employee/week. Availability errors are not Unknown. A parent-roster failure can be retried from the same employee-week control. Read-only details and the copied employee/week/revision preview display DRAFT – NOT CONFIRMED. PDF/XLSX remain disabled until validated immutable Published snapshots and safety checks exist; no file/write/publication path is added.
+
 ## WPF baseline
 
 | Project | Responsibility | Dependencies |
