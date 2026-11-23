@@ -46,6 +46,12 @@ Employee Week reads existing `list_assignments` with employee_id and inclusive l
 
 The app retains the selected Schedule date and employee in memory across directory/search handoffs. Loading/read errors clear the old identity's cards; delayed responses are cancelled and keyed by employee/week. Availability errors are not Unknown. A parent-roster failure can be retried from the same employee-week control. Read-only details and the copied employee/week/revision preview display DRAFT – NOT CONFIRMED. PDF/XLSX remain disabled until validated immutable Published snapshots and safety checks exist; no file/write/publication path is added.
 
+## Explicit working-calendar calculation (#26 foundation)
+
+`work_calendars.py` is an independent, read-only domain foundation. Immutable Crew/WorkItem snapshots contain explicit local-date AM/PM Working, NotWorking or Unknown cells; absence remains Unknown. Scope/ID checks prevent evaluating another resource's calendar, and duplicate cells reject instead of silently overriding. A bounded inclusive range returns date/AM-PM ordered assessments with structured source/conflict reasons. It uses local date ordinals, with no timezone conversion, holiday feed or inferred Mon–Fri.
+
+Only two Working cells produce Matched. A known NotWorking yields Blocked, and otherwise an unknown yields Pending; explicit opposite states retain a conflict reason. Matched does not mean a feasible or safe dispatch: every assessment stays Validation pending / unpublishable, and weekend cells separately explain pending weekend approval. Employee availability, personnel collisions, driver/qualification, actual Rig checks and operator approval must be evaluated independently in later integration. No recommendation, proposal Apply, database write, HTTP/Tauri bridge or new UI is provided by this slice. Existing Draft behavior and schema nine remain unchanged.
+
 ## WPF baseline
 
 | Project | Responsibility | Dependencies |

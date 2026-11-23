@@ -210,6 +210,19 @@ powershell.exe -NoProfile -STA -File scripts/Test-TauriDesktop.ps1 -Executable <
 
 The switch implies availability/staffing/assignment/Crew fixtures. Default GUI/exit bounds remain 30/12 seconds; SlowVm uses 150/60 seconds. Use -RequireOffline only on an actually disconnected authorized environment. No new migration; schema nine and all prior compatibility gates remain. This is an internal read-only planning/preview slice; actual PDF/XLSX, validated Published snapshots, leave/driver/resource safety, installation, customer acceptance and production remain separate.
 
+## Working-calendar calculation foundation (#26)
+
+This is an internal Python model, not a new app workflow. Read [the Design-First checklist](design/2026-11-23-issue-26-calendar-checklist.md) and [engineering record](acceptance/2026-11-23-issue-26-calendar-model.md). Run the synthetic model/compatibility tests from `src/Rigarus.Backend`:
+
+```powershell
+uv sync --locked --group bundle
+uv run --locked python -m unittest discover -s tests -p test_work_calendars.py -v
+```
+
+Check all Crew/WorkItem state pairs, independent AM/PM, different Crew calendars, explicit closure/conflict reasons, unknown weekdays/weekends/holidays, inclusive cross-year/leap/DST dates and bounded invalid ranges. Even a weekend Working/Working match retains WEEKEND_APPROVAL_PENDING. Calculation makes no file/socket/SQL call; existing saved Draft, employee availability, Unverified driver and the complete logical SQLite snapshot stay unchanged.
+
+All results remain Validation pending / unpublishable. A matched calendar does not validate personnel collisions, driver qualifications, actual Rig occupancy or other safety rules. No calendar entry/persistence/API/Tauri UI, full #26, #27 consent, #28 recommendations or #29 Apply workflow is claimed. Native GUI/install/upgrade acceptance does not apply to this unconnected calculation-only slice; previous package results do not certify it. Customer Demo E and production approval remain pending.
+
 ## Native UIA Crew-choice diagnosis (#35)
 
 Use an interactive authorized Windows desktop and the same verified installed executable. The verifier always creates an independent synthetic profile. Detailed sanitized exception chains, invocation/stack locations, target properties/runtime identity and before/after states go only to a local JSONL file. `-UiaDiagnosticLog <local-jsonl>` selects it; by default it is `<DiagnosticLog>.uia.jsonl` (the event log itself defaults to a unique temporary file). Keep these raw diagnostics, screenshots and databases on the authorized machine; publish only reviewed sanitized findings.
