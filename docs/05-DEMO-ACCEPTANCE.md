@@ -209,3 +209,15 @@ powershell.exe -NoProfile -STA -File scripts/Test-TauriDesktop.ps1 -Executable <
 ```
 
 The switch implies availability/staffing/assignment/Crew fixtures. Default GUI/exit bounds remain 30/12 seconds; SlowVm uses 150/60 seconds. Use -RequireOffline only on an actually disconnected authorized environment. No new migration; schema nine and all prior compatibility gates remain. This is an internal read-only planning/preview slice; actual PDF/XLSX, validated Published snapshots, leave/driver/resource safety, installation, customer acceptance and production remain separate.
+
+## Native UIA Crew-choice diagnosis (#35)
+
+Use an interactive authorized Windows desktop and the same verified installed executable. The verifier always creates an independent synthetic profile. Detailed sanitized exception chains, invocation/stack locations, target properties/runtime identity and before/after states go only to a local JSONL file. `-UiaDiagnosticLog <local-jsonl>` selects it; by default it is `<DiagnosticLog>.uia.jsonl` (the event log itself defaults to a unique temporary file). Keep these raw diagnostics, screenshots and databases on the authorized machine; publish only reviewed sanitized findings.
+
+```powershell
+powershell.exe -NoProfile -STA -File scripts/Test-TauriDesktop.ps1 -Executable <installed-exe> -ReproduceCrewChoice -Profile SlowVm -RequireOffline -PreserveSyntheticProfile -DiagnosticLog <local-events> -UiaDiagnosticLog <local-jsonl>
+```
+
+This opt-in reduced case creates exactly two Crews and one Project/WorkItem, saves an AM Draft, reopens Assign, reselects the original Crew and chooses the other Crew, then cancels. It cannot be combined with any `-Include*` scope; use a separate fresh run for the complete `-IncludeEmployeeWeek` chain. Test normal and hidden supervision separately and record each result. A hidden supervisor still requires an interactive desktop: the tool restores only its owned application window and checks that process's HWND ownership before doing so. It does not change security, session, WebView2 or power policies.
+
+Crew/other native choices use one existing GUI deadline for the complete interaction: Default 30 seconds or SlowVm 150, with finite overrides unchanged. Each probe resolves current controls/patterns again and verifies the committed label. Recognized UIA operation refusals are logged as retrying; a persistent refusal still times out, and unknown/denied/unsupported failures remain fatal. This retry does not cover Save buttons, API/storage writes or product assertions. A successful CI harness run does not establish native or offline acceptance. See [the current Design-First diagnosis](design/2026-11-23-issue-35-uia-checklist.md).

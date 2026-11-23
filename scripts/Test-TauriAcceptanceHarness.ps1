@@ -151,6 +151,7 @@ try {
         Assert-Result { Assert-WeekAssignmentCards $null @() } 2 '^status=INFO phase=weekly-card-diagnostic .*actual=Draft 1,.*expected=$'
     }
     Test-WeeklyCardAssertions
+    & (Join-Path $PSScriptRoot 'Test-TauriUiaHarness.ps1')
     Write-Host 'PASS: Weekly native date order, invalid dates, read-only/WAL digests and missing-card timeout diagnostics.'
     Write-Host 'PASS: Synthetic offline acceptance harness scenarios.'
 }
