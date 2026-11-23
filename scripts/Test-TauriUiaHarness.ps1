@@ -28,6 +28,10 @@ try {
         throw 'Credential/profile redaction failed.'
     }
     Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+    if (-not [Windows.Automation.Automation].GetMethod('Compare', [type[]]@(
+                [Windows.Automation.AutomationElement], [Windows.Automation.AutomationElement]))) {
+        throw 'Owned-focus comparison API is unavailable.'
+    }
     $healthy = [pscustomobject]@{}
     $healthy | Add-Member ScriptMethod GetCurrentPropertyValue {
         param($Property)
@@ -41,11 +45,37 @@ try {
     if ($snapshot.AutomationId -cne 'synthetic-choice' -or $snapshot.runtimeId.Count -ne 3) {
         throw 'Healthy target property/runtime identity was not captured.'
     }
+    # The calendar timeout must resolve the actual owner, not the preceding scope.
+    $ownerWindow = [pscustomobject]@{ target = $healthy }
+    $ownerWindow | Add-Member ScriptMethod FindAll { param($Scope, $Condition) @($this.target) }
+    try { throw [TimeoutException]::new('Synthetic Project choice timeout') }
+    catch { Write-UiaFailure $_ 'choice:working-owner:verified-or-failed' $ownerWindow $healthy }
+    $ownerFailure = Get-Content -LiteralPath $uiaDiagnosticLog -Tail 1 | ConvertFrom-Json
+    if ($ownerFailure.data.targetId -cne 'working-owner' -or
+        $ownerFailure.data.freshlyResolved.count -ne 1 -or
+        $ownerFailure.data.freshlyResolved.control.runtimeId.Count -ne 3 -or
+        $ownerFailure.data.chain[0].type -cne 'System.TimeoutException') {
+        throw 'Project timeout lost the actual target, fresh provider or original exception.'
+    }
     $stale = [pscustomobject]@{}
     $stale | Add-Member ScriptMethod GetCurrentPropertyValue { param($Property) throw [Windows.Automation.ElementNotAvailableException]::new('Synthetic element detached') }
     $snapshot = Get-UiaElementSnapshot $stale
     if (-not $snapshot.present -or -not $snapshot.AutomationId.error) {
         throw 'Unavailable target lost its diagnostic error instead of recording it.'
+    }
+    $ownerWindow | Add-Member ScriptMethod FindFirst { param($Scope, $Condition) $this.target }
+    $healthy | Add-Member ScriptMethod FindAll { param($Scope, $Condition) @($this) * 121 }
+    & {
+        # No desktop-wide focus inspection in the synthetic harness.
+        function Get-UiaFocusedElement { $null }
+        Write-UiaChoiceState 'synthetic-detached' $ownerWindow $stale 'working-owner' ([Diagnostics.Stopwatch]::StartNew())
+    }
+    $choiceState = (Get-Content -LiteralPath $uiaDiagnosticLog -Tail 1 | ConvertFrom-Json).data
+    if ($choiceState.targetId -cne 'working-owner' -or $choiceState.focusOwned -or $choiceState.focused -or
+        -not $choiceState.original.AutomationId.error -or -not $choiceState.freshlyResolved.present -or
+        $choiceState.exposedChildCount -ne 121 -or $choiceState.exposedChildren.Count -ne 120 -or
+        -not $choiceState.childrenTruncated -or $null -eq $choiceState.elapsedMs) {
+        throw 'Detached-target evidence, owned-focus privacy or child snapshot bound failed.'
     }
     $installer = Join-Path $testRoot 'synthetic-installer.exe'
     Set-Content -LiteralPath $installer -Value 'Synthetic package fixture, never executed'

@@ -249,6 +249,27 @@ This opt-in reduced case creates exactly two Crews and one Project/WorkItem, sav
 
 Crew/other native choices use one existing GUI deadline for the complete interaction: Default 30 seconds or SlowVm 150, with finite overrides unchanged. Each probe resolves current controls/patterns again and verifies the committed label. Recognized UIA operation refusals are logged as retrying; a persistent refusal still times out, and unknown/denied/unsupported failures remain fatal. This retry does not cover Save buttons, API/storage writes or product assertions. A successful CI harness run does not establish native or offline acceptance. See [the current Design-First diagnosis](design/2026-11-23-issue-35-uia-checklist.md).
 
+## Project-choice investigation (#86)
+
+The working-calendar Project keyboard path records the actual `working-owner`
+before focus, before/after its existing single key sequence, and after committed
+selection verification or failure. The local UIA JSONL includes current/fresh
+runtime identities, values, enabled/offscreen state, owned focus and foreground
+window state. Exposed child snapshots are limited to 120 and include a truncation
+flag. A closed popup exposing no children does **not** prove that options failed
+to load. Focus outside the owned window is recorded as unowned without copying
+that other window's text. Ordinary event logs retain elapsed time and timeout
+bounds; capture the worker exit and independent watchdog result as well.
+
+Run the existing `-IncludeWorkingCalendars -IncludeEmployeeWeek` command on a
+fresh synthetic profile, separately under ordinary and Hidden supervision on an
+interactive authorized desktop. A shortened read-only investigation may clone a
+verified, closed synthetic fixture into another generated smoke profile, but its
+result must be identified as reduced coverage rather than a complete installation
+or lifecycle PASS. Keep the original package, final value assertion and finite
+GUI/exit bounds unchanged. Do not retry Save or change product code based only on
+a screenshot of `Select a Project`. See [the scoped checklist](design/2026-11-23-issue-86-project-choice-checklist.md).
+
 ## Supervisor progress JSON (#35)
 
 Windows PowerShell 5.1 attaches filesystem Provider/Drive properties to strings returned by `Get-Content`. Do not place that extended object directly into a JSON progress record: deep serialization can traverse the attached object graph and stop the supervisor's polling, deadline and final exit report while its native worker continues independently. This is a test-tool failure, not proof that the product is stuck or that a worker's last PASS implies aggregate exit zero.
