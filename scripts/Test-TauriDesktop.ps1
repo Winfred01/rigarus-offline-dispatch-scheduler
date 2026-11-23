@@ -819,10 +819,12 @@ function Open-SyntheticWorkingCalendar($Window, [string]$Scope, [string]$Owner) 
     Invoke-Button $Window 'Working calendars'
     Select-AssignmentChoice $Window 'working-scope' '' $Scope
     if ($Scope -eq 'Project') {
+        $choiceTimer = [Diagnostics.Stopwatch]::StartNew()
         # Large native select popups expose disabled DOM proxies rather than
         # selectable option providers under this WebView2 UIA tree. Exercise the
         # normal keyboard path only after verifying our owned foreground/focus.
         $control = Find-Control $Window $automationId 'working-owner'
+        Write-UiaChoiceState 'before-focus' $Window $control 'working-owner' $choiceTimer
         $control.SetFocus()
         Get-UiaElementSnapshot $Window | Out-Null
         Wait-For 'working-owner-keyboard-focus' {
@@ -830,13 +832,16 @@ function Open-SyntheticWorkingCalendar($Window, [string]$Scope, [string]$Owner) 
             $control.Current.IsEnabled -and $focused.Current.AutomationId -eq 'working-owner' -and
                 [RigarusUiaWindowState]::GetForegroundWindow() -eq $script:uiaOwnedHandle
         } | Out-Null
+        Write-UiaChoiceState 'before-keys' $Window $control 'working-owner' $choiceTimer
         Add-Type -AssemblyName System.Windows.Forms
         [Windows.Forms.SendKeys]::SendWait('SYN-14-UI{ENTER}')
-        Wait-For 'working-project-choice-verified' {
+        Write-UiaChoiceState 'after-keys' $Window $control 'working-owner' $choiceTimer
+        try { Wait-For 'working-project-choice-verified' {
             $live = Find-Control $Window $automationId 'working-owner'
             $observed = [string]$live.GetCurrentPattern($valuePattern).Current.Value
             Test-UiaChoiceLabel $observed $Owner
-        } | Out-Null
+        } | Out-Null }
+        finally { Write-UiaChoiceState 'verified-or-failed' $Window $control 'working-owner' $choiceTimer }
     }
     else { Select-AssignmentChoice $Window 'working-owner' '' $Owner }
     Set-Field $Window 'working-date' '2026-12-31'

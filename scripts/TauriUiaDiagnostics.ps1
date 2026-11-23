@@ -104,6 +104,54 @@ function Write-UiaOperation([string]$Operation, [string]$Stage, $Window, $Contro
     })
 }
 
+function Get-UiaFocusedElement {
+    [Windows.Automation.AutomationElement]::FocusedElement
+}
+
+function Write-UiaChoiceState([string]$Stage, $Window, $Control, [string]$Id,
+    [Diagnostics.Stopwatch]$Timer) {
+    # Primitive snapshots only. Never serialize a UIA/provider object graph.
+    $script:uiaLastOperation = "choice:${id}:$Stage"
+    $script:uiaLastControl = $Control; $script:uiaLastOption = $null
+    $record = [ordered]@{
+        stage = $Stage; targetId = $id
+        elapsedMs = $(if ($Timer) { $Timer.ElapsedMilliseconds } else { $null })
+        window = Get-UiaElementSnapshot $Window
+        original = Get-UiaElementSnapshot $Control
+        focusOwned = $false; focused = $null
+    }
+    $fresh = $null
+    try {
+        $condition = [Windows.Automation.PropertyCondition]::new(
+            [Windows.Automation.AutomationElement]::AutomationIdProperty, $id)
+        $fresh = $Window.FindFirst([Windows.Automation.TreeScope]::Descendants, $condition)
+        $record.freshlyResolved = Get-UiaElementSnapshot $fresh
+        if ($fresh) { $script:uiaLastControl = $fresh }
+    }
+    catch { $record.resolveError = @(Get-UiaExceptionChain $_.Exception) }
+    try {
+        $focused = Get-UiaFocusedElement
+        $ancestor = $focused
+        for ($depth = 0; $ancestor -and $depth -lt 40; $depth++) {
+            if ([Windows.Automation.Automation]::Compare($ancestor, $Window)) { $record.focusOwned = $true; break }
+            $ancestor = [Windows.Automation.TreeWalker]::RawViewWalker.GetParent($ancestor)
+        }
+        if ($record.focusOwned) { $record.focused = Get-UiaElementSnapshot $focused }
+    }
+    catch { $record.focusError = @(Get-UiaExceptionChain $_.Exception) }
+    try {
+        if ($fresh) {
+            $children = @($fresh.FindAll([Windows.Automation.TreeScope]::Children,
+                    [Windows.Automation.Condition]::TrueCondition))
+            $record.exposedChildCount = $children.Count
+            $record.exposedChildren = @($children | Select-Object -First 120 | ForEach-Object { Get-UiaElementSnapshot $_ })
+            $record.childrenTruncated = $children.Count -gt 120
+        }
+    }
+    catch { $record.childrenError = @(Get-UiaExceptionChain $_.Exception) }
+    Write-UiaDiagnostic 'choice-state' $record
+}
+
 function Write-UiaFailure($ErrorRecord, [string]$Operation, $Window, $Control = $null, $Option = $null, [string]$Disposition = 'fatal') {
     $fresh = $null; $targetId = $null
     if ($Window -and $Operation -match '^choice:([^:]+):') {
