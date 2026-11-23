@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from .domain import DemoProject
 from .assignment_api import assignment_router
 from .availability_api import availability_router
+from .working_calendar_api import working_calendar_router
 from .foreman_api import foreman_router
 from .bulk_project_api import bulk_project_router
 from .import_preview_api import import_preview_router
@@ -34,6 +35,7 @@ def create_app(database_path: Path, *, database_initialized: bool = False) -> Fa
     app.include_router(project_router(database_path))
     app.include_router(assignment_router(database_path))
     app.include_router(availability_router(database_path))
+    app.include_router(working_calendar_router(database_path))
     app.include_router(crew_router(database_path))
     app.include_router(employee_router(database_path))
     app.include_router(foreman_router(database_path))

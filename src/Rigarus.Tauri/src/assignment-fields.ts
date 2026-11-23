@@ -1,4 +1,5 @@
 export type AssignmentSeed = { projectId: number; workItemId: number };
+import type { CalendarAssessment } from "./working-calendar-fields";
 export type DraftAssignment = {
   id: number;
   work_item_id: number;
@@ -19,6 +20,7 @@ export type DraftAssignment = {
   crew_active: boolean;
   validation_status: "Pending";
   publishable: false;
+  calendar_assessment?: CalendarAssessment;
   staffing?: {
     configured: boolean;
     change_id: number;

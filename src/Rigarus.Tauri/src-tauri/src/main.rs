@@ -68,6 +68,59 @@ async fn read_availability(
 }
 
 #[tauri::command]
+async fn read_working_calendar(
+    app: tauri::AppHandle,
+    scope: String,
+    entity_id: i64,
+    start_date: String,
+    end_date: String,
+) -> Result<Value, String> {
+    with_sidecar(app, move |service| {
+        service.read_working_calendar(&scope, entity_id, &start_date, &end_date)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn save_working_calendar(
+    app: tauri::AppHandle,
+    scope: String,
+    entity_id: i64,
+    calendar: Value,
+) -> Result<Value, String> {
+    with_sidecar(app, move |service| {
+        service.save_working_calendar(&scope, entity_id, &calendar)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn read_working_calendar_history(
+    app: tauri::AppHandle,
+    scope: String,
+    entity_id: i64,
+) -> Result<Value, String> {
+    with_sidecar(app, move |service| {
+        service.read_working_calendar_history(&scope, entity_id)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn read_calendar_assessment(
+    app: tauri::AppHandle,
+    work_item_id: i64,
+    crew_id: i64,
+    local_date: String,
+    slot: String,
+) -> Result<Value, String> {
+    with_sidecar(app, move |service| {
+        service.read_calendar_assessment(work_item_id, crew_id, &local_date, &slot)
+    })
+    .await
+}
+
+#[tauri::command]
 async fn save_availability(
     app: tauri::AppHandle,
     employee_id: i64,
@@ -256,6 +309,10 @@ fn main() {
             search_projects,
             list_assignments,
             read_availability,
+            read_working_calendar,
+            save_working_calendar,
+            read_working_calendar_history,
+            read_calendar_assessment,
             save_availability,
             read_availability_history,
             read_availability_on_slot,
