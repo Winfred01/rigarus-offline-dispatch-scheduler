@@ -12,6 +12,7 @@ RIG_INVENTORY = "20261119130000_AddRigInventory"
 FOREMAN_HISTORY = "20261122030000_AddForemanHistory"
 DRAFT_ASSIGNMENTS = "20261122040000_AddDraftAssignments"
 ASSIGNMENT_STAFFING = "20261122200000_AddAssignmentStaffing"
+EMPLOYEE_AVAILABILITY = "20261123010000_AddEmployeeAvailability"
 EF_VERSION = "10.0.15"
 
 # Keep the on-disk format compatible with the two released EF Core migrations.
@@ -167,6 +168,36 @@ CREATE_ASSIGNMENT_STAFFING = (
 )
 
 
+CREATE_EMPLOYEE_AVAILABILITY = (
+    """CREATE TABLE EmployeeAvailabilityChanges (
+        Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        EmployeeId INTEGER NOT NULL REFERENCES Employees(Id) ON DELETE RESTRICT,
+        Revision INTEGER NOT NULL CHECK (typeof(Revision)='integer' AND Revision>0),
+        StartDate TEXT NOT NULL CHECK (length(StartDate)=10 AND StartDate IS strftime('%Y-%m-%d',StartDate,'+0 days') AND substr(StartDate,1,4) BETWEEN '0001' AND '9999'),
+        EndDate TEXT NOT NULL CHECK (length(EndDate)=10 AND EndDate IS strftime('%Y-%m-%d',EndDate,'+0 days') AND substr(EndDate,1,4) BETWEEN '0001' AND '9999' AND EndDate>=StartDate),
+        Slot TEXT NOT NULL CHECK (Slot IN ('FullDay','AM','PM')),
+        State TEXT NOT NULL CHECK (State IN ('Available','Unavailable','Unknown')),
+        RecordedAt TEXT NOT NULL,
+        UNIQUE(EmployeeId,Revision), UNIQUE(Id,EmployeeId)
+    )""",
+    """CREATE TABLE EmployeeAvailability (
+        EmployeeId INTEGER NOT NULL REFERENCES Employees(Id) ON DELETE RESTRICT,
+        LocalDate TEXT NOT NULL CHECK (length(LocalDate)=10 AND LocalDate IS strftime('%Y-%m-%d',LocalDate,'+0 days') AND substr(LocalDate,1,4) BETWEEN '0001' AND '9999'),
+        Slot TEXT NOT NULL CHECK (Slot IN ('AM','PM')),
+        State TEXT NOT NULL CHECK (State IN ('Available','Unavailable')),
+        ChangeId INTEGER NOT NULL,
+        PRIMARY KEY(EmployeeId,LocalDate,Slot),
+        FOREIGN KEY(ChangeId,EmployeeId) REFERENCES EmployeeAvailabilityChanges(Id,EmployeeId) ON DELETE RESTRICT
+    )""",
+    "CREATE INDEX IX_EmployeeAvailability_DateSlot ON EmployeeAvailability(LocalDate,Slot,EmployeeId)",
+    *tuple(
+        f"CREATE TRIGGER EmployeeAvailabilityChanges_No{action.title()} BEFORE {action} ON EmployeeAvailabilityChanges "
+        "BEGIN SELECT RAISE(ABORT,'Availability history is append-only.'); END"
+        for action in ("UPDATE", "DELETE")
+    ),
+)
+
+
 def connect(path: Path, *, create: bool = False) -> sqlite3.Connection:
     location = path if create else f"{path.resolve().as_uri()}?mode=rw"
     connection = sqlite3.connect(
@@ -278,9 +309,25 @@ def initialize_database(path: Path) -> None:
                 record_migration(
                     connection, ASSIGNMENT_STAFFING, product_version="Rigarus 0.1.0"
                 )
-            elif history != (*draft_history, ASSIGNMENT_STAFFING) or tables != (
-                draft_tables
-                | {"AssignmentStaffingChanges", "AssignmentStaffingMembers"}
+                history = (*draft_history, ASSIGNMENT_STAFFING)
+                tables = draft_tables | {
+                    "AssignmentStaffingChanges",
+                    "AssignmentStaffingMembers",
+                }
+            staffing_history = (*draft_history, ASSIGNMENT_STAFFING)
+            staffing_tables = draft_tables | {
+                "AssignmentStaffingChanges",
+                "AssignmentStaffingMembers",
+            }
+            if history == staffing_history and tables == staffing_tables:
+                for statement in CREATE_EMPLOYEE_AVAILABILITY:
+                    connection.execute(statement)
+                record_migration(
+                    connection, EMPLOYEE_AVAILABILITY, product_version="Rigarus 0.1.0"
+                )
+            elif history != (*staffing_history, EMPLOYEE_AVAILABILITY) or tables != (
+                staffing_tables
+                | {"EmployeeAvailabilityChanges", "EmployeeAvailability"}
             ):
                 raise UnsupportedDatabaseError(
                     "This Rigarus database has an unsupported schema. Open it with a compatible version."

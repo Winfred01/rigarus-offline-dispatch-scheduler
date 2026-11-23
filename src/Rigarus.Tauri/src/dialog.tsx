@@ -5,11 +5,13 @@ export function Dialog({
   children,
   onClose,
   busy = false,
+  initialFocus,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   busy?: boolean;
+  initialFocus?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const close = useRef(onClose);
@@ -17,11 +19,13 @@ export function Dialog({
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     ref.current?.showModal();
+    if (initialFocus)
+      ref.current?.querySelector<HTMLElement>(initialFocus)?.focus();
     return () => {
       ref.current?.close();
       if (previous?.isConnected) previous.focus();
     };
-  }, []);
+  }, [initialFocus]);
   return (
     <dialog
       ref={ref}

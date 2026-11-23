@@ -49,6 +49,16 @@ Additive migration `20261122200000_AddAssignmentStaffing` follows the seven-sche
 
 All responses remain Pending / `publishable=false`; no publication path is added. Conflicting, inactive or empty Draft choices are not validated dispatch. Fresh/legacy upgrades and forced post-DDL failure/retry are tested. Previous seven-schema binaries reject migration eight; keep a consistent pre-upgrade SQLite backup (including WAL through the backup API or a verified closed/checkpointed state) with its compatible build. Never edit history/drop tables operationally to downgrade. Application backup/restore and production upgrade remain separate gates.
 
+## Employee recorded availability (#77)
+
+Additive migration `20261123010000_AddEmployeeAvailability` follows schema eight. `EmployeeAvailabilityChanges` records Employee ID, positive per-employee revision, inclusive Start/End dates, FullDay/AM/PM, Available/Unavailable/Unknown and UTC recording time. UPDATE/DELETE triggers preserve history. `EmployeeAvailability` holds sparse current AM/PM cells keyed by Employee/date/slot; a composite FK keeps the cell's change ID and employee consistent. Current cells store only Available/Unavailable; clearing to Not recorded removes the current cell while retaining the Unknown audit event. Original IDs, notes, resources, staffing and assignments are untouched.
+
+GET/PUT `/employees/{id}/availability` read/save a range; PUT requires strict `expected_revision`, dates, slot and state. No-change saves do not increase revision/history. `BEGIN IMMEDIATE` covers revision check, range event and all cell updates/clears. Any failure rolls back all changes. Reads include revision/entries in one snapshot. GET `/employees/{id}/availability/history` returns the latest 100 saved events; older events remain stored. GET `/employee-availability?local_date=...&slot=AM|PM` returns each existing employee's recorded state for the Draft picker; missing cells are Unknown and storage failures are errors, not fabricated unknown/available values.
+
+Dates are local ISO strings, without UTC conversion; event timestamps are separate. Operations are bounded to 366 dates as a technical workload limit. Full day updates both slots; AM-only never overwrites PM. Range Save is explicit replacement, not a merge inferred from Home Crew or jobs. Active/inactive master status and driver approval stay unchanged. Availability is not approved leave or weekend consent; all Drafts remain unpublishable.
+
+Fresh/legacy migration, eight→nine rollback/retry and original-row preservation are tested. Schema-eight builds require their consistent pre-upgrade backup for fallback and reject newer history. Never edit history/drop tables to downgrade an operational database; application backup/restore and production upgrade remain separate gates.
+
 ## Crew roster
 
 The first #8 slice adds the Crews table to the local SQLite database. The stable generated ID survives name, type and status edits. Crew type is Civil or Tower. The roster keeps inactive rows visible and has no hard delete. Search uses literal substrings with SQLite's existing ASCII case behavior. Crew names are labels, so multiple rows may share a name. A roster row is master data and does not establish scheduling eligibility. Employee master data and Foreman appointment history are described below.

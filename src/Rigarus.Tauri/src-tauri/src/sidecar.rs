@@ -192,6 +192,42 @@ impl Sidecar {
         self.send(self.client.get(url))
     }
 
+    pub fn read_availability(
+        &self,
+        employee_id: i64,
+        start: &str,
+        end: &str,
+    ) -> Result<Value, String> {
+        let url = local_query_url(
+            &self.url(&format!("/employees/{employee_id}/availability")),
+            &[("start_date", start), ("end_date", end)],
+        )?;
+        self.send(self.client.get(url))
+    }
+
+    pub fn save_availability(&self, employee_id: i64, value: &Value) -> Result<Value, String> {
+        self.send(
+            self.client
+                .put(self.url(&format!("/employees/{employee_id}/availability")))
+                .json(value),
+        )
+    }
+
+    pub fn read_availability_history(&self, employee_id: i64) -> Result<Value, String> {
+        self.send(
+            self.client
+                .get(self.url(&format!("/employees/{employee_id}/availability/history"))),
+        )
+    }
+
+    pub fn read_availability_on_slot(&self, day: &str, slot: &str) -> Result<Value, String> {
+        let url = local_query_url(
+            &self.url("/employee-availability"),
+            &[("local_date", day), ("slot", slot)],
+        )?;
+        self.send(self.client.get(url))
+    }
+
     pub fn read_assignment(&self, id: i64) -> Result<Value, String> {
         self.send(
             self.client
@@ -274,6 +310,12 @@ impl Sidecar {
     }
 }
 
+fn local_query_url(base: &str, fields: &[(&str, &str)]) -> Result<reqwest::Url, String> {
+    let mut url = reqwest::Url::parse(base).map_err(|_| SERVICE_UNAVAILABLE.to_string())?;
+    url.query_pairs_mut().extend_pairs(fields.iter().copied());
+    Ok(url)
+}
+
 fn assignment_query_url(base: &str, query: &Value) -> Result<reqwest::Url, String> {
     let mut url = reqwest::Url::parse(base).map_err(|_| SERVICE_UNAVAILABLE.to_string())?;
     let fields = query
@@ -335,6 +377,29 @@ impl Drop for Sidecar {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn availability_dates_slots_and_query_values_remain_separate() {
+        let url = local_query_url(
+            "http://127.0.0.1:42000/employees/7/availability",
+            &[
+                ("start_date", "2026-12-31"),
+                ("end_date", "2027-01-01&employee_id=8"),
+            ],
+        )
+        .unwrap();
+        let pairs: Vec<_> = url.query_pairs().collect();
+        assert_eq!(url.path(), "/employees/7/availability");
+        assert_eq!(pairs.len(), 2);
+        assert_eq!(pairs[0].1, "2026-12-31");
+        assert_eq!(pairs[1].1, "2027-01-01&employee_id=8");
+        let slot = local_query_url(
+            "http://127.0.0.1:42000/employee-availability",
+            &[("local_date", "2026-12-31"), ("slot", "PM")],
+        )
+        .unwrap();
+        assert_eq!(slot.query_pairs().last().unwrap().1, "PM");
+    }
 
     #[test]
     fn assignment_filters_preserve_local_dates_ids_and_cancelled_visibility() {

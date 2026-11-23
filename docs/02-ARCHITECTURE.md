@@ -32,6 +32,14 @@ The first persisted-membership slice separates pure staffing types/ID validation
 
 Rust adds authenticated `save_staffing` and `read_staffing_history` commands; the existing assignment query bridge allows the employee filter. React's detail dialog embeds an explicit Draft workers editor; both weekly projections consume the same saved workers, including individual multi-day source buttons. History preserves saved names/Home Crew snapshots while current labels reflect live master data. No inferred attendance, leave, qualification, actual Rig, publish or export capability is added. Uncertain writes require reload; post-commit refresh clears stale data and reports failure distinctly.
 
+## Recorded availability (#77)
+
+`availability.py` defines three recorded states and bounded inclusive local-date ranges, independently of HTTP/UI/SQLite. `availability_store.py` owns snapshot reads, per-employee revision-protected range saves and retained history; `availability_api.py` maps validation/missing/stale/storage outcomes without database diagnostics. Startup adds schema nine in the existing migration transaction. An empty current cell is Not recorded, never presumed available.
+
+The People Availability page first provides independent management and a selected employee's Sun–Sat AM/PM calendar. Its clear action removes current cells but preserves change history. Save explicitly replaces selected slots only; Cancel does not write. Query identity and effect cancellation prevent an older employee/week from supplying new cells. A failed read is shown separately from unknown; uncertain saves require reload and a failed post-commit refresh does not show stale cells.
+
+Rust bridges read/save/history plus one bulk employee-status read for a local date/slot. Draft worker selection consumes that same recorded status as advisory information, with loading/error/retry distinct from Not recorded. It never edits Home Crew, workers or visits and never grants leave/weekend/driver/dispatch approval. No new external service or dependency is used.
+
 ## WPF baseline
 
 | Project | Responsibility | Dependencies |

@@ -55,6 +55,54 @@ async fn search_projects(app: tauri::AppHandle, term: String) -> Result<Value, S
 }
 
 #[tauri::command]
+async fn read_availability(
+    app: tauri::AppHandle,
+    employee_id: i64,
+    start_date: String,
+    end_date: String,
+) -> Result<Value, String> {
+    with_sidecar(app, move |service| {
+        service.read_availability(employee_id, &start_date, &end_date)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn save_availability(
+    app: tauri::AppHandle,
+    employee_id: i64,
+    availability: Value,
+) -> Result<Value, String> {
+    with_sidecar(app, move |service| {
+        service.save_availability(employee_id, &availability)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn read_availability_history(
+    app: tauri::AppHandle,
+    employee_id: i64,
+) -> Result<Value, String> {
+    with_sidecar(app, move |service| {
+        service.read_availability_history(employee_id)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn read_availability_on_slot(
+    app: tauri::AppHandle,
+    local_date: String,
+    slot: String,
+) -> Result<Value, String> {
+    with_sidecar(app, move |service| {
+        service.read_availability_on_slot(&local_date, &slot)
+    })
+    .await
+}
+
+#[tauri::command]
 async fn list_assignments(app: tauri::AppHandle, query: Value) -> Result<Value, String> {
     with_sidecar(app, move |service| service.list_assignments(&query)).await
 }
@@ -207,6 +255,10 @@ fn main() {
             save_demo_note,
             search_projects,
             list_assignments,
+            read_availability,
+            save_availability,
+            read_availability_history,
+            read_availability_on_slot,
             save_staffing,
             read_staffing_history,
             read_assignment,
