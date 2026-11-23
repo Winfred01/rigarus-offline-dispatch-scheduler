@@ -1,0 +1,32 @@
+# Issue #35 — local supervisor finalization
+
+November 23, 2026, America/Toronto. See [sources, authority and plan](../design/2026-11-23-issue-35-supervisor-checklist.md). Tool-only continuation after the native calendar/Draft assertions in PR #84 reached PASS twice but the outer supervisor never produced its final exit summary. Those older aggregate runs remain BLOCKED; later evidence must not erase them.
+
+## Confirmed reproduction and cause
+
+Frozen event/output/transcript tail reads in separate Windows PowerShell 5.1 host processes all returned in approximately 0.2 seconds. A short no-NIC guest control with stage markers also completed process polling, tail reads, serial open/write/dispose, exit-code read, transcript close and cleanup (exit 0; 29.129 seconds including cold startup). That control used shallow serialization and did not establish a fix for the deep serializer.
+
+The exact host boundary then reproduced the failure: `Get-Content -Tail 1` produced an extended string with six filesystem note properties. Embedding that object as `lastEvent` in `ConvertTo-Json -Depth 10` did not return within a separate five-second watchdog. The last local marker was before JSON, not before the file read. Materializing `.ToString()` removed those note properties; the same record serialized to 170 characters in 40 milliseconds. An independent copied plain string also completed in 36 milliseconds.
+
+The stalled outer callback was serializing Provider/Drive metadata attached to the string, rather than only reporting log text. This explains the missing progress/final report while the independent GUI worker continued and finished. Switching process launch/redirection did not change that boundary. This does not establish a product/WebView2 defect or attribute every earlier UIA failure to this cause.
+
+## Fix and regression boundary
+
+`Read-AcceptanceProgressText` returns the final line as primitive text. Missing/empty/non-file input supplies no event; real file-read errors propagate. Callers construct a primitive-only progress record. The existing support file is already included in acceptance kits. No product, native assertion, Save retry, package, schema, dependency or wait profile is changed.
+
+The harness uses a real log path containing spaces, verifies the Windows PowerShell decorated-string fixture, exact final text and absence of note properties, then performs a depth-12 JSON round trip and checks that `lastEvent` remains a string without Provider/Drive/Credential fields. It also covers absent/empty/non-file paths and an exclusively locked file. Raw deep serialization is not run unbounded in CI.
+
+| Verification | Status at commit | Boundary |
+| --- | --- | --- |
+| Frozen host tail-read isolation | PASS | Three separate bounded Windows PowerShell 5.1 processes |
+| Exact host deep-JSON failure and plain-text comparison | PASS, diagnosis | Raw process stopped at 5 seconds; two text variants completed in 40/36 ms; raw diagnostics stay local |
+| Guest shallow control / phase instrumentation | PASS | 29.129 s / exit 0, ordinary isolated no-NIC Win11 x64 build26100 guest; no product scenario run |
+| Final helper / existing acceptance harness | PASS | Windows PowerShell 5.1, including locked-file failure, deep JSON round trip and all existing wait/sidecar/UIA/WAL cases |
+| Guest raw-versus-fixed depth-10 comparison | Pending | Independent finite watchdog; not inferred from host |
+| Matching package native GUI / complete outer exit | Pending | Same installer/client/sidecar; separate synthetic profile, actual result and connectivity required |
+| Final closed-disk identity/data audit | Pending | Only after guest process and QMP are closed |
+| Parser/docs/whitespace/privacy | PASS | All PowerShell files parse; Markdown links/fences and staged whitespace pass; privacy scan of 225 indexed paths |
+| Current-head Windows CI | Pending | Final evidence attached to PR; CI is not native acceptance |
+| Customer Demo/UAT / production | NOT RUN / NOT GRANTED | No sign-off or Release authorization |
+
+The pending rows are a source snapshot; final PR/Issue updates identify the actual results without claiming a new CI package was tested. Do not close #35/#42 or infer complete RC readiness from this tool fix.

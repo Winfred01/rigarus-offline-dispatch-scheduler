@@ -9,6 +9,17 @@ function Get-AcceptanceLogPath([string]$Path) {
     $Path
 }
 
+function Read-AcceptanceProgressText([string]$Path) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+    $line = Get-Content -LiteralPath $Path -Tail 1 -ErrorAction Stop
+    if ($null -ne $line) {
+        # Windows PowerShell strings from Get-Content carry Provider/Drive metadata.
+        # Deep JSON serialization can traverse that graph instead of reporting text.
+        # Explicitly materialize text before placing it in a progress record.
+        return $line.ToString()
+    }
+}
+
 function Get-AcceptanceWaits([string]$Profile, [System.Collections.IDictionary]$Overrides) {
     $waits = if ($Profile -eq 'SlowVm') {
         @{ InstallTimeoutSeconds = 900; GuiTimeoutSeconds = 150; ExitTimeoutSeconds = 60 }

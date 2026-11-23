@@ -27,6 +27,42 @@ function Test-InstallerProcess([string]$Command, [int]$Seconds, [int]$Code, [str
 }
 
 try {
+    # Real Get-Content output is an extended string on Windows PowerShell 5.1.
+    # Passing it directly to a deep JSON progress record traverses Provider/Drive.
+    $progressPath = Join-Path $testRoot 'progress with spaces.log'
+    if ($null -ne (Read-AcceptanceProgressText $progressPath)) { throw 'Missing progress must remain absent.' }
+    New-Item -ItemType File -Path $progressPath | Out-Null
+    if ($null -ne (Read-AcceptanceProgressText $progressPath)) { throw 'Empty progress must remain absent.' }
+    $expectedProgress = 'status=PASS phase=desktop-smoke elapsedMs=23 state=synthetic'
+    @('status=START phase=desktop-smoke', $expectedProgress) | Set-Content -LiteralPath $progressPath -Encoding UTF8
+    $providerLine = Get-Content -LiteralPath $progressPath -Tail 1
+    if ($PSVersionTable.PSVersion.Major -eq 5 -and -not $providerLine.PSObject.Properties['PSPath']) {
+        throw 'Regression fixture did not supply the Windows PowerShell extended string.'
+    }
+    $progress = Read-AcceptanceProgressText $progressPath
+    if ($progress -isnot [string] -or $progress -ne $expectedProgress -or
+        @($progress.PSObject.Properties | Where-Object MemberType -eq NoteProperty).Count -ne 0) {
+        throw 'Progress reader retained metadata or changed the final event.'
+    }
+    $progressJson = @{ phase = 'native-progress'; lastEvent = $progress } | ConvertTo-Json -Depth 12 -Compress
+    $roundTrip = $progressJson | ConvertFrom-Json
+    if ($roundTrip.lastEvent -isnot [string] -or $roundTrip.lastEvent -ne $expectedProgress -or
+        $progressJson -match 'PSPath|PSDrive|PSProvider|PSCredential' -or $progressJson.Length -gt 256) {
+        throw 'Progress JSON crossed the primitive-only boundary.'
+    }
+    if ($null -ne (Read-AcceptanceProgressText $testRoot)) {
+        throw 'Directory progress must remain absent.'
+    }
+    $lockedProgress = [IO.File]::Open($progressPath, 'Open', 'ReadWrite', 'None')
+    $readFailed = $false
+    try {
+        try { Read-AcceptanceProgressText $progressPath | Out-Null }
+        catch { $readFailed = $true }
+    }
+    finally { $lockedProgress.Dispose() }
+    if (-not $readFailed) { throw 'A real progress read failure was hidden.' }
+    Write-Host 'Verified primitive-only progress, missing/empty input and deep JSON round trip.'
+
     $defaults = Get-AcceptanceWaits 'Default' @{}
     $slow = Get-AcceptanceWaits 'SlowVm' @{ GuiTimeoutSeconds = 120 }
     if ($defaults.InstallTimeoutSeconds -ne 300 -or $defaults.GuiTimeoutSeconds -ne 30 -or
