@@ -13,6 +13,7 @@
     [switch]$IncludeStaffing,
     [switch]$IncludeAvailability,
     [switch]$IncludeEmployeeWeek,
+    [switch]$ReproduceCrewChoice,
     [switch]$PreserveSyntheticProfile,
     [ValidateSet('Default', 'SlowVm')]
     [string]$Profile = 'Default',
@@ -20,7 +21,8 @@
     [int]$GuiTimeoutSeconds,
     [ValidateRange(1, 180)]
     [int]$ExitTimeoutSeconds,
-    [string]$DiagnosticLog
+    [string]$DiagnosticLog,
+    [string]$UiaDiagnosticLog
 )
 
 $ErrorActionPreference = 'Stop'
@@ -32,8 +34,11 @@ if ($IncludeStaffing) { $IncludeAssignments = $true; $IncludeCrews = $true }
 $staffingWorkerAName = if ($IncludeForemen) { 'Synthetic Foreman A' } else { 'Synthetic Staffing A' }
 $staffingWorkerBName = if ($IncludeForemen) { 'Synthetic Foreman B renamed' } else { 'Synthetic Staffing B' }
 . (Join-Path $PSScriptRoot 'TauriAcceptanceSupport.ps1')
+. (Join-Path $PSScriptRoot 'TauriUiaDiagnostics.ps1')
 $waits = Get-AcceptanceWaits $Profile $PSBoundParameters
 $acceptanceLog = Get-AcceptanceLogPath $DiagnosticLog
+$uiaDiagnosticLog = Get-AcceptanceLogPath $(if ($UiaDiagnosticLog) { $UiaDiagnosticLog } else { $acceptanceLog + '.uia.jsonl' })
+$uiaLastOperation = 'desktop-launch'; $uiaLastControl = $null; $uiaLastOption = $null
 
 function Wait-For([string]$Description, [scriptblock]$Probe) {
     $timer = [Diagnostics.Stopwatch]::StartNew()
@@ -44,6 +49,7 @@ function Wait-For([string]$Description, [scriptblock]$Probe) {
         if ($process.HasExited) {
             Stop-Acceptance 'FAIL' 'gui-ready' $timer $waits.GuiTimeoutSeconds (Get-AcceptanceProcessState $process)
         }
+        Restore-AcceptanceWindow $process
         if ($sidecar) { Assert-AcceptanceSidecar $sidecar $timer }
         & $Probe
     } {
@@ -67,6 +73,8 @@ function Find-Control($Window, $Property, [string]$Value, [switch]$Button) {
 }
 
 function Start-Dashboard {
+    $script:uiaOwnedHandle = [IntPtr]::Zero
+    $script:uiaOwnedWindow = $null
     $start = New-Object Diagnostics.ProcessStartInfo
     $start.FileName = $Executable
     $start.WorkingDirectory = Split-Path -Parent $Executable
@@ -83,18 +91,26 @@ function Get-DashboardWindow($Process) {
         if ($Process.MainWindowHandle -ne [IntPtr]::Zero) {
             $window = [Windows.Automation.AutomationElement]::FromHandle($Process.MainWindowHandle)
             if ($window.Current.Name -eq 'Rigarus Offline Dispatch Scheduler') {
-                if ($IncludeAssignments) {
-                    $transform = $window.GetCurrentPattern([Windows.Automation.TransformPattern]::Pattern)
-                    if (-not $transform.Current.CanResize) { throw 'Weekly smoke requires a resizable test window.' }
-                    if (-not ('RigarusAcceptanceWindow' -as [type])) {
-                        Add-Type -TypeDefinition @'
+                if (-not ('RigarusAcceptanceWindow' -as [type])) {
+                    Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
 public static class RigarusAcceptanceWindow {
     [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr window);
+    [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr window);
+    [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr window, int command);
+    [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr window);
+    [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
 }
 '@
-                    }
+                }
+                $script:uiaOwnedHandle = $Process.MainWindowHandle
+                $script:uiaOwnedWindow = $window
+                Restore-AcceptanceWindow $Process
+                if (-not [RigarusAcceptanceWindow]::IsWindowVisible($Process.MainWindowHandle)) { return $null }
+                if ($IncludeAssignments -or $ReproduceCrewChoice) {
+                    $transform = $window.GetCurrentPattern([Windows.Automation.TransformPattern]::Pattern)
+                    if (-not $transform.Current.CanResize) { throw 'Weekly smoke requires a resizable test window.' }
                     # TransformPattern uses physical pixels; Tauri sizes use DIPs.
                     $dpi = [RigarusAcceptanceWindow]::GetDpiForWindow($Process.MainWindowHandle)
                     if ($dpi -lt 96 -or $dpi -gt 480) { throw 'Unsupported test-window DPI.' }
@@ -103,6 +119,21 @@ public static class RigarusAcceptanceWindow {
                 $window
             }
         }
+    }
+}
+
+function Restore-AcceptanceWindow($Process) {
+    if (-not $script:uiaOwnedHandle -or $script:uiaOwnedHandle -eq [IntPtr]::Zero) { return }
+    [uint32]$owner = 0
+    [RigarusAcceptanceWindow]::GetWindowThreadProcessId($script:uiaOwnedHandle, [ref]$owner) | Out-Null
+    if ($owner -ne $Process.Id) { throw 'Verifier window ownership changed.' }
+    # Startup visibility may change after the title first appears. Recheck on
+    # every bounded GUI probe; never restore a window from another process.
+    if (-not [RigarusAcceptanceWindow]::IsWindowVisible($script:uiaOwnedHandle) -or
+        [RigarusAcceptanceWindow]::IsIconic($script:uiaOwnedHandle)) {
+        Write-UiaOperation 'desktop:restore-owned-window' 'before' $script:uiaOwnedWindow $null
+        [RigarusAcceptanceWindow]::ShowWindow($script:uiaOwnedHandle, 9) | Out-Null
+        Write-UiaOperation 'desktop:restore-owned-window' 'after' $script:uiaOwnedWindow $null
     }
 }
 
@@ -331,31 +362,104 @@ function Open-SyntheticAssignment($Window, [int]$WorkItemId) {
 }
 
 function Select-AssignmentChoice($Window, [string]$Id, [string]$Keys, [string]$ExpectedChoice) {
-    $choiceControl = Find-Control $Window $automationId $Id
-    Wait-For 'assignment-choice-enabled' { $choiceControl.Current.IsEnabled } | Out-Null
-    if (([string]$choiceControl.GetCurrentPattern($valuePattern).Current.Value) -ceq $ExpectedChoice) { return }
-    $scrollItem = $null
-    if ($choiceControl.TryGetCurrentPattern([Windows.Automation.ScrollItemPattern]::Pattern, [ref]$scrollItem)) { $scrollItem.ScrollIntoView() }
-    $choiceControl.SetFocus()
-    # Native WebView2 options expose SelectionItem. Do not send keys to whichever
-    # host window happens to have foreground input. Keys is kept for old callers.
-    $expand = $choiceControl.GetCurrentPattern([Windows.Automation.ExpandCollapsePattern]::Pattern)
-    $option = Wait-For 'assignment-option-available' {
-        if ($expand.Current.ExpandCollapseState -ne [Windows.Automation.ExpandCollapseState]::Expanded) { $expand.Expand() }
-        $condition = [Windows.Automation.PropertyCondition]::new(
-            [Windows.Automation.AutomationElement]::ControlTypeProperty,
-            [Windows.Automation.ControlType]::ListItem)
-        $options = @($Window.FindAll([Windows.Automation.TreeScope]::Descendants, $condition) |
-            Where-Object { ([string]$_.Current.Name).StartsWith($ExpectedChoice, [StringComparison]::Ordinal) })
-        if ($options.Count -gt 1) { throw 'Synthetic choice is ambiguous.' }
-        if ($options.Count -eq 1) { $options[0] }
+    $context = [pscustomobject]@{ operation = "choice:${Id}:read"; control = $null; option = $null; traced = $false; retries = 0 }
+    $choiceTimer = [Diagnostics.Stopwatch]::StartNew()
+    $idCondition = [Windows.Automation.PropertyCondition]::new($automationId, $Id)
+    $optionCondition = [Windows.Automation.PropertyCondition]::new(
+        [Windows.Automation.AutomationElement]::ControlTypeProperty, [Windows.Automation.ControlType]::ListItem)
+    try {
+        # One bounded wait covers the whole interaction. Each probe resolves the
+        # live control/pattern again; a committed choice is verified before any
+        # repeated selection. No API or persistent write occurs in this loop.
+        Wait-For 'assignment-choice-committed' {
+            Invoke-UiaTransientProbe {
+                $context.operation = "choice:${Id}:read"
+                $controls = @($Window.FindAll([Windows.Automation.TreeScope]::Descendants, $idCondition))
+                if ($controls.Count -gt 1) { throw 'Synthetic choice control is ambiguous.' }
+                if (-not $controls.Count) { return $false }
+                $control = $controls[0]; $context.control = $control; $context.option = $null
+                if (-not $control.Current.IsEnabled) { return $false }
+                if (-not $context.traced) {
+                    Write-UiaOperation $context.operation 'before' $Window $control
+                    $context.traced = $true
+                }
+                $value = $null
+                if (-not $control.TryGetCurrentPattern($valuePattern, [ref]$value)) {
+                    throw [NotSupportedException]::new('Synthetic choice does not expose Value.')
+                }
+                $observed = [string]$value.Current.Value
+                $expand = $null
+                if (-not $control.TryGetCurrentPattern([Windows.Automation.ExpandCollapsePattern]::Pattern, [ref]$expand)) {
+                    throw [NotSupportedException]::new('Synthetic choice does not expose ExpandCollapse.')
+                }
+                if (Test-UiaChoiceLabel $observed $ExpectedChoice) {
+                    if ($expand.Current.ExpandCollapseState -eq [Windows.Automation.ExpandCollapseState]::Expanded) {
+                        $context.operation = "choice:${Id}:collapse"; $expand.Collapse(); return $false
+                    }
+                    return $true
+                }
+                if ($expand.Current.ExpandCollapseState -ne [Windows.Automation.ExpandCollapseState]::Expanded) {
+                    $context.operation = "choice:${Id}:focus"
+                    $scrollItem = $null
+                    if ($control.TryGetCurrentPattern([Windows.Automation.ScrollItemPattern]::Pattern, [ref]$scrollItem)) { $scrollItem.ScrollIntoView() }
+                    $control.SetFocus()
+                    $context.operation = "choice:${Id}:expand"; $expand.Expand(); return $false
+                }
+                $context.operation = "choice:${Id}:options"
+                $options = @($Window.FindAll([Windows.Automation.TreeScope]::Descendants, $optionCondition) |
+                    Where-Object { Test-UiaChoiceLabel ([string]$_.Current.Name) $ExpectedChoice })
+                if ($options.Count -gt 1) { throw 'Synthetic choice is ambiguous.' }
+                if (-not $options.Count) { return $false }
+                $option = $options[0]; $context.option = $option
+                if (-not $option.Current.IsEnabled) { return $false }
+                $selection = $null
+                if (-not $option.TryGetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern, [ref]$selection)) { return $false }
+                $context.operation = "choice:${Id}:select"; $selection.Select()
+                # Selection may replace popup providers. Read the live value and
+                # obtain a fresh collapse pattern on the next bounded probe.
+                $false
+            } {
+                param($errorRecord)
+                $context.retries++
+                Write-UiaFailure $errorRecord $context.operation $Window $context.control $context.option 'retrying'
+                Write-AcceptanceEvent 'INFO' 'uia-transient' $choiceTimer $waits.GuiTimeoutSeconds "target=$Id attempt=$($context.retries)"
+            }
+        } | Out-Null
+        Write-UiaOperation "choice:${Id}:verified" 'after' $Window $context.control $context.option
     }
-    $option.GetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern).Select()
-    if ($expand.Current.ExpandCollapseState -eq [Windows.Automation.ExpandCollapseState]::Expanded) { $expand.Collapse() }
-    Wait-For 'assignment-choice-committed' {
-        $observedChoice = $choiceControl.GetCurrentPattern($valuePattern).Current.Value
-        ([string]$observedChoice).StartsWith($ExpectedChoice)
-    } | Out-Null
+    catch {
+        $script:uiaLastOperation = $context.operation; $script:uiaLastControl = $context.control; $script:uiaLastOption = $context.option
+        Write-UiaFailure $_ $context.operation $Window $context.control $context.option
+        throw
+    }
+}
+
+function Test-CrewChoiceReproduction($Window) {
+    foreach ($label in @('Synthetic Choice Crew A', 'Synthetic Choice Crew B')) {
+        Invoke-Button $Window 'Crews'; Invoke-Button $Window 'New crew'
+        Set-Field $Window 'crew-name' $label; Invoke-Button $Window 'Save crew'
+        Find-Control $Window $name 'Crew saved.' | Out-Null
+    }
+    Invoke-Button $Window 'Projects'; Invoke-Button $Window 'New project'
+    Set-Field $Window 'job_number' 'SYN-14-UI'; Set-Field $Window 'site_id' '0007'
+    Set-Field $Window 'site_name' 'Synthetic Crew selector reproduction'
+    Invoke-Button $Window 'Add work item'; Invoke-Button $Window 'Save project'
+    $table = Find-Control $Window $name 'Project work items'
+    $condition = [Windows.Automation.PropertyCondition]::new(
+        [Windows.Automation.AutomationElement]::ControlTypeProperty, [Windows.Automation.ControlType]::Button)
+    $assign = $table.GetCurrentPattern([Windows.Automation.GridPattern]::Pattern).GetItem(1, 3).
+        FindFirst([Windows.Automation.TreeScope]::Descendants, $condition)
+    $workItem = [int]($assign.Current.Name -replace '^Assign Work Item ', '')
+    Open-SyntheticAssignment $Window $workItem
+    Select-AssignmentChoice $Window 'assignment-crew' '' 'Synthetic Choice Crew A'
+    Set-Field $Window 'assignment-date' '2026-12-31'
+    Set-Field $Window 'assignment-notes' 'Synthetic first AM Draft'
+    Invoke-Button $Window 'Save to Draft'; Close-AssignmentDetails $Window 1
+    Open-SyntheticAssignment $Window $workItem
+    Select-AssignmentChoice $Window 'assignment-crew' '' 'Synthetic Choice Crew A'
+    Select-AssignmentChoice $Window 'assignment-crew' '' 'Synthetic Choice Crew B'
+    Invoke-Button $Window 'Cancel'
+    Write-AcceptanceEvent 'PASS' 'crew-choice-reproduction' $timer 0 'crews=2 workItems=1 firstAM=saved repeatedChoice=verified alternateCrew=verified'
 }
 
 function Get-SyntheticDateParts([string]$Date, [string[]]$Parts) {
@@ -1253,7 +1357,11 @@ $sidecar = $null
 $runRoot = $null
 $exitCode = 0
 $phase = 'desktop-launch'
+$requestedScopes = $PSBoundParameters
 try {
+    if ($ReproduceCrewChoice -and @($requestedScopes.Keys | Where-Object { $_ -like 'Include*' -and $requestedScopes[$_] }).Count) {
+        Stop-Acceptance 'FAIL' 'configuration' $timer 0 'conflictingScopes=true'
+    }
     if ($RequireOffline -and [Net.NetworkInformation.NetworkInterface]::GetIsNetworkAvailable()) {
         Stop-Acceptance 'BLOCKED' 'environment' $timer 0 'activeNetworkAdapter=true'
     }
@@ -1270,6 +1378,12 @@ try {
     Write-AcceptanceEvent 'START' $phase $timer 0 (Get-AcceptanceProcessState $process)
     $phase = 'desktop-functional-checks'
     $window = Get-DashboardWindow $process
+    if ($ReproduceCrewChoice) {
+        $sidecar = Wait-For 'sidecar-process' { Get-Sidecar $process }
+        Test-CrewChoiceReproduction $window
+        Close-Dashboard $process
+        exit 0
+    }
     Invoke-Button $window 'Data'
     Invoke-Button $window 'Demo note'
     Find-Control $window $name 'DEMO-001' | Out-Null
@@ -1377,7 +1491,10 @@ try {
     Close-Dashboard $process
     Write-AcceptanceEvent 'PASS' 'desktop-smoke' $timer 0 'note=reopened sidecar=exited startupError=displayed'
 }
-catch { $exitCode = Get-AcceptanceExitCode $_ $phase $timer }
+catch {
+    Write-UiaFailure $_ $uiaLastOperation $window $uiaLastControl $uiaLastOption
+    $exitCode = Get-AcceptanceExitCode $_ $phase $timer
+}
 finally {
     Stop-AcceptanceProcess $process 'desktop-cleanup' $waits.ExitTimeoutSeconds
     Stop-AcceptanceProcess $sidecar 'sidecar-cleanup' $waits.ExitTimeoutSeconds
