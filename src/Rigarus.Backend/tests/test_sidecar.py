@@ -13,6 +13,7 @@ import unittest
 from contextlib import closing
 from pathlib import Path
 from test_import_preview import workbook_bytes
+from migration_fixture import remove_staffing_schema
 from rigarus_backend.storage import DRAFT_ASSIGNMENTS, initialize_database
 
 
@@ -270,6 +271,7 @@ class SidecarTests(unittest.TestCase):
     def test_assignment_upgrade_from_six_migrations_preserves_existing_records(self):
         initialize_database(self.database)
         with closing(sqlite3.connect(self.database)) as connection, connection:
+            remove_staffing_schema(connection)
             connection.execute("DROP TABLE DraftAssignments")
             connection.execute(
                 "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?",
@@ -339,7 +341,7 @@ class SidecarTests(unittest.TestCase):
                 connection.execute(
                     "SELECT count(*) FROM __EFMigrationsHistory"
                 ).fetchone(),
-                (7,),
+                (8,),
             )
             self.assertEqual(
                 connection.execute("PRAGMA integrity_check").fetchone(), ("ok",)
@@ -347,6 +349,89 @@ class SidecarTests(unittest.TestCase):
             self.assertEqual(
                 connection.execute("PRAGMA foreign_key_check").fetchall(), []
             )
+
+    def test_explicit_workers_authenticated_restart_and_home_crew_retention(self):
+        token = secrets.token_hex(32)
+        process = self.launch(token)
+        port = self.read_port(process)
+
+        def request(method, route, payload=None):
+            status, value = self.request(port, method, route, token, payload=payload)
+            self.assertIn(status, (200, 201), value)
+            return value
+
+        home = request("POST", "/crews", {"name": "Synthetic home", "type": "Civil"})
+        crew = request(
+            "POST", "/crews", {"name": "Synthetic borrowed Crew", "type": "Tower"}
+        )
+        person = request(
+            "POST",
+            "/employees",
+            {
+                "name": "Synthetic worker",
+                "home_crew_id": home["id"],
+                "skill_level": 1,
+                "foreman_eligible": False,
+            },
+        )
+        project = request(
+            "POST",
+            "/projects",
+            {
+                "job_number": "SYN-0022",
+                "site_id": "0022",
+                "site_name": "Synthetic staffing site",
+                "work_items": [
+                    {
+                        "type": "Tower",
+                        "required_crew_count": 1,
+                        "estimated_half_days": 1,
+                    }
+                ],
+            },
+        )
+        assignment = request(
+            "POST",
+            "/draft-assignments",
+            {
+                "work_item_id": project["work_items"][0]["id"],
+                "crew_id": crew["id"],
+                "local_date": "2026-12-31",
+                "slot": "AM",
+            },
+        )
+        route = f"/draft-assignments/{assignment['id']}/staffing"
+        self.assertEqual(
+            self.request(
+                port,
+                "PUT",
+                route,
+                "incorrect",
+                payload={"employee_ids": [person["id"]], "expected_revision": 1},
+            )[0],
+            401,
+        )
+        saved = request(
+            "PUT", route, {"employee_ids": [person["id"]], "expected_revision": 1}
+        )
+        self.assertEqual(saved["staffing"]["workers"][0]["home_crew_id"], home["id"])
+        self.assertFalse(saved["publishable"])
+        process.stdin.close()
+        self.assertEqual(process.wait(timeout=10), 0)
+        process = self.launch(token)
+        port = self.read_port(process)
+        self.assertEqual(
+            request("GET", f"/draft-assignments?employee_id={person['id']}"), [saved]
+        )
+        self.assertEqual(
+            request("GET", f"/draft-assignments/{assignment['id']}/staffing-history")[
+                0
+            ]["members"][0]["employee_id"],
+            person["id"],
+        )
+        self.assertEqual(request("GET", "/employees"), [person])
+        process.stdin.close()
+        self.assertEqual(process.wait(timeout=10), 0)
 
     def test_rig_api_is_authenticated_and_persists_across_sidecar_restart(self):
         token = secrets.token_hex(32)

@@ -19,6 +19,17 @@ export type DraftAssignment = {
   crew_active: boolean;
   validation_status: "Pending";
   publishable: false;
+  staffing?: {
+    configured: boolean;
+    change_id: number;
+    workers: {
+      employee_id: number;
+      name: string;
+      home_crew_id: number;
+      active: boolean;
+      driver_status: string;
+    }[];
+  };
 };
 
 export function localToday(now = new Date()): string {

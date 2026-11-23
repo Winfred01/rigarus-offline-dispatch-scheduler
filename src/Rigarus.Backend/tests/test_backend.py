@@ -16,6 +16,7 @@ EMPLOYEES = "20261115130213_AddEmployeeRoster"
 RIGS = "20261119130000_AddRigInventory"
 FOREMEN = "20261122030000_AddForemanHistory"
 ASSIGNMENTS = "20261122040000_AddDraftAssignments"
+STAFFING = "20261122200000_AddAssignmentStaffing"
 
 
 class BackendTests(unittest.TestCase):
@@ -75,7 +76,16 @@ class BackendTests(unittest.TestCase):
         with closing(sqlite3.connect(self.database)) as connection:
             self.assertEqual(
                 self.migration_ids(connection),
-                [INITIAL, PROJECTS, CREWS, EMPLOYEES, RIGS, FOREMEN, ASSIGNMENTS],
+                [
+                    INITIAL,
+                    PROJECTS,
+                    CREWS,
+                    EMPLOYEES,
+                    RIGS,
+                    FOREMEN,
+                    ASSIGNMENTS,
+                    STAFFING,
+                ],
             )
             self.assertEqual(
                 connection.execute("PRAGMA journal_mode").fetchone(), ("wal",)
@@ -109,7 +119,16 @@ class BackendTests(unittest.TestCase):
         with closing(sqlite3.connect(self.database)) as connection:
             self.assertEqual(
                 self.migration_ids(connection),
-                [INITIAL, PROJECTS, CREWS, EMPLOYEES, RIGS, FOREMEN, ASSIGNMENTS],
+                [
+                    INITIAL,
+                    PROJECTS,
+                    CREWS,
+                    EMPLOYEES,
+                    RIGS,
+                    FOREMEN,
+                    ASSIGNMENTS,
+                    STAFFING,
+                ],
             )
             connection.execute("PRAGMA foreign_keys = ON")
             connection.execute(
@@ -140,7 +159,16 @@ class BackendTests(unittest.TestCase):
         with closing(sqlite3.connect(self.database)) as connection:
             self.assertEqual(
                 self.migration_ids(connection),
-                [INITIAL, PROJECTS, CREWS, EMPLOYEES, RIGS, FOREMEN, ASSIGNMENTS],
+                [
+                    INITIAL,
+                    PROJECTS,
+                    CREWS,
+                    EMPLOYEES,
+                    RIGS,
+                    FOREMEN,
+                    ASSIGNMENTS,
+                    STAFFING,
+                ],
             )
             self.assertEqual(
                 connection.execute("SELECT * FROM Projects").fetchall(),
@@ -180,7 +208,16 @@ class BackendTests(unittest.TestCase):
         with closing(sqlite3.connect(self.database)) as connection:
             self.assertEqual(
                 self.migration_ids(connection),
-                [INITIAL, PROJECTS, CREWS, EMPLOYEES, RIGS, FOREMEN, ASSIGNMENTS],
+                [
+                    INITIAL,
+                    PROJECTS,
+                    CREWS,
+                    EMPLOYEES,
+                    RIGS,
+                    FOREMEN,
+                    ASSIGNMENTS,
+                    STAFFING,
+                ],
             )
 
     def test_unknown_database_is_rejected_without_adding_schema(self):

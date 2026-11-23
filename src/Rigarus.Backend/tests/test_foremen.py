@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+from migration_fixture import remove_staffing_schema
 from rigarus_backend.api import create_app
 from rigarus_backend.foreman_store import ForemanStore
 from rigarus_backend.foremen import StaleForemanChange
@@ -226,6 +227,7 @@ class ForemanTests(unittest.TestCase):
     def test_rig_schema_migration_rolls_back_then_retries_preserving_all_records(self):
         with closing(sqlite3.connect(self.database)) as connection:
             with connection:
+                remove_staffing_schema(connection)
                 connection.execute("DROP TABLE DraftAssignments")
                 connection.execute(
                     "DELETE FROM __EFMigrationsHistory WHERE MigrationId LIKE '%AddDraftAssignments'"

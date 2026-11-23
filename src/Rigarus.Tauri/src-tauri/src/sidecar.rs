@@ -199,6 +199,21 @@ impl Sidecar {
         )
     }
 
+    pub fn save_staffing(&self, id: i64, staffing: &Value) -> Result<Value, String> {
+        self.send(
+            self.client
+                .put(self.url(&format!("/draft-assignments/{id}/staffing")))
+                .json(staffing),
+        )
+    }
+
+    pub fn read_staffing_history(&self, id: i64) -> Result<Value, String> {
+        self.send(
+            self.client
+                .get(self.url(&format!("/draft-assignments/{id}/staffing-history"))),
+        )
+    }
+
     pub fn save_assignment(&self, id: Option<i64>, assignment: &Value) -> Result<Value, String> {
         self.save_roster_record("/draft-assignments", id, assignment)
     }
@@ -267,7 +282,7 @@ fn assignment_query_url(base: &str, query: &Value) -> Result<reqwest::Url, Strin
     for (key, value) in fields {
         if !matches!(
             key.as_str(),
-            "start_date" | "end_date" | "crew_id" | "include_cancelled"
+            "start_date" | "end_date" | "crew_id" | "employee_id" | "include_cancelled"
         ) {
             return Err("Choose supported draft assignment filters.".into());
         }

@@ -17,6 +17,7 @@ import {
 import { weekDays, shiftDay, displayDate, inWeek } from "./week";
 import { Dialog } from "./dialog";
 import { weekCells } from "./week-cells";
+import { StaffingPanel, staffingLabel } from "./staffing";
 
 type Editor = {
   id: number | null;
@@ -38,7 +39,7 @@ const emptyWorkspace: Workspace = {
   foremen: [],
 };
 export const publishBlockers = [
-  "Actual staffing not assigned: dated personnel and time off are not configured (#22).",
+  "Draft worker choices are not dispatch approval. Time off and staffing validation remain pending (#22).",
   "Driver approval, qualifications, minimum staffing and Rig availability checks are pending (#15/#23).",
   "Locks and weekend approval checks are pending. AM/PM remains provisional for Demo B.",
   "No validated immutable Published snapshot exists (#17/#32). Formal export is unavailable.",
@@ -456,7 +457,14 @@ export function Schedule({
             </div>
             <div>
               <dt>Actual staffing not assigned</dt>
-              <dd>{rows.length}</dd>
+              <dd>
+                {
+                  rows.filter(
+                    (row) =>
+                      !row.staffing?.configured || !row.staffing.workers.length,
+                  ).length
+                }
+              </dd>
             </div>
           </dl>
           <button onClick={() => onView("Job Schedule")}>
@@ -585,7 +593,7 @@ export function Schedule({
                               </span>
                               <span>
                                 {cell.assignments.length} saved AM/PM visits ·
-                                Actual staffing not assigned
+                                Workers are recorded per AM/PM visit
                               </span>
                             </div>
                             <div className="strip-days">
@@ -647,8 +655,8 @@ export function Schedule({
       )}
       <p className="schedule-footnote" id="assignment-safety">
         AM/PM is provisional for Demo B. Home roster and default Rig are
-        reference data. Actual staffing not assigned; time off not configured.
-        Drafts are not publishable.
+        reference data. Workers are explicitly selected per visit; time off is
+        not configured. Drafts are not publishable.
       </p>
       {editor && (
         <Dialog
@@ -680,6 +688,7 @@ export function Schedule({
       {selectedRow && !editor && !cancelling && (
         <Dialog
           title={`${selectedRow.work_type} · Draft #${selectedRow.id}`}
+          busy={busy}
           onClose={() => setSelected(undefined)}
         >
           <dl className="record-detail">
@@ -707,7 +716,7 @@ export function Schedule({
               {!selectedRow.crew_active && " · Inactive"}
             </dd>
             <dt>Actual staffing</dt>
-            <dd>Actual staffing not assigned</dd>
+            <dd>{staffingLabel(selectedRow)}</dd>
             <dt>Actual Rig</dt>
             <dd>Not assigned. Default Rig is reference only.</dd>
             <dt>State</dt>
@@ -719,6 +728,33 @@ export function Schedule({
             <dt>Locks / history</dt>
             <dd>Not configured. Current revision is preserved.</dd>
           </dl>
+          <StaffingPanel
+            key={selectedRow.id}
+            row={selectedRow}
+            people={data.people}
+            crews={data.crews}
+            onBusy={setBusy}
+            requiresReload={blocked}
+            onUncertain={() => {
+              setBlocked(true);
+              setError(
+                "Worker selection outcome is uncertain. Reload assignments before retrying.",
+              );
+            }}
+            onReload={() => void refresh(true)}
+            onSaved={async () => {
+              setData(emptyWorkspace);
+              setStatus("Draft workers saved. Validation pending.");
+              try {
+                await load();
+              } catch {
+                setError(
+                  "Workers were saved, but the board could not refresh. Reload assignments.",
+                );
+                setBlocked(true);
+              }
+            }}
+          />
           <div className="actions">
             <button
               aria-label={`Edit Draft ${selectedRow.id}`}
@@ -821,13 +857,14 @@ function ScheduleCard({
       <strong>
         {row.slot} · {compact ? `Draft #${row.id}` : `${row.work_type} · Draft`}
       </strong>
+      {compact && <span>{staffingLabel(row)}</span>}
       {!compact && (
         <>
           <span>
             {row.job_number} · Site {row.site_id}
           </span>
           {showCrew && <span>{row.crew_name}</span>}
-          <span>Actual staffing not assigned</span>
+          <span>{staffingLabel(row)}</span>
         </>
       )}
     </button>

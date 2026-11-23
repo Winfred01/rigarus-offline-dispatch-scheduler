@@ -1,7 +1,8 @@
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from typing import Literal
+from .staffing import StaffingState
 
 HalfDay = Literal["AM", "PM"]
 
@@ -66,6 +67,7 @@ class DraftAssignment:
     crew_active: bool
     validation_status: Literal["Pending"] = "Pending"
     publishable: bool = False
+    staffing: StaffingState = field(default_factory=StaffingState)
 
 
 class AssignmentNotFound(ValueError):

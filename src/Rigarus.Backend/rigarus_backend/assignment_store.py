@@ -11,6 +11,7 @@ from .assignments import (
     check_revision,
 )
 from .storage import connect
+from .staffing_persistence import read_staffing, append_staffing
 
 SELECT_ASSIGNMENTS = """
     SELECT a.Id, a.WorkItemId, a.CrewId, a.LocalDate, a.Slot, a.Notes,
@@ -32,7 +33,9 @@ def read_assignment(connection, assignment_id: int) -> DraftAssignment:
         raise AssignmentNotFound(
             "This draft assignment no longer exists. Reload assignments."
         )
-    return DraftAssignment(*row[:-1], bool(row[-1]))
+    return DraftAssignment(
+        *row[:-1], bool(row[-1]), staffing=read_staffing(connection, assignment_id)
+    )
 
 
 class AssignmentStore:
@@ -45,6 +48,7 @@ class AssignmentStore:
         end_date: str | None = None,
         crew_id: int | None = None,
         include_cancelled: bool = False,
+        employee_id: int | None = None,
     ) -> list[DraftAssignment]:
         for value in (start_date, end_date):
             if value is not None:
@@ -58,6 +62,10 @@ class AssignmentStore:
                 + """
                 WHERE (? IS NULL OR a.LocalDate >= ?) AND (? IS NULL OR a.LocalDate <= ?)
                   AND (? IS NULL OR a.CrewId = ?) AND (? OR a.Status = 'Draft')
+                  AND (? IS NULL OR EXISTS (
+                      SELECT 1 FROM AssignmentStaffingMembers m JOIN AssignmentStaffingChanges s ON s.Id=m.ChangeId
+                      WHERE s.AssignmentId=a.Id AND m.EmployeeId=? AND s.Configured=1
+                        AND s.Id=(SELECT max(Id) FROM AssignmentStaffingChanges WHERE AssignmentId=a.Id)))
                 ORDER BY a.LocalDate, a.Slot, a.CrewId, a.Id
                 """,
                 (
@@ -68,12 +76,20 @@ class AssignmentStore:
                     crew_id,
                     crew_id,
                     include_cancelled,
+                    employee_id,
+                    employee_id,
                 ),
             )
-            return [DraftAssignment(*row[:-1], bool(row[-1])) for row in rows]
+            return [
+                DraftAssignment(
+                    *row[:-1], bool(row[-1]), staffing=read_staffing(connection, row[0])
+                )
+                for row in rows
+            ]
 
     def read(self, assignment_id: int) -> DraftAssignment:
-        with closing(connect(self.path)) as connection:
+        with closing(connect(self.path)) as connection, connection:
+            connection.execute("BEGIN")
             return read_assignment(connection, assignment_id)
 
     def save(
@@ -139,6 +155,18 @@ class AssignmentStore:
                     Revision=Revision+1, UpdatedAt=? WHERE Id=?""",
                     (*values, now, assignment_id),
                 )
+                if record.staffing.change_id and (
+                    record.work_item_id,
+                    record.crew_id,
+                    record.local_date,
+                    record.slot,
+                ) != (draft.work_item_id, draft.crew_id, draft.local_date, draft.slot):
+                    append_staffing(
+                        connection,
+                        read_assignment(connection, assignment_id),
+                        (),
+                        configured=False,
+                    )
             return read_assignment(connection, assignment_id)
 
     def cancel(self, assignment_id: int, expected_revision: int) -> DraftAssignment:

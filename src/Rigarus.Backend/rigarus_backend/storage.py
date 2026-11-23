@@ -11,6 +11,7 @@ EMPLOYEE_ROSTER = "20261115130213_AddEmployeeRoster"
 RIG_INVENTORY = "20261119130000_AddRigInventory"
 FOREMAN_HISTORY = "20261122030000_AddForemanHistory"
 DRAFT_ASSIGNMENTS = "20261122040000_AddDraftAssignments"
+ASSIGNMENT_STAFFING = "20261122200000_AddAssignmentStaffing"
 EF_VERSION = "10.0.15"
 
 # Keep the on-disk format compatible with the two released EF Core migrations.
@@ -135,6 +136,37 @@ CREATE_DRAFT_ASSIGNMENTS = (
 )
 
 
+CREATE_ASSIGNMENT_STAFFING = (
+    """CREATE TABLE AssignmentStaffingChanges (
+        Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        AssignmentId INTEGER NOT NULL REFERENCES DraftAssignments(Id) ON DELETE RESTRICT,
+        AssignmentRevision INTEGER NOT NULL CHECK (AssignmentRevision > 0),
+        WorkItemId INTEGER NOT NULL REFERENCES WorkItems(Id) ON DELETE RESTRICT,
+        CrewId INTEGER NOT NULL REFERENCES Crews(Id) ON DELETE RESTRICT,
+        LocalDate TEXT NOT NULL,
+        Slot TEXT NOT NULL CHECK (Slot IN ('AM', 'PM')),
+        Configured INTEGER NOT NULL CHECK (Configured IN (0, 1)),
+        RecordedAt TEXT NOT NULL,
+        UNIQUE (AssignmentId, AssignmentRevision)
+    )""",
+    "CREATE INDEX IX_AssignmentStaffingChanges_AssignmentId_Id ON AssignmentStaffingChanges(AssignmentId, Id)",
+    """CREATE TABLE AssignmentStaffingMembers (
+        ChangeId INTEGER NOT NULL REFERENCES AssignmentStaffingChanges(Id) ON DELETE RESTRICT,
+        EmployeeId INTEGER NOT NULL REFERENCES Employees(Id) ON DELETE RESTRICT,
+        EmployeeName TEXT NOT NULL,
+        HomeCrewId INTEGER NOT NULL REFERENCES Crews(Id) ON DELETE RESTRICT,
+        PRIMARY KEY (ChangeId, EmployeeId)
+    )""",
+    "CREATE INDEX IX_AssignmentStaffingMembers_EmployeeId ON AssignmentStaffingMembers(EmployeeId, ChangeId)",
+    *tuple(
+        f"CREATE TRIGGER {table}_No{action.title()} BEFORE {action} ON {table} "
+        "BEGIN SELECT RAISE(ABORT, 'Staffing history is append-only.'); END"
+        for table in ("AssignmentStaffingChanges", "AssignmentStaffingMembers")
+        for action in ("UPDATE", "DELETE")
+    ),
+)
+
+
 def connect(path: Path, *, create: bool = False) -> sqlite3.Connection:
     location = path if create else f"{path.resolve().as_uri()}?mode=rw"
     connection = sqlite3.connect(
@@ -236,8 +268,19 @@ def initialize_database(path: Path) -> None:
                 record_migration(
                     connection, DRAFT_ASSIGNMENTS, product_version="Rigarus 0.1.0"
                 )
-            elif history != (*foreman_history, DRAFT_ASSIGNMENTS) or tables != (
-                foreman_tables | {"DraftAssignments"}
+                history = (*foreman_history, DRAFT_ASSIGNMENTS)
+                tables = foreman_tables | {"DraftAssignments"}
+            draft_history = (*foreman_history, DRAFT_ASSIGNMENTS)
+            draft_tables = foreman_tables | {"DraftAssignments"}
+            if history == draft_history and tables == draft_tables:
+                for statement in CREATE_ASSIGNMENT_STAFFING:
+                    connection.execute(statement)
+                record_migration(
+                    connection, ASSIGNMENT_STAFFING, product_version="Rigarus 0.1.0"
+                )
+            elif history != (*draft_history, ASSIGNMENT_STAFFING) or tables != (
+                draft_tables
+                | {"AssignmentStaffingChanges", "AssignmentStaffingMembers"}
             ):
                 raise UnsupportedDatabaseError(
                     "This Rigarus database has an unsupported schema. Open it with a compatible version."
