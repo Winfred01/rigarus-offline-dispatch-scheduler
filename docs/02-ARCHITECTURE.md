@@ -1,5 +1,46 @@
 # Architecture
 
+## Company-driver evidence and checks (#23 first slice)
+
+`driver_eligibility.py` separates frozen dated company-approval evidence and
+pure validation from SQLite. Explicit actual members are checked per local
+date/AM-PM; at least one Active approval with explicit company confirmation,
+active Employee, recorded Available and no #15 double-booking satisfies this
+company-driver check only. Missing/Unverified approval, missing worker/availability
+or incomplete scope is Pending. Suspended/Expired, inactive, Unavailable or
+double-booked workers are Blocked; if every actual member is known ineligible
+the visit is Blocked. Missing/empty staffing or no active visits stays Pending.
+Cancelled releases capacity. No Home Crew/Foreman/default Rig inference.
+Re-evaluating all visits after a proposed membership change also checks the
+source Crew; validation never performs that change.
+
+`driver_store.py` is an internal evidence service with explicit confirmed
+range/status/reference input, revision-protected BEGIN IMMEDIATE, append-only
+history, sparse exact-date cells and transactional rollback. Same state/reference
+is a no-op. It is not an authorization system, legal license checker or HTTP/UI
+workflow. Company approval authority and vehicle/category policy are unresolved;
+recording a statement does not authenticate its author or certify an actual Rig.
+Legacy Employee.DriverStatus and its Unverified CHECK/API remain unchanged.
+
+Necessary additive schema11 stores DriverApprovalChanges/DriverApprovalCells.
+Startup migrates separately; the read-only adapter never upgrades a database.
+Snapshot v3 includes related employees' dated approval cells/change IDs/explicit
+confirmation and native driver revisions in the existing pinned all-Crew view,
+row/deadline budgets and fingerprint. Rebuild v2 snapshots. Other-Crew driver
+changes and conservative out-of-range revision changes can mark snapshots Stale.
+`validate_snapshot_drivers` operates on detached data;
+`PersistedRecommendations.driver_validation` carries saved-Draft explanations.
+Indexing/grouping is bounded by visits, memberships and supplied evidence with
+deterministic sorting; no pairwise worker comparison or clock/SQL/I/O in core.
+
+No proposed membership is selected: generated ApprovedDriver remains Pending in
+PR91, regardless of saved-Draft results. Every result stays Validation pending /
+Apply=false / Publish=false. Actual Rig/category, weekend consent, skills,
+minimum staffing, qualifications and #18/#29 approval/locks/transaction/audit
+remain independent. No UI/API/Apply/Publish path is added. See
+[design](design/2026-11-24-issue-23-driver-checklist.md) and
+[engineering evidence](acceptance/2026-11-24-issue-23-drivers.md).
+
 ## Tauri migration
 
 The preview shell uses Tauri with a React/TypeScript UI and a bundled Python FastAPI sidecar. `Rigarus.Backend` separates the ASGI routes, note validation, and SQLite storage. Its app factory receives the database path from the caller so tests can use isolated files. Startup must complete schema initialization before serving requests.

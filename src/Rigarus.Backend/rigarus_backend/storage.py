@@ -9,6 +9,8 @@ from .calendar_migration import (
     CREATE_WORKING_CALENDARS,
 )
 
+from .driver_migration import DRIVER_APPROVALS, DRIVER_TABLES, CREATE_DRIVER_APPROVALS
+
 INITIAL_DEMO = "20261112045924_InitialDemo"
 PROJECT_MASTER = "20261112072258_AddProjectsAndWorkItems"
 CREW_ROSTER = "20261115031137_AddCrewRoster"
@@ -357,8 +359,18 @@ def initialize_database(path: Path) -> None:
                 record_migration(
                     connection, WORKING_CALENDARS, product_version="Rigarus 0.1.0"
                 )
-            elif history != (*availability_history, WORKING_CALENDARS) or tables != (
-                availability_tables | CALENDAR_TABLES
+                history = (*availability_history, WORKING_CALENDARS)
+                tables = availability_tables | CALENDAR_TABLES
+            calendar_history = (*availability_history, WORKING_CALENDARS)
+            calendar_tables = availability_tables | CALENDAR_TABLES
+            if history == calendar_history and tables == calendar_tables:
+                for statement in CREATE_DRIVER_APPROVALS:
+                    connection.execute(statement)
+                record_migration(
+                    connection, DRIVER_APPROVALS, product_version="Rigarus 0.1.0"
+                )
+            elif history != (*calendar_history, DRIVER_APPROVALS) or tables != (
+                calendar_tables | DRIVER_TABLES
             ):
                 raise UnsupportedDatabaseError(
                     "This Rigarus database has an unsupported schema. Open it with a compatible version."

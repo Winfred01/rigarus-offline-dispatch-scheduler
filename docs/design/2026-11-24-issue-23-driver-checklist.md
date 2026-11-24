@@ -34,7 +34,12 @@ Local-only November22 UI DOCX SHA256
 mtime UTC 2026-11-22T08:14:42.434606: XML paragraph152 resource/driver checks.
 No rendered page/original figure inspected. UI states/layout/keyboard/focus/ARIA
 are not applicable: no UI or HTTP change. Complete originals remain local.
-Updated November24 plan/playbook driver sections reviewed: actual dated workers,
+Additional local source identities (mtime is not authority): November24 updated
+project plan SHA256 098783c8d59232fe717a2f7fe7bb18719b275aabf5438e65d6e3d0679b2993b5,
+mtime UTC 2026-11-24T15:08:37; playbook driver sections read from the supplied
+November24 copy, mtime UTC 2026-11-24T15:09:02, SHA256
+cfc0d55860073df8ebdce967080da46c0fb72279d4baccd723b77e5dc78551b7. Full originals/absolute paths
+remain local. Updated November24 plan/playbook driver sections reviewed: actual dated workers,
 source-Crew recheck, unknown never approved; approval responsibility remains a
 customer Demo D question. No legal licensing/category rule is inferred.
 
@@ -86,4 +91,10 @@ customer Demo D question. No legal licensing/category rule is inferred.
 
 ## Actual results
 
-NOT RUN at design commit. Execution evidence will record actual outcomes.
+At design commit 96c22ba, checks were NOT RUN. Final local PASS: Python235
+(27 new), packaged sidecar11/build, frontend35/build, Rust8/Release, historical
+.NET35/Release (0 warnings/errors), locked restore/format, Ruff66 files and
+synthetic acceptance harness. See [actual evidence](../acceptance/2026-11-24-issue-23-drivers.md).
+Staged privacy/docs and final-head Windows CI are recorded at delivery. Native
+GUI/disconnected install/upgrade/reboot NOT RUN; customer Demo D/E/UAT NOT RUN;
+production NOT APPROVED.
