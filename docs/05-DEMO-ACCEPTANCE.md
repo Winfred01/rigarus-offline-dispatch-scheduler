@@ -251,15 +251,35 @@ Crew/other native choices use one existing GUI deadline for the complete interac
 
 ## Project-choice investigation (#86)
 
-The working-calendar Project keyboard path records the actual `working-owner`
-before focus, before/after its existing single key sequence, and after committed
-selection verification or failure. The local UIA JSONL includes current/fresh
-runtime identities, values, enabled/offscreen state, owned focus and foreground
-window state. Exposed child snapshots are limited to 120 and include a truncation
-flag. A closed popup exposing no children does **not** prove that options failed
-to load. Focus outside the owned window is recorded as unowned without copying
-that other window's text. Ordinary event logs retain elapsed time and timeout
-bounds; capture the worker exit and independent watchdog result as well.
+The working-calendar Project path acknowledges **focus → Expanded → target text
+value → committed target value / Collapsed**. Large native-select proxies in the
+tested WebView2 expose no usable SelectionItem pattern. The tool reacquires the
+current control and may repeat only a nonpersisting readiness action while its
+state is still unacknowledged, including a silent no-effect Expand. Recognized
+UIA refusals are recorded; unsupported/ambiguous/unknown errors remain fatal.
+Text is sent once. Enter is sent at most once, only after the target value is
+observed and if the popup still needs committing. No direct provider Collapse,
+text resend, Save retry, API/database retry or fixed delay is used. The original
+selected-label assertion remains; completion additionally requires Collapsed.
+
+All Project stages share one existing GUI budget: Default30 / SlowVm150 seconds,
+with the same finite override. A late response fails; stages do not each restart
+that budget. Synchronous provider calls may overrun a probe deadline, so keep the
+independent whole-worker watchdog. Pre-input target/focus snapshots explicitly
+mark `childrenOmittedForTiming` rather than enumerating a large list and changing
+readiness timing. Full final snapshots retain the 120-child bound/truncation
+flag. No children exposed by a closed popup is not proof of unloaded options.
+The local UIA JSONL includes current/fresh identities, values, enabled/offscreen
+state, owned focus and foreground state. Unowned focus never copies another
+window's text. Logs record stages, elapsed time and actual failure; retain worker
+and watchdog exits. The short numeric-key/native-focus prototype used for the
+investigation remains local and is not part of the distributed tool.
+
+Run `scripts/Test-TauriProjectChoiceHarness.ps1` in Windows PowerShell5.1, or the
+complete `scripts/Test-TauriAcceptanceHarness.ps1` used by Windows CI. Regressions
+cover silent/transient/partially effective Expand, missing/disabled/ambiguous or
+unsupported controls, wrong value, absent text/commit response, unknown errors,
+foreign/lost foreground, one-shot input counts and the shared deadline.
 
 Run the existing `-IncludeWorkingCalendars -IncludeEmployeeWeek` command on a
 fresh synthetic profile, separately under ordinary and Hidden supervision on an
@@ -268,7 +288,9 @@ verified, closed synthetic fixture into another generated smoke profile, but its
 result must be identified as reduced coverage rather than a complete installation
 or lifecycle PASS. Keep the original package, final value assertion and finite
 GUI/exit bounds unchanged. Do not retry Save or change product code based only on
-a screenshot of `Select a Project`. See [the scoped checklist](design/2026-11-23-issue-86-project-choice-checklist.md).
+a screenshot of `Select a Project`. See [the original checklist](design/2026-11-23-issue-86-project-choice-checklist.md),
+[the resumed protocol checklist](design/2026-11-23-issue-86-input-sequence-checklist.md)
+and [scope-specific evidence](acceptance/2026-11-23-issue-86-project-protocol.md).
 
 ## Supervisor progress JSON (#35)
 

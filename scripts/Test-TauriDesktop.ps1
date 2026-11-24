@@ -43,8 +43,8 @@ $acceptanceLog = Get-AcceptanceLogPath $DiagnosticLog
 $uiaDiagnosticLog = Get-AcceptanceLogPath $(if ($UiaDiagnosticLog) { $UiaDiagnosticLog } else { $acceptanceLog + '.uia.jsonl' })
 $uiaLastOperation = 'desktop-launch'; $uiaLastControl = $null; $uiaLastOption = $null
 
-function Wait-For([string]$Description, [scriptblock]$Probe) {
-    $timer = [Diagnostics.Stopwatch]::StartNew()
+function Wait-For([string]$Description, [scriptblock]$Probe, [Diagnostics.Stopwatch]$Timer) {
+    if (-not $timer) { $timer = [Diagnostics.Stopwatch]::StartNew() }
     # Descriptions are fixed synthetic test labels, never text read from the desktop.
     $target = $Description -replace '[^a-zA-Z0-9_-]', '_'
     Write-AcceptanceEvent 'START' 'gui-ready' $timer $waits.GuiTimeoutSeconds "target=$target"
@@ -828,34 +828,108 @@ function Test-AssignmentsReopened($Window) {
     Write-AcceptanceEvent 'PASS' 'assignment-reopen' $timer 0 'threeDraftVisits=preserved notes=preserved workItemIds=preserved crossYearDates=preserved cancelledCard=absent'
 }
 
+function Get-WorkingProjectPattern($Control, $PatternId, [string]$Label) {
+    $pattern = $null
+    if (-not $Control.TryGetCurrentPattern($PatternId, [ref]$pattern)) {
+        throw [NotSupportedException]::new("Synthetic Project choice does not expose $Label.")
+    }
+    $pattern
+}
+
+function Send-WorkingProjectKeys([string]$Keys) {
+    Add-Type -AssemblyName System.Windows.Forms
+    [Windows.Forms.SendKeys]::SendWait($Keys)
+}
+
+function Wait-WorkingProjectState($Window, $Context, [Diagnostics.Stopwatch]$Timer,
+    [string]$Stage, [scriptblock]$ProjectStateProbe) {
+    $condition = [Windows.Automation.PropertyCondition]::new($automationId, 'working-owner')
+    $Context.operation = "choice:working-owner:$Stage"
+    Wait-For $Stage {
+        Invoke-UiaTransientProbe {
+            $controls = @($Window.FindAll([Windows.Automation.TreeScope]::Descendants, $condition))
+            if ($controls.Count -gt 1) { throw 'Synthetic Project choice is ambiguous.' }
+            if (-not $controls.Count) { return $false }
+            $Context.control = $controls[0]
+            if (-not $Context.control.Current.IsEnabled -or -not (Test-UiaOwnedForeground)) { return $false }
+            & $ProjectStateProbe $Context.control
+        } {
+            param($failure)
+            Write-UiaFailure $failure $Context.operation $Window $Context.control $null 'retrying'
+        }
+    } $Timer | Out-Null
+}
+
+function Select-WorkingProject($Window, [string]$Owner) {
+    $choiceTimer = [Diagnostics.Stopwatch]::StartNew()
+    $context = [pscustomobject]@{ operation = 'choice:working-owner:ready'; control = $null }
+    # Initialize owned-window native diagnostics before any foreground probe.
+    Get-UiaElementSnapshot $Window | Out-Null
+    try {
+        Wait-WorkingProjectState $Window $context $choiceTimer 'working-owner-ready' {
+            param($control)
+            Get-WorkingProjectPattern $control $valuePattern 'Value' | Out-Null
+            Get-WorkingProjectPattern $control ([Windows.Automation.ExpandCollapsePattern]::Pattern) 'ExpandCollapse' | Out-Null
+            $true
+        }
+        Write-UiaChoiceState 'before-focus' $Window $context.control 'working-owner' $choiceTimer -OmitChildren
+        Wait-WorkingProjectState $Window $context $choiceTimer 'working-owner-keyboard-focus' {
+            param($control)
+            $focused = Get-UiaFocusedElement
+            if ($focused.Current.AutomationId -eq 'working-owner') { return $true }
+            $control.SetFocus()
+            $false
+        }
+        Wait-WorkingProjectState $Window $context $choiceTimer 'working-project-expanded' {
+            param($control)
+            $expand = Get-WorkingProjectPattern $control ([Windows.Automation.ExpandCollapsePattern]::Pattern) 'ExpandCollapse'
+            if ($expand.Current.ExpandCollapseState -eq [Windows.Automation.ExpandCollapseState]::Expanded) { return $true }
+            # A request can return without changing state. Retry only this
+            # nonpersisting readiness action, never text, Enter or Save.
+            $expand.Expand()
+            $false
+        }
+        Write-UiaChoiceState 'before-text' $Window $context.control 'working-owner' $choiceTimer -OmitChildren
+        Wait-WorkingProjectState $Window $context $choiceTimer 'working-project-text-ready' {
+            param($control)
+            (Get-WorkingProjectPattern $control ([Windows.Automation.ExpandCollapsePattern]::Pattern) 'ExpandCollapse').Current.ExpandCollapseState -eq [Windows.Automation.ExpandCollapseState]::Expanded
+        }
+        Send-WorkingProjectKeys 'SYN-14-UI'
+        Wait-WorkingProjectState $Window $context $choiceTimer 'working-project-text-acknowledged' {
+            param($control)
+            Test-UiaChoiceLabel ([string](Get-WorkingProjectPattern $control $valuePattern 'Value').Current.Value) $Owner
+        }
+        Write-UiaChoiceState 'text-acknowledged' $Window $context.control 'working-owner' $choiceTimer -OmitChildren
+        $expand = Get-WorkingProjectPattern $context.control ([Windows.Automation.ExpandCollapsePattern]::Pattern) 'ExpandCollapse'
+        if ($expand.Current.ExpandCollapseState -ne [Windows.Automation.ExpandCollapseState]::Collapsed) {
+            Wait-WorkingProjectState $Window $context $choiceTimer 'working-project-commit-ready' {
+                param($control)
+                Test-UiaChoiceLabel ([string](Get-WorkingProjectPattern $control $valuePattern 'Value').Current.Value) $Owner
+            }
+            Send-WorkingProjectKeys '{ENTER}'
+        }
+        Wait-WorkingProjectState $Window $context $choiceTimer 'working-project-choice-verified' {
+            param($control)
+            (Test-UiaChoiceLabel ([string](Get-WorkingProjectPattern $control $valuePattern 'Value').Current.Value) $Owner) -and
+                (Get-WorkingProjectPattern $control ([Windows.Automation.ExpandCollapsePattern]::Pattern) 'ExpandCollapse').Current.ExpandCollapseState -eq [Windows.Automation.ExpandCollapseState]::Collapsed
+        }
+    }
+    catch {
+        Write-UiaFailure $_ $context.operation $Window $context.control
+        throw
+    }
+    finally { Write-UiaChoiceState 'verified-or-failed' $Window $context.control 'working-owner' $choiceTimer }
+}
+
 function Open-SyntheticWorkingCalendar($Window, [string]$Scope, [string]$Owner) {
     Invoke-Button $Window 'Schedule'
     Invoke-Button $Window 'Working calendars'
     Select-AssignmentChoice $Window 'working-scope' '' $Scope
     if ($Scope -eq 'Project') {
-        $choiceTimer = [Diagnostics.Stopwatch]::StartNew()
-        # Large native select popups expose disabled DOM proxies rather than
-        # selectable option providers under this WebView2 UIA tree. Exercise the
-        # normal keyboard path only after verifying our owned foreground/focus.
-        $control = Find-Control $Window $automationId 'working-owner'
-        Write-UiaChoiceState 'before-focus' $Window $control 'working-owner' $choiceTimer
-        $control.SetFocus()
-        Get-UiaElementSnapshot $Window | Out-Null
-        Wait-For 'working-owner-keyboard-focus' {
-            $focused = [Windows.Automation.AutomationElement]::FocusedElement
-            $control.Current.IsEnabled -and $focused.Current.AutomationId -eq 'working-owner' -and
-                [RigarusUiaWindowState]::GetForegroundWindow() -eq $script:uiaOwnedHandle
-        } | Out-Null
-        Write-UiaChoiceState 'before-keys' $Window $control 'working-owner' $choiceTimer
-        Add-Type -AssemblyName System.Windows.Forms
-        [Windows.Forms.SendKeys]::SendWait('SYN-14-UI{ENTER}')
-        Write-UiaChoiceState 'after-keys' $Window $control 'working-owner' $choiceTimer
-        try { Wait-For 'working-project-choice-verified' {
-            $live = Find-Control $Window $automationId 'working-owner'
-            $observed = [string]$live.GetCurrentPattern($valuePattern).Current.Value
-            Test-UiaChoiceLabel $observed $Owner
-        } | Out-Null }
-        finally { Write-UiaChoiceState 'verified-or-failed' $Window $control 'working-owner' $choiceTimer }
+        # Large native-select options expose disabled proxies without SelectionItem.
+        # Acknowledge expansion, text selection and commit separately under one
+        # original GUI budget; final value verification remains mandatory.
+        Select-WorkingProject $Window $Owner
     }
     else { Select-AssignmentChoice $Window 'working-owner' '' $Owner }
     Set-Field $Window 'working-date' '2026-12-31'
