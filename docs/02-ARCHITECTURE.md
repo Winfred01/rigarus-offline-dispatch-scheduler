@@ -56,6 +56,23 @@ The owner subsequently approved Crew/Project storage/editing and advisory Draft 
 
 `working_calendar_api.py` provides strict bounded read/save/history and assessment routes with sanitized 404/422/409/503 errors. Four Rust commands retain the existing authenticated loopback lifecycle and allow only Crew/Project calendar owner paths. Schedule / Working calendars uses the same local Sun–Sat/date/dialog conventions as recorded availability. Cancel does not write; stale/uncertain saves require reload, and committed-save/failed-refresh clears old cells. Draft forms, cards and details display advisory conflict/pending/matched states. No recommendation, weekend-consent approval, safety certification, Apply/publication or export is introduced.
 
+## Explicit-option comparison (#28 foundation)
+
+`recommendation_comparison.py` independently compares immutable, explicitly
+supplied dated AM/PM options for one WorkItem/parent Project. It excludes any
+known Blocked option before limiting results, explains each slot/check/source,
+and deterministically orders earliest finish (default) or earliest start, with
+stable Crew/option-ID ties. Missing independent evidence remains Pending.
+
+There is no production snapshot adapter, date/duration allocator, safety
+validator, HTTP/Tauri/UI connection or SQLite write. Supplied Satisfied evidence
+is not certified current safety: every option/comparison is Validation pending,
+unapplyable and unpublishable, even if all supplied checks are satisfied. Home
+Crew, default Rig and employee Available never supply other missing checks.
+The raw internal gap count introduces no continuity weight or remaining-work
+deduction. Future #15/#23/#24/#25/#27 validators, approved generation semantics,
+and #18/#29 revision/lock/Apply gates remain necessary. No schema change.
+
 ## WPF baseline
 
 | Project | Responsibility | Dependencies |
