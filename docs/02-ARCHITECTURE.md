@@ -1,5 +1,58 @@
 # Architecture
 
+## Explicit Crew capability requirements (#25 first slice)
+
+`capability_validation.py` checks actual saved Draft members against dated,
+explicitly confirmed WorkItem requirements. There are no default minimums:
+minimum members, all three Level minima, Exact/AtLeast mode and the separate
+qualification-code/count list are required inputs. Counts are independent
+overlapping minima, not disjoint role allocations. Company-defined codes are
+exact technical identifiers; no case, code or legal equivalence is inferred.
+Explicitly empty qualification requirements differ from a missing policy.
+
+Active/Available workers without #15 collisions supply confirmed capacity.
+Unknown metadata/availability remains only possible capacity; inactive,
+Unavailable or double-booked members are excluded. Per requirement, a known
+possible upper bound below the confirmed minimum is Blocked; enough definite
+workers satisfies that subcheck; other cases stay Pending. Empty/unconfigured
+membership and missing policy stay Pending. Reports retain required values,
+confirmed and possible Employee IDs and reasons. Level never creates a Verified
+qualification; qualification evidence never substitutes for a Level requirement.
+Civil/Tower mismatch and inactive Crew block capability; Small/Other mapping or
+missing context stays Pending. Actual Project/WorkItem IDs are preserved.
+
+Foreman appointment is master data, not dated attendance. Its effective-date,
+promotion and merger rules remain unresolved: Foreman stays Pending and every
+otherwise clear visit/report stays Pending. This per-Crew visit scope does not
+certify multi-Crew synchronization, all project roles or full dispatch.
+No existing visits/worker selections/master/history are modified by validation.
+
+`capability_store.py` records explicit company assertions through an internal
+service, with expected revision, immutable owner/history, exact dated cells,
+no-op handling and atomic rollback. It is not an approval UI/API or authenticated
+certification authority. Necessary additive schema12 stores WorkItem policy and
+employee/code qualification owners, versioned bounded evidence and cells.
+Existing employee levels/driver constraints/Foreman and assignment invariants
+remain unchanged. Actual company thresholds/codes are not seeded by this slice.
+
+Snapshot v4 adds all related WorkItems' parent/type/requirement owners/revisions/
+cells and all horizon Crews' type/active observations plus related employees'
+qualification owner revisions/cells in the same pinned read-only view and
+100,000-row budget. Missing records are unknown; malformed payload/context
+fails before a fingerprint. Other-Crew policy/qualification/master changes can
+mark old inputs Stale. Rebuild v3 snapshots; initialization/upgrades remain
+separate from calculation. `validate_snapshot_capabilities` converts detached
+inputs and `PersistedRecommendations.capability_validation` exposes the report.
+
+Pure evaluation has no SQL/file/network/clock calls. Indexed evidence and
+deterministic sorting avoid pairwise worker comparisons. Qualification requirements
+are bounded to32; aggregate evidence and assessment work are each bounded to
+100,000 units, rejecting excess without a partial report.
+Generated options still have no proposed actual workers and retain Pending
+MinimumStaffing/Skills/Qualifications/Foreman checks in PR91. Apply/Publish stay
+false. See [design](design/2026-11-24-issue-25-capability-checklist.md) and
+[evidence](acceptance/2026-11-24-issue-25-capability.md).
+
 ## Company-driver evidence and checks (#23 first slice)
 
 `driver_eligibility.py` separates frozen dated company-approval evidence and

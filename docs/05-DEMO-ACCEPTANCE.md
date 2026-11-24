@@ -1,5 +1,34 @@
 # M0 acceptance walkthrough
 
+## Explicit staffing/skills/qualification check (#25)
+
+Read [design](design/2026-11-24-issue-25-capability-checklist.md) and
+[engineering evidence](acceptance/2026-11-24-issue-25-capability.md).
+Use internal CapabilityEvidenceStore on temporary synthetic profiles; no
+capability UI/API exists. Explicitly record a WorkItem's dated minimum members,
+three Level minima, Exact/AtLeast mode and qualification-code/count requirements
+with company confirmation/reference; missing policy must stay Pending.
+Verify a Level3 employee does not satisfy an Exact Level2 minimum, but may satisfy
+an explicitly configured AtLeast Level2 requirement. A Level alone never supplies
+Verified qualification evidence; exact qualification code/date/half is separate.
+
+Compare required/confirmed/possible counts and IDs. Unknown availability or
+qualification remains possible only, never confirmed. Known upper-bound shortage,
+inactive/mismatched Crew and exclusions for inactive/Unavailable/double-booked
+members must be explained. Recheck source and destination after borrowing;
+keep IDs, Home Crew and saved visits unchanged. Empty/unconfigured staffing,
+Small/Other mapping and Foreman effective-date/presence rules stay Pending.
+
+Verify no-op/stale/reference changes/history/FKs, simultaneous writers and
+partial-save rollback; schema11→12 original-record preservation/failure/retry;
+all-Crew other-Project sources/staleness and concurrent WAL complete old/new
+snapshots. Pure detached validation must perform no I/O and retain logical DB
+equality. All generated MinimumStaffing/Skills/Qualifications/Foreman checks
+remain Pending because proposals lack actual workers. No Apply/Publish exists.
+Specific company thresholds/qualification authority, Foreman/merger policy,
+customer Demo D/E and native disconnected installation/upgrade need separate
+confirmed design and acceptance; CI alone does not satisfy them.
+
 ## Dated driver evidence engineering check (#23)
 
 Read [design](design/2026-11-24-issue-23-driver-checklist.md) and

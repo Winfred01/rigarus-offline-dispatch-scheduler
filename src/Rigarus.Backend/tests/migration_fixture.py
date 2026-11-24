@@ -3,6 +3,7 @@
 from rigarus_backend.storage import ASSIGNMENT_STAFFING, EMPLOYEE_AVAILABILITY
 from rigarus_backend.calendar_migration import WORKING_CALENDARS
 from rigarus_backend.driver_migration import DRIVER_APPROVALS
+from rigarus_backend.capability_migration import CAPABILITY_EVIDENCE
 
 
 def remove_staffing_schema(connection):
@@ -34,8 +35,21 @@ def remove_working_calendar_schema(connection):
 
 
 def remove_driver_schema(connection):
+    remove_capability_schema(connection)
     for table in ("DriverApprovalCells", "DriverApprovalChanges"):
         connection.execute(f"DROP TABLE IF EXISTS {table}")
     connection.execute(
         "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?", (DRIVER_APPROVALS,)
+    )
+
+
+def remove_capability_schema(connection):
+    for table in (
+        "CapabilityEvidenceCells",
+        "CapabilityEvidenceChanges",
+        "CapabilityEvidenceOwners",
+    ):
+        connection.execute(f"DROP TABLE IF EXISTS {table}")
+    connection.execute(
+        "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?", (CAPABILITY_EVIDENCE,)
     )

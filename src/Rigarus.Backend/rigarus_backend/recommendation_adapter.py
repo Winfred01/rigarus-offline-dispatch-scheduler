@@ -22,6 +22,17 @@ from .driver_eligibility import (
     DriverValidation,
     validate_drivers,
 )
+from .capability_store import snapshot as capability_snapshot, qualification_snapshots
+from .capability_validation import (
+    CapabilityCrew,
+    CapabilityWorkItem,
+    CapabilitySources,
+    RequirementCell,
+    QualificationCell,
+    CapabilityWorker,
+    CapabilityValidation,
+    validate_capabilities,
+)
 from . import storage
 from .availability_store import snapshot as availability_snapshot
 from .personnel_conflicts import (
@@ -43,7 +54,7 @@ from .staffing_persistence import read_staffing
 from .working_calendar_store import owner, snapshot as calendar_snapshot
 from .work_calendars import WorkCalendar, WorkCalendarCell
 
-FORMAT = "rigarus-recommendation-input-v3"
+FORMAT = "rigarus-recommendation-input-v4"
 MAX_OBSERVED_ROWS = 100_000  # Technical workload bound, not staffing policy.
 READ_SECONDS = 30
 PENDING_VALIDATORS = tuple(
@@ -66,6 +77,7 @@ CURRENT_HISTORY = (
     storage.EMPLOYEE_AVAILABILITY,
     storage.WORKING_CALENDARS,
     storage.DRIVER_APPROVALS,
+    storage.CAPABILITY_EVIDENCE,
 )
 CURRENT_TABLES = storage.CREW_TABLES | {
     "Employees",
@@ -78,6 +90,7 @@ CURRENT_TABLES = storage.CREW_TABLES | {
     "EmployeeAvailability",
     *storage.CALENDAR_TABLES,
     *storage.DRIVER_TABLES,
+    *storage.CAPABILITY_TABLES,
 }
 
 
@@ -222,6 +235,7 @@ class RecommendationSnapshot:
     assignments: tuple[AssignmentSource, ...]
     employees: tuple[EmployeeSource, ...]
     personnel_assignments: tuple[AssignmentSource, ...]
+    capability_sources: CapabilitySources
     input_fingerprint: str = field(default="", init=False)
 
     def __post_init__(self):
@@ -325,6 +339,89 @@ def _personnel_sources(connection, query):
     return tuple(assignments), observed_count
 
 
+def _capability_sources(connection, query, assignments, employee_ids, observed_count):
+    crews, items, policy_owners, policies, qualification_owners, qualifications = (
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+    )
+
+    def count(amount):
+        nonlocal observed_count
+        observed_count += amount
+        if observed_count > MAX_OBSERVED_ROWS:
+            raise SnapshotReadError("READ_LIMIT_EXCEEDED")
+
+    for crew_id in sorted(set(query.crew_ids) | {a.crew_id for a in assignments}):
+        row = connection.execute(
+            "SELECT Id,Type,Active FROM Crews WHERE Id=?", (crew_id,)
+        ).fetchone()
+        if row is None:
+            raise SnapshotReadError("DATABASE_INVALID")
+        count(1)
+        crews.append(CapabilityCrew(row[0], row[1], bool(row[2])))
+    for item_id in sorted({query.work_item_id} | {a.work_item_id for a in assignments}):
+        row = connection.execute(
+            "SELECT Id,ProjectId,Type FROM WorkItems WHERE Id=?", (item_id,)
+        ).fetchone()
+        if row is None:
+            raise SnapshotReadError("DATABASE_INVALID")
+        items.append(CapabilityWorkItem(*row))
+        source = capability_snapshot(
+            connection,
+            "WorkItem",
+            item_id,
+            "",
+            query.earliest_start_date,
+            query.horizon_end_date,
+        )
+        count(1 + bool(source["owner_id"]) + len(source["entries"]))
+        if source["owner_id"] is not None:
+            policy_owners.append((item_id, source["owner_id"], source["revision"]))
+        policies.extend(
+            RequirementCell(
+                item_id,
+                e["local_date"],
+                e["slot"],
+                e["value"],
+                e["change_id"],
+                e["company_confirmed"],
+            )
+            for e in source["entries"]
+        )
+    for employee_id in sorted(employee_ids):
+        for code, source in qualification_snapshots(
+            connection, employee_id, query.earliest_start_date, query.horizon_end_date
+        ):
+            count(1 + len(source["entries"]))
+            qualification_owners.append(
+                (employee_id, code, source["owner_id"], source["revision"])
+            )
+            qualifications.extend(
+                QualificationCell(
+                    employee_id,
+                    code,
+                    e["local_date"],
+                    e["slot"],
+                    e["value"],
+                    e["change_id"],
+                    e["company_confirmed"],
+                )
+                for e in source["entries"]
+            )
+    return CapabilitySources(
+        tuple(crews),
+        tuple(items),
+        tuple(policy_owners),
+        tuple(policies),
+        tuple(qualification_owners),
+        tuple(qualifications),
+    )
+
+
 def _read_sources(connection, query, source_id, migrations):
     row = connection.execute(
         """SELECT w.Id,w.ProjectId,p.JobNumber,w.Type,w.RequiredCrewCount,w.EstimatedHalfDays
@@ -426,6 +523,12 @@ def _read_sources(connection, query, source_id, migrations):
                 ),
             )
         )
+    try:
+        capability = _capability_sources(
+            connection, query, personnel_assignments, employee_ids, observed_count
+        )
+    except (ValueError, LookupError):
+        raise SnapshotReadError("DATABASE_INVALID") from None
     return RecommendationSnapshot(
         source_id,
         query,
@@ -436,6 +539,7 @@ def _read_sources(connection, query, source_id, migrations):
         tuple(assignments),
         tuple(employees),
         personnel_assignments,
+        capability,
     )
 
 
@@ -503,6 +607,7 @@ class PersistedRecommendations:
     crew_reviews: tuple[CrewReview, ...]
     personnel_validation: PersonnelValidation
     driver_validation: DriverValidation
+    capability_validation: CapabilityValidation
     pending_validators: tuple[str, ...] = field(default=PENDING_VALIDATORS, init=False)
     validation_status: Literal["Pending"] = field(default="Pending", init=False)
     applyable: Literal[False] = field(default=False, init=False)
@@ -594,6 +699,30 @@ def validate_snapshot_drivers(snapshot: RecommendationSnapshot) -> DriverValidat
     )
 
 
+def validate_snapshot_capabilities(
+    snapshot: RecommendationSnapshot,
+) -> CapabilityValidation:
+    if not isinstance(snapshot, RecommendationSnapshot):
+        raise ValueError("Supply a RecommendationSnapshot.")
+    personnel = validate_snapshot_personnel(snapshot)
+    return validate_capabilities(
+        tuple(c.visit for c in personnel.checks),
+        tuple(
+            CapabilityWorker(
+                e.employee_id,
+                e.active,
+                e.skill_level,
+                tuple((c.local_date, c.slot, c.state) for c in e.availability),
+            )
+            for e in snapshot.employees
+        ),
+        snapshot.capability_sources,
+        start_date=snapshot.query.earliest_start_date,
+        end_date=snapshot.query.horizon_end_date,
+        scope_complete=True,
+    )
+
+
 def generate_from_persisted_snapshot(
     snapshot: RecommendationSnapshot,
 ) -> PersistedRecommendations:
@@ -615,6 +744,7 @@ def generate_from_persisted_snapshot(
         ),
         validate_snapshot_personnel(snapshot),
         validate_snapshot_drivers(snapshot),
+        validate_snapshot_capabilities(snapshot),
     )
 
 
