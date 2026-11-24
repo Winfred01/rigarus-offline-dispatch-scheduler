@@ -119,3 +119,25 @@ use Home Crew/Foreman/Available/default Rig as dispatch approval.
 NOT RUN at this design commit. Engineering evidence will record exact commands,
 counts, CI head and limitations. Customer Demo E/UAT NOT RUN; production NOT
 APPROVED. Design/engineering progress does not close those separate gates.
+
+
+## Execution / final implementation
+
+See [engineering evidence](../acceptance/2026-11-24-issue-28-adapter.md): 24 new
+adapter tests / 181 full backend, packaged-sidecar11, frontend35, Rust8, legacy
+.NET35 and synthetic acceptance-tool harness passed. Confirmed native working
+calendar/availability helpers share one connection; no Store.read composition.
+The separate synthetic mode=ro check denied UPDATE even with query_only disabled.
+Small/Other mapping remains Open in the decision register, not guessed. No
+HTTP/Tauri/UI/dependency/schema/save path was added. Final staging/privacy/docs
+and exact feature-head CI results are recorded in the PR/Issue report. Native
+GUI/offline installation/upgrade/reboot and customer Demo E/UAT remain NOT RUN.
+
+
+Delivery refresh: origin/main advanced to
+`58af6c4db6035116c4f2e6df97b819eaf5ebf320` through PR93 (English/Chinese README
+only). Verified diff: all required design, domain/storage/tests and CI sources
+unchanged. Rebase the isolated branch onto this latest base; preserve the
+Design-First-before-product commit ordering and unrelated root modifications.
+Local tests remain applicable to unchanged product baseline; feature-head CI
+will run against the updated main base. Privacy passed for 255 indexed paths.

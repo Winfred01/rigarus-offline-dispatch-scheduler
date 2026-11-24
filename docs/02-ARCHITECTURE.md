@@ -64,8 +64,9 @@ known Blocked option before limiting results, explains each slot/check/source,
 and deterministically orders earliest finish (default) or earliest start, with
 stable Crew/option-ID ties. Missing independent evidence remains Pending.
 
-The comparator itself has no allocator. There is no production snapshot
-adapter, safety validator, HTTP/Tauri/UI connection or SQLite write. Supplied Satisfied evidence
+The comparator itself has no allocator. The read-only adapter below supplies
+stored inputs; full safety validators, HTTP/Tauri/UI integration and SQLite
+writes remain absent. Supplied Satisfied evidence
 is not certified current safety: every option/comparison is Validation pending,
 unapplyable and unpublishable, even if all supplied checks are satisfied. Home
 Crew, default Rig and employee Available never supply other missing checks.
@@ -80,8 +81,9 @@ and #18/#29 revision/lock/Apply gates remain necessary. No schema change.
 Crew count, explicit Remaining Half-days and strict operator-confirmation bool,
 earliest local date, inclusive horizon, Crew/Project `WorkCalendar`s, optional
 `CrewOccupancySnapshot` and per-slot independent evidence. The caller resolves
-the persisted parent and correct/current context. No production adapter verifies
-source revisions, actual workers/Rig or resource approval in this slice.
+the persisted parent and correct/current context. The adapter below supplies
+consistent stored sources and scoped freshness checks; it does not certify
+actual proposed workers/Rig or resource approval.
 No WorkItem override, estimate fallback or Draft-work deduction exists.
 
 Index cells once, scan local ordinal dates AM before PM, reuse
@@ -120,6 +122,72 @@ See the [design record](design/2026-11-24-issue-28-generator-checklist.md) and
 [engineering evidence](acceptance/2026-11-24-issue-28-generator.md). Trusted
 resource validators, revision adapters, operator preview/locks/Apply and customer
 Demo E remain separate requirements.
+
+## Consistent persisted recommendation inputs (#28 phase three)
+
+`recommendation_adapter.py` is an internal service, not an HTTP/Tauri/UI route.
+`build_recommendation_snapshot(path, RecommendationQuery(...))` uses
+`storage.connect(read_only=True)` with URI `mode=ro`, query-only, foreign keys
+and the existing five-second busy timeout. `BEGIN` plus the first schema read
+pins one SQLite transaction view. Current migration IDs/table set, quick_check
+and foreign_key_check must pass. Older/newer/unknown schemas reject without
+initialization or migration. No journal-mode change, checkpoint, immutable/nolock,
+file copy or SQL business/schema write occurs. SQLite manages normal WAL/SHM.
+
+The adapter resolves WorkItems.ProjectId through Projects, validates an optional
+expected parent, and reads JobNumber/type/required count/estimate (reference only).
+Connection-level calendar and availability snapshot helpers and current staffing
+helper share that same connection. Public Store reads are not composed because
+they open independent views. Crews retain type/active/current Foreman change;
+inactive, Civil/Tower mismatch or unresolved Small/Other mappings return Crew
+Needs Review outside ranking. This conservative planning filter is not #25
+dispatch certification. Missing WorkItem/Crew is an explicit lookup failure.
+
+All selected-Crew visits in the requested horizon retain stable IDs, parent and
+WorkItem IDs, date/slot, status, revision, timestamp and latest staffing change.
+Only Draft occupies; Cancelled remains observational history. Same-WorkItem
+visits are never excluded or deducted: this service proposes new work, not a
+replacement. Relevant employee observations include selected Home Crew members,
+observed actual workers (including borrowing) and current Foremen. Sparse
+availability includes native revision; absence is Unknown. Home Crew, Foreman,
+Available and Unverified Driver never produce staffing/driver/qualification/
+Rig/consent Satisfied evidence. Other-Crew personnel conflicts remain unvalidated.
+
+Frozen observations are detached before `generation_requests` constructs existing
+`GenerationRequest`/`CrewOccupancySnapshot` values. `generate_from_persisted_snapshot`
+reuses `generate_and_compare` → `generate_candidate` → PR91 `ExplicitOption`
+comparison, with stable Crew IDs as option IDs. The wrapper retains snapshot,
+existing generation/comparison results, excluded Crew review reasons and pending
+validator names. Every result remains Pending / applyable=false / publishable=false.
+
+`input_fingerprint` is SHA256 of canonical logical observations, format identifier,
+query (confirmation/remaining/Crew IDs/bounds/order/limit) and an opaque hash of
+the resolved local source location. It is not a DB UUID, global revision, DB/WAL
+byte digest, authenticity signature or Apply authorization. Calendars/availability
+retain native revisions; assignments retain revisions; staffing/Foreman retain
+change IDs. Unversioned master fields are compared by content. The scope includes
+extra observations and owner revisions, so an out-of-range calendar/availability
+change for an observed owner may conservatively mark Stale. Unrelated Projects,
+unobserved employees, default Rig, names not consumed by this contract and page
+layout/checkpoints are outside the fingerprint.
+
+`check_snapshot_freshness` re-reads exactly that query in another consistent view:
+Current means scoped equality then; Stale means changed/missing/moved sources.
+Storage/schema failures propagate, not false Current/Unknown. No global version
+is invented. The source can change immediately after either transaction closes.
+Future #18/#29 Apply must obtain current input/evidence, honor locks, revalidate
+under its write transaction and roll back/audit failures; this service cannot Apply.
+
+Reads use a 30-second progress deadline (SQL callback and end check), five-second
+busy waits, at most 100 Crews and inherited annual bounds; observed Assignment/
+staffing/employee/availability materialization is bounded to 100,000 rows. Limits
+fail without a partial snapshot/fingerprint. Read errors are sanitized/distinct
+(busy, unavailable, invalid, failed, deadline/limit); success and all failures
+release the transaction/connection. Synchronous OS calls are not a hard real-time
+guarantee and require the caller's independent process budget when exposed later.
+
+See [design](design/2026-11-24-issue-28-adapter-checklist.md) and
+[engineering evidence](acceptance/2026-11-24-issue-28-adapter.md).
 
 ## WPF baseline
 

@@ -2,7 +2,8 @@
 
 The caller resolves the WorkItem's real parent and supplies context-correct
 snapshots. Evidence is scoped to this request's WorkItem/Project/Crew and slot;
-no production adapter verifies freshness or actual workers/Rig in this slice.
+recommendation_adapter supplies stored calendar/occupancy sources and scoped
+freshness checks. Actual proposed workers/Rig and safety validators remain separate.
 """
 
 from calendar import monthrange

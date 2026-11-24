@@ -1,7 +1,8 @@
 """Read-only comparison of explicit options, not an allocator or safety validator.
 
 Constraint evidence must come from independent, context-correct validators.
-There are no production adapters yet. Missing evidence stays Pending; supplied
+The SQLite adapter supplies calendar/occupancy inputs, not full resource safety.
+Missing evidence stays Pending; supplied
 Satisfied results never certify dispatch or enable Apply/Publish in this slice.
 """
 
