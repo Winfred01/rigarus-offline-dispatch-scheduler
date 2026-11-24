@@ -290,3 +290,64 @@ The reader returns no event for a missing/empty/non-file path. A real read failu
 `Write-AcceptanceEvent` uses an explicit append stream with read/write sharing so the single verifier can append while its supervisor reads. It preserves UTF-8 detection and earlier lines; real write failures still fail. Do not replace it with Windows PowerShell 5.1 `Add-Content`, whose sharing behavior reproduced a fatal `0x80070020` writer failure with a live reader. An advisory live poll may log a narrowly recognized sharing/lock violation as busy and defer to the next existing bounded poll; it must not retry native saves, fabricate a PASS or hide other errors. The native exit code and final evidence remain required.
 
 Run `scripts/Test-TauriAcceptanceHarness.ps1` in Windows PowerShell 5.1. Its real-file regression verifies the extended-string fixture, the plain final event, a depth-12 JSON round trip without Provider/Drive metadata, absent/empty/non-file inputs and an actual locked-file read error. It also holds a reader open during append, checks retained Unicode/lines and a single UTF-8 preamble, and verifies exclusive-lock write failure. See [the resumed checklist](design/2026-11-23-issue-35-supervisor-checklist.md) and [separate engineering evidence](acceptance/2026-11-23-issue-35-supervisor-finalization.md). Only a completed native run and captured exit code can remove the aggregate BLOCKED status; CI alone cannot.
+
+## Consistent active SQLite verification (#88)
+
+Current Cancel and read-only checks compare **logical SQLite snapshots**, not
+separately hashed live DB/WAL files. This supersedes earlier byte-digest wording
+in the walkthroughs above. Normal checkpoints, WAL cleanup and SHM reader locks
+are not changes to a Project, visit, worker, availability or calendar record.
+
+`TauriSqliteSnapshot.ps1` opens the existing generated synthetic database through
+the Windows system `winsqlite3.dll`, with READONLY, PRIVATECACHE, query-only and an
+explicit read transaction. All schema, explicit column values, ID sequences and
+integrity/FK checks share that snapshot. Typed length-prefixed encoding preserves
+NULL, empty text/BLOB, integers, reals, Unicode and duplicate records; canonical
+row ordering does not depend on physical page order. Schema definitions and
+user/application versions are included; page headers, WAL/SHM bytes and internal
+statistics are not. No app endpoint, product dependency or migration is added.
+Never use `immutable`/`nolock` or copy only the live main database to avoid locks.
+
+The reader uses the configured GUI timeout: Default 30 seconds, SlowVm 150, with
+the existing finite override. SQLite busy waits are at most 5 seconds and a
+progress callback enforces the overall SQL deadline. Technical limits are 256
+tables, one million encoded schema/data rows and 128 MiB counted read/encoding
+work. Missing/corrupt/inaccessible storage, integrity/FK errors, missing native
+exports, limits and unknown read errors **fail without a fingerprint**; nothing
+is silently skipped or truncated. Keep the independent process watchdog for
+synchronous native/OS calls. Reading may participate in normal WAL/SHM file/lock
+management; read-only means no committed business/schema mutation, not that every
+filesystem byte is unchanged. A before/after fingerprint detects net committed
+logical differences, not every transient write subsequently reverted.
+
+`Get-SyntheticAssignmentDigest` retains every existing equality assertion. It
+records local START/PASS/FAIL/TIMEOUT events with elapsed time, SQLite version and
+table/row counts; it never logs record values. The matching reader is copied into
+the offline acceptance kit. Run the real-file controls in Windows PowerShell 5.1:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/Test-TauriSqliteHarness.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/Test-TauriAcceptanceHarness.ps1
+```
+
+The controls cover active-WAL/checkpoint/last-connection cleanup, actual
+insert/update/delete/type/schema/sequence changes, Unicode/NUL and duplicate
+encoding, missing/corrupt/locked files, explicit timeout/error propagation, kit
+identity and 100 concurrent multi-table snapshots. Unknown errors remain fatal.
+
+Rerun the **original** combined native command on the frozen installed package,
+separately under Normal and Hidden supervisors on an interactive no-NIC test VM:
+
+```powershell
+powershell.exe -NoProfile -STA -File scripts/Test-TauriDesktop.ps1 -Executable <frozen-installed-exe> -IncludeEmployeeWeek -IncludeWorkingCalendars -Profile SlowVm -RequireOffline -PreserveSyntheticProfile -DiagnosticLog <local-events> -UiaDiagnosticLog <local-uia-jsonl>
+```
+
+Retain all Save/Cancel, Employee Week, availability, actual staffing, calendar
+feedback/history, app-reopen, startup-error and exit assertions. Capture worker
+and independent supervisor exits, exact package/script hashes, window mode,
+actual OS/SQLite/WebView2 versions and closed logical-data/integrity/file audits.
+The previous #86 navigation-only success is not this full run. See [the #88
+Design-First checklist](design/2026-11-23-issue-88-sqlite-snapshot-checklist.md)
+and [scope-specific evidence](acceptance/2026-11-23-issue-88-sqlite-snapshot.md).
+Do not mark #26/#35 complete or approve #28 integration from CI or a partial run;
+customer acceptance and production remain separate gates.

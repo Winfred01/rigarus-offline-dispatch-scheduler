@@ -85,6 +85,10 @@ try {
         (Get-FileHash (Join-Path $PSScriptRoot 'TauriUiaDiagnostics.ps1')).Hash) {
         throw 'Generated acceptance kit cannot load its matching diagnostic support.'
     }
+    if ((Get-FileHash (Join-Path $kit 'TauriSqliteSnapshot.ps1')).Hash -ne
+        (Get-FileHash (Join-Path $PSScriptRoot 'TauriSqliteSnapshot.ps1')).Hash) {
+        throw 'Generated acceptance kit lost its matching logical SQLite reader.'
+    }
     if (-not (Test-UiaChoiceLabel 'Synthetic Crew (Civil #7)' 'Synthetic Crew') -or
         -not (Test-UiaChoiceLabel ('Synthetic Person (#2) ' + [char]0x00B7 + ' Inactive') 'Synthetic Person (#2)') -or
         (Test-UiaChoiceLabel 'Synthetic Crew Extra (Civil #8)' 'Synthetic Crew')) {

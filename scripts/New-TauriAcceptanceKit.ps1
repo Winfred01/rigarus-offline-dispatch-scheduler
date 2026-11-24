@@ -13,7 +13,7 @@ $installerPath = (Resolve-Path -LiteralPath $Installer).Path
 $output = New-Item -ItemType Directory -Path $OutputDirectory
 $copy = Join-Path $output.FullName 'Rigarus-Dispatch-x64-setup.exe'
 Copy-Item -LiteralPath $installerPath -Destination $copy
-foreach ($script in @('Test-TauriOfflineInstall.ps1', 'Test-TauriDesktop.ps1', 'TauriAcceptanceSupport.ps1', 'TauriUiaDiagnostics.ps1')) {
+foreach ($script in @('Test-TauriOfflineInstall.ps1', 'Test-TauriDesktop.ps1', 'TauriAcceptanceSupport.ps1', 'TauriUiaDiagnostics.ps1', 'TauriSqliteSnapshot.ps1')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $script) -Destination $output.FullName
 }
 [ordered]@{

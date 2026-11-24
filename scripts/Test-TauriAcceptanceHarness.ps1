@@ -1,6 +1,7 @@
 ﻿
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'TauriAcceptanceSupport.ps1')
+. (Join-Path $PSScriptRoot 'TauriSqliteSnapshot.ps1')
 $testRoot = Join-Path ([IO.Path]::GetTempPath()) ('rigarus-harness-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $testRoot | Out-Null
 $acceptanceLog = Get-AcceptanceLogPath (Join-Path $testRoot 'synthetic.log')
@@ -186,16 +187,33 @@ try {
     $root = Join-Path $testRoot 'synthetic-profile'
     New-Item -ItemType Directory -Path (Join-Path $root 'data') | Out-Null
     $db = Join-Path $root 'data/rigarus.db'
-    Set-Content -LiteralPath $db -Value 'Synthetic digest fixture, not a customer database'
-    $before = Get-SyntheticAssignmentDigest
-    if ($before -cne (Get-SyntheticAssignmentDigest)) { throw 'Read-only digest changed the fixture.' }
-    Set-Content -LiteralPath ($db + '-shm') -Value 'Transient reader locks'
-    if ($before -cne (Get-SyntheticAssignmentDigest)) { throw 'Transient SHM locks should not claim a data mutation.' }
-    Set-Content -LiteralPath ($db + '-wal') -Value 'Synthetic committed mutation'
-    if ($before -ceq (Get-SyntheticAssignmentDigest)) { throw 'WAL mutation escaped the no-write verifier.' }
-    $before = Get-SyntheticAssignmentDigest
-    Add-Content -LiteralPath $db -Value 'Synthetic main-file mutation'
-    if ($before -ceq (Get-SyntheticAssignmentDigest)) { throw 'Main-file mutation escaped the no-write verifier.' }
+    & (Join-Path $PSScriptRoot 'Test-TauriSqliteHarness.ps1')
+    $waits = Get-AcceptanceWaits 'Default' @{}
+    $fixture = [RigarusSqliteFixture]::new($db)
+    try {
+        $fixture.Exec("PRAGMA journal_mode=WAL;CREATE TABLE Fixture(Id INTEGER PRIMARY KEY, Note);INSERT INTO Fixture VALUES(1,'Synthetic note');")
+        $before = Get-SyntheticAssignmentDigest
+        $fixture.Exec('PRAGMA wal_checkpoint(TRUNCATE);')
+        if ($before -cne (Get-SyntheticAssignmentDigest)) { throw 'Verifier wrapper falsely detected a checkpoint mutation.' }
+        $fixture.Exec("UPDATE Fixture SET Note='Synthetic real change' WHERE Id=1")
+        if ($before -ceq (Get-SyntheticAssignmentDigest)) { throw 'Real committed record change escaped the verifier wrapper.' }
+    }
+    finally { $fixture.Dispose() }
+    function Test-SnapshotFailurePropagation {
+        function Get-AcceptanceSqliteSnapshot {
+            param($Path, $TimeoutSeconds)
+            $inner = [TimeoutException]::new('Synthetic SQLite progress deadline')
+            $inner.Data['AcceptanceStatus'] = 'TIMEOUT'
+            throw [Reflection.TargetInvocationException]::new('Synthetic wrapper', $inner)
+        }
+        Assert-Result { Get-SyntheticAssignmentDigest | Out-Null } 2 '^status=TIMEOUT phase=sqlite-snapshot .*noFingerprint=true$'
+    }
+    Test-SnapshotFailurePropagation
+    function Test-SnapshotUnknownError {
+        function Get-AcceptanceSqliteSnapshot { param($Path, $TimeoutSeconds) throw [IO.IOException]::new('Synthetic unknown read error') }
+        Assert-Result { Get-SyntheticAssignmentDigest | Out-Null } 1 '^status=FAIL phase=sqlite-snapshot .*noFingerprint=true$'
+    }
+    Test-SnapshotUnknownError
 
     function Test-WeeklyCardAssertions {
         function Wait-For([string]$Description, [scriptblock]$Probe) {
@@ -214,7 +232,7 @@ try {
     }
     Test-WeeklyCardAssertions
     & (Join-Path $PSScriptRoot 'Test-TauriUiaHarness.ps1')
-    Write-Host 'PASS: Weekly native date order, invalid dates, read-only/WAL digests and missing-card timeout diagnostics.'
+    Write-Host 'PASS: Weekly native date order, invalid dates, consistent logical SQLite snapshots and missing-card timeout diagnostics.'
     Write-Host 'PASS: Synthetic offline acceptance harness scenarios.'
 }
 finally {

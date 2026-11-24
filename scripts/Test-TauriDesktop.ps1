@@ -37,6 +37,7 @@ $staffingWorkerAName = if ($IncludeForemen) { 'Synthetic Foreman A' } else { 'Sy
 $staffingWorkerBName = if ($IncludeForemen) { 'Synthetic Foreman B renamed' } else { 'Synthetic Staffing B' }
 . (Join-Path $PSScriptRoot 'TauriAcceptanceSupport.ps1')
 . (Join-Path $PSScriptRoot 'TauriUiaDiagnostics.ps1')
+. (Join-Path $PSScriptRoot 'TauriSqliteSnapshot.ps1')
 $waits = Get-AcceptanceWaits $Profile $PSBoundParameters
 $acceptanceLog = Get-AcceptanceLogPath $DiagnosticLog
 $uiaDiagnosticLog = Get-AcceptanceLogPath $(if ($UiaDiagnosticLog) { $UiaDiagnosticLog } else { $acceptanceLog + '.uia.jsonl' })
@@ -596,13 +597,26 @@ function Close-AssignmentDetails($Window, [int]$Id) {
 }
 
 function Get-SyntheticAssignmentDigest {
-    # Only the private, generated smoke profile is observed; ignore transient SHM locks.
+    # Read one consistent, read-only logical snapshot of the generated fixture.
+    # Physical WAL/checkpoint/SHM changes are not business record mutations.
     $syntheticDatabase = Join-Path $root 'data/rigarus.db'
-    if (-not (Test-Path -LiteralPath $syntheticDatabase -PathType Leaf)) { throw 'Synthetic database is missing.' }
-    (@($syntheticDatabase, ($syntheticDatabase + '-wal')) | ForEach-Object {
-        if (Test-Path -LiteralPath $_ -PathType Leaf) { (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash }
-        else { 'absent' }
-    }) -join ':'
+    $snapshotTimer = [Diagnostics.Stopwatch]::StartNew()
+    Write-AcceptanceEvent 'START' 'sqlite-snapshot' $snapshotTimer $waits.GuiTimeoutSeconds 'readOnly=true consistentTransaction=true'
+    try {
+        $snapshot = Get-AcceptanceSqliteSnapshot -Path $syntheticDatabase -TimeoutSeconds $waits.GuiTimeoutSeconds
+        Write-AcceptanceEvent 'PASS' 'sqlite-snapshot' $snapshotTimer $waits.GuiTimeoutSeconds "tables=$($snapshot.Tables) rows=$($snapshot.Rows) sqlite=$($snapshot.SqliteVersion)"
+        $snapshot.Digest
+    }
+    catch {
+        $snapshotStatus = 'FAIL'; $errorNode = $_.Exception
+        while ($errorNode) {
+            if ($errorNode.Data['AcceptanceStatus'] -eq 'TIMEOUT') { $snapshotStatus = 'TIMEOUT' }
+            $errorNode = $errorNode.InnerException
+        }
+        Write-AcceptanceEvent $snapshotStatus 'sqlite-snapshot' $snapshotTimer $waits.GuiTimeoutSeconds 'noFingerprint=true'
+        $_.Exception.Data['AcceptanceStatus'] = $snapshotStatus
+        throw
+    }
 }
 
 function Initialize-SyntheticWeeklyScale($Window) {
@@ -747,7 +761,7 @@ function Test-Assignments($Window) {
     Set-Field $Window 'assignment-date' '2027-01-02'
     Set-Field $Window 'assignment-notes' 'Synthetic unsaved cancelled form'
     Invoke-Button $Window 'Cancel'
-    if ((Get-SyntheticAssignmentDigest) -cne $beforeCancel) { throw 'Form cancellation modified the synthetic SQLite database/WAL.' }
+    if ((Get-SyntheticAssignmentDigest) -cne $beforeCancel) { throw 'Form cancellation modified the synthetic logical SQLite records.' }
     Show-SyntheticAssignmentDate $Window '2026-12-31'
     Assert-WeekAssignmentCards $Window @($am, $pm, $tower)
     Open-WeekAssignment $Window 2 '2026-12-31 PM'
@@ -867,7 +881,7 @@ function Test-WorkingCalendars($Window) {
     $before = Get-SyntheticAssignmentDigest
     Invoke-Button $Window 'Cancel'
     $after = Get-SyntheticAssignmentDigest
-    if ($before -ne $after) { throw 'Working-calendar Cancel changed SQLite/WAL.' }
+    if ($before -ne $after) { throw 'Working-calendar Cancel changed logical SQLite records.' }
     Invoke-Button $Window '2026-12-31 PM: Can work'
     Select-AssignmentChoice $Window 'working-state' '' 'Not recorded (clear)'
     Invoke-Button $Window 'Save working dates'
@@ -963,7 +977,7 @@ function Test-Availability($Window) {
     Select-AssignmentChoice $Window 'availability-state' '' 'Not recorded'
     $before = Get-SyntheticAssignmentDigest
     Invoke-Button $Window 'Cancel availability changes'
-    if ((Get-SyntheticAssignmentDigest) -cne $before) { throw 'Availability Cancel modified synthetic SQLite/WAL.' }
+    if ((Get-SyntheticAssignmentDigest) -cne $before) { throw 'Availability Cancel modified synthetic logical SQLite records.' }
     Assert-AvailabilityCell $Window '2026-12-31' 'PM' 'Available'
     Invoke-Button $Window '2026-12-31 PM: Available'
     Select-AssignmentChoice $Window 'availability-state' '' 'Not recorded'
@@ -1015,7 +1029,7 @@ function Test-EmployeeWeek($Window) {
     Invoke-Button $Window ('Open employee week for ' + $staffingWorkerAName)
     Find-Control $Window $automationId 'employee-visit-4' -Button | Out-Null
     Invoke-Button $Window 'Job Schedule'
-    if ((Get-SyntheticAssignmentDigest) -cne $employeeWeekBefore) { throw 'Read-only employee week changed synthetic SQLite/WAL.' }
+    if ((Get-SyntheticAssignmentDigest) -cne $employeeWeekBefore) { throw 'Read-only employee week changed synthetic logical SQLite records.' }
     Write-AcceptanceEvent 'PASS' 'employee-week' $timer 0 'explicitWorker=shown borrowedCrew=retained emptyEmployee=clear availability=recorded preview=draft export=disabled handoff=week-retained'
 }
 
@@ -1036,7 +1050,7 @@ function Test-Staffing($Window) {
     Set-SyntheticWorker $Window "Select worker 2, $staffingWorkerBName" $true
     $before = Get-SyntheticAssignmentDigest
     Invoke-Button $Window 'Cancel worker changes'
-    if ((Get-SyntheticAssignmentDigest) -cne $before) { throw 'Worker form Cancel modified the synthetic SQLite database/WAL.' }
+    if ((Get-SyntheticAssignmentDigest) -cne $before) { throw 'Worker form Cancel modified the synthetic logical SQLite records.' }
     Invoke-Button $Window 'Choose workers'
     Set-SyntheticWorker $Window "Select worker 1, $staffingWorkerAName" $true
     Invoke-Button $Window 'Save workers to Draft'
