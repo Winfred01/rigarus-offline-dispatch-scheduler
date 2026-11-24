@@ -1,5 +1,45 @@
 # SQLite data model
 
+## Explicit capability evidence (#25, schema twelve)
+
+Necessary additive `20261124020000_AddCapabilityEvidence` follows schema11
+inside the existing startup transaction. No original table/ID/level/driver flag,
+Home Crew, visit, staffing, Foreman, calendar or prior history is rewritten.
+There was no authoritative persisted source for requirements or separate verified
+qualifications; these records enable real SQLite-backed checks without inventing
+defaults or overloading Employee.SkillLevel.
+
+CapabilityEvidenceOwners identifies exactly one WorkItem policy or one
+Employee+case-sensitive technical qualification code through an XOR CHECK,
+unique identities and protected FKs. Ownership is immutable.
+CapabilityEvidenceChanges stores native per-owner Revision, inclusive local
+dates/AM-PM/FullDay, bounded version1 JSON, CompanyConfirmed=1, evidence Reference
+and separate UTC recording time. History UPDATE/DELETE is forbidden.
+CapabilityEvidenceCells links current owner/date/half to its history through a
+composite FK. Readers validate history date/half context and strictly decode
+payload keys/version/types; duplicate JSON keys are rejected.
+
+WorkItem payloads explicitly specify positive minimum members, three nonnegative
+Level minima, Exact/AtLeast mode and qualification-code/count pairs. Qualification
+payloads record Verified/NotVerified/Unknown separately from levels and driver
+approval. No unrecorded date inherits a policy/certificate; there is no automatic
+expiry, certificate equivalence, approver-role authentication or company standard.
+An explicitly empty qualification list is an assertion, not the missing-policy
+default. Actual threshold values and legal meaning remain customer decisions.
+
+Internal Store saves require confirmation/reference and expected revision under
+BEGIN IMMEDIATE; history and all current cells commit or roll back together.
+Identical evidence/reference is a no-op; corrected reference appends history.
+The latest100 history events are returned while older records remain stored.
+No HTTP/UI editor or actual staffing Apply is added.
+
+Read-only snapshot v4 fingerprints related owner IDs/native revisions/current
+cells and all related WorkItem/Crew context in one transaction. Rebuild v3 input
+objects. Schema11 binaries reject schema12; operational fallback needs a verified
+consistent schema11 backup and compatible binary, never manual table/history
+removal. Synthetic upgrade preservation/rollback/retry is tested; no real customer
+database was opened/migrated, and native upgrade/recovery remains a separate gate.
+
 ## Dated company-driver evidence (#23, schema eleven)
 
 Additive `20261124010000_AddDriverApprovals` follows schema ten in the existing

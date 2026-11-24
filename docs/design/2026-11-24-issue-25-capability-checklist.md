@@ -31,15 +31,15 @@ is engineering evidence, not customer policy authority.
 Local-only UI original November22 DOCX SHA256
 67cdc2ea9d006caea1a28c0faa50aee71380410dae819e6fcd32c27152161487:
 XML paragraphs13 (People),152 (resource checks),218 (staffing feedback),247
-(review),302 (current Foreman). No rendered page/original figure inspected.
+(review),302 (current Foreman). UI mtime UTC 2026-11-22T08:14:42.434606; no rendered page/original figure inspected.
 No UI/API/keyboard/focus/ARIA/layout change; corresponding UI comparison N/A.
 Complete originals/absolute paths stay local. Local updated plan v2.1 November24
 SHA256 098783c8d59232fe717a2f7fe7bb18719b275aabf5438e65d6e3d0679b2993b5,
-sections source lines204/215/227/297/345–346/532: per-project requirements,
+mtime UTC 2026-11-24T15:08:37; sections source lines204/215/227/297/345–346/532: per-project requirements,
 Level not certification, both borrowing sides, no invented safety standard.
 Playbook v2.1 November24 SHA256
 cfc0d55860073df8ebdce967080da46c0fb72279d4baccd723b77e5dc78551b7,
-lines185/200/311–315: configured thresholds and customer approval remain open.
+mtime UTC 2026-11-24T15:09:02; lines185/200/311–315: configured thresholds and customer approval remain open.
 
 | Requirement / authority | Existing / needed | Acceptance |
 | --- | --- | --- |
@@ -99,4 +99,10 @@ remain owner/customer questions; recording confirmation is not authentication.
 
 ## Actual results
 
-NOT RUN at design commit; actual execution evidence will be recorded separately.
+At design commit eee3081, tests were NOT RUN. Final local PASS: Python266
+(31 new), Ruff71, packaged sidecar11/build, frontend35/build, Rust8/Release,
+historical .NET35/Release (0 warnings/errors), locked restores/format and
+synthetic acceptance harness. See [actual evidence](../acceptance/2026-11-24-issue-25-capability.md).
+Staged privacy/docs and final-head Windows CI are recorded at delivery.
+Native GUI/disconnected install/upgrade/reboot NOT RUN; customer Demo D/E/UAT
+NOT RUN; production NOT APPROVED.
