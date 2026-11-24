@@ -1,5 +1,27 @@
 # M0 acceptance walkthrough
 
+## Dated driver evidence engineering check (#23)
+
+Read [design](design/2026-11-24-issue-23-driver-checklist.md) and
+[actual evidence](acceptance/2026-11-24-issue-23-drivers.md). Use temporary
+synthetic databases and internal DriverApprovalStore; there is no approval UI.
+Record explicit company-confirmed Active AM evidence for a borrowed actual
+employee, verify PM stays unknown, then Suspended/Expired/Unverified replacement
+and retained history. Active does not carry to unrecorded dates. Check missing/
+empty membership, inactive, Unavailable/Unknown availability, two-Crew collision,
+cancellation and source/destination recheck after borrowing the sole driver.
+Every report retains Validation pending and false Apply/Publish flags.
+
+Verify stale/no-op/reference changes, simultaneous writers, cell/history/FK
+constraints, mid-save rollback, schema10→11 failure/retry and all original rows.
+During a WAL writer, read a complete pinned old snapshot then the complete new
+state; source changes must invalidate the fingerprint. Pure detached validation
+must perform no SQL/file/network/clock access and leave logical DB records equal.
+Generated options still have no proposed workers, so ApprovedDriver stays Pending.
+Company approver/category rules, approval UI, complete dispatch/Publish workflow
+and customer Demo D remain outside this first backend slice. Native disconnected
+installation/upgrade/reboot and GUI results must be recorded separately from CI.
+
 ## Employee collision engineering check (#15 first slice)
 
 Use [the synthetic evidence](acceptance/2026-11-24-issue-15-personnel.md)

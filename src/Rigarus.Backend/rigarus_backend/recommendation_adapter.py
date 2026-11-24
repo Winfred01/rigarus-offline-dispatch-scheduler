@@ -15,6 +15,13 @@ from pathlib import Path
 from time import monotonic
 from typing import Literal
 
+from .driver_store import snapshot as driver_snapshot
+from .driver_eligibility import (
+    DriverCell,
+    DriverWorker,
+    DriverValidation,
+    validate_drivers,
+)
 from . import storage
 from .availability_store import snapshot as availability_snapshot
 from .personnel_conflicts import (
@@ -36,7 +43,7 @@ from .staffing_persistence import read_staffing
 from .working_calendar_store import owner, snapshot as calendar_snapshot
 from .work_calendars import WorkCalendar, WorkCalendarCell
 
-FORMAT = "rigarus-recommendation-input-v2"
+FORMAT = "rigarus-recommendation-input-v3"
 MAX_OBSERVED_ROWS = 100_000  # Technical workload bound, not staffing policy.
 READ_SECONDS = 30
 PENDING_VALIDATORS = tuple(
@@ -58,6 +65,7 @@ CURRENT_HISTORY = (
     storage.ASSIGNMENT_STAFFING,
     storage.EMPLOYEE_AVAILABILITY,
     storage.WORKING_CALENDARS,
+    storage.DRIVER_APPROVALS,
 )
 CURRENT_TABLES = storage.CREW_TABLES | {
     "Employees",
@@ -69,6 +77,7 @@ CURRENT_TABLES = storage.CREW_TABLES | {
     "EmployeeAvailabilityChanges",
     "EmployeeAvailability",
     *storage.CALENDAR_TABLES,
+    *storage.DRIVER_TABLES,
 }
 
 
@@ -186,6 +195,8 @@ class EmployeeSource:
     driver_status: str
     availability_revision: int
     availability: tuple[AvailabilityCell, ...]  # Sparse; absent = Unknown.
+    driver_revision: int
+    driver_approvals: tuple[DriverCell, ...]
 
 
 def _digest(value) -> str:
@@ -389,7 +400,16 @@ def _read_sources(connection, query, source_id, migrations):
         available = availability_snapshot(
             connection, employee_id, query.earliest_start_date, query.horizon_end_date
         )
-        observed_count += 1 + len(available["entries"])
+        try:
+            driver = driver_snapshot(
+                connection,
+                employee_id,
+                query.earliest_start_date,
+                query.horizon_end_date,
+            )
+        except ValueError:
+            raise SnapshotReadError("DATABASE_INVALID") from None
+        observed_count += 1 + len(available["entries"]) + len(driver["entries"])
         if observed_count > MAX_OBSERVED_ROWS:
             raise SnapshotReadError("READ_LIMIT_EXCEEDED")
         employees.append(
@@ -400,6 +420,10 @@ def _read_sources(connection, query, source_id, migrations):
                 row[5],
                 available["revision"],
                 tuple(AvailabilityCell(**x) for x in available["entries"]),
+                driver["revision"],
+                tuple(
+                    DriverCell(employee_id=employee_id, **x) for x in driver["entries"]
+                ),
             )
         )
     return RecommendationSnapshot(
@@ -478,6 +502,7 @@ class PersistedRecommendations:
     generated: GenerationComparison
     crew_reviews: tuple[CrewReview, ...]
     personnel_validation: PersonnelValidation
+    driver_validation: DriverValidation
     pending_validators: tuple[str, ...] = field(default=PENDING_VALIDATORS, init=False)
     validation_status: Literal["Pending"] = field(default="Pending", init=False)
     applyable: Literal[False] = field(default=False, init=False)
@@ -548,6 +573,27 @@ def validate_snapshot_personnel(
     )
 
 
+def validate_snapshot_drivers(snapshot: RecommendationSnapshot) -> DriverValidation:
+    if not isinstance(snapshot, RecommendationSnapshot):
+        raise ValueError("Supply a RecommendationSnapshot.")
+    personnel = validate_snapshot_personnel(snapshot)
+    return validate_drivers(
+        tuple(c.visit for c in personnel.checks),
+        tuple(
+            DriverWorker(
+                e.employee_id,
+                e.active,
+                tuple((c.local_date, c.slot, c.state) for c in e.availability),
+            )
+            for e in snapshot.employees
+        ),
+        tuple(c for e in snapshot.employees for c in e.driver_approvals),
+        start_date=snapshot.query.earliest_start_date,
+        end_date=snapshot.query.horizon_end_date,
+        scope_complete=True,
+    )
+
+
 def generate_from_persisted_snapshot(
     snapshot: RecommendationSnapshot,
 ) -> PersistedRecommendations:
@@ -568,6 +614,7 @@ def generate_from_persisted_snapshot(
             if c.review_reasons
         ),
         validate_snapshot_personnel(snapshot),
+        validate_snapshot_drivers(snapshot),
     )
 
 

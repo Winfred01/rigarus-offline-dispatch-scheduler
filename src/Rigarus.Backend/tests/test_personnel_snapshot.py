@@ -142,7 +142,7 @@ class PersonnelSnapshotTests(unittest.TestCase):
             validate_snapshot_personnel(self.snapshot(crew_ids=(self.c1.id,))).state,
             "Blocked",
         )
-        self.assertIn("v2", adapter.FORMAT)
+        self.assertIn("v3", adapter.FORMAT)
 
     def test_roster_or_available_without_actual_membership_never_passes(self):
         worker = self.employee()

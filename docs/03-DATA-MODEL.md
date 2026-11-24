@@ -1,5 +1,36 @@
 # SQLite data model
 
+## Dated company-driver evidence (#23, schema eleven)
+
+Additive `20261124010000_AddDriverApprovals` follows schema ten in the existing
+startup migration transaction. Original employee fields, IDs, Home Crew, staffing,
+visits, calendars and prior history remain unchanged. The legacy DriverStatus
+CHECK still permits only Unverified; existing roster writes cannot grant approval.
+
+DriverApprovalChanges retains EmployeeId, positive per-employee Revision,
+StartDate/EndDate, AM/PM/FullDay, Unverified/Active/Suspended/Expired, explicit
+CompanyConfirmed=1, bounded evidence Reference and separate UTC RecordedAt.
+UPDATE/DELETE history triggers and FK protection apply. DriverApprovalCells
+stores current exact local date/AM-PM/state/change ID. Composite FK links the
+same employee/state to its immutable history; reads verify dated context.
+Explicit Unverified is retained as evidence, never approval. No date outside a
+recorded cell inherits Active and no legal expiration rule is invented.
+
+The internal Store requires expected revision under BEGIN IMMEDIATE; recording
+and cells commit together or roll back. Changed evidence references append a
+new event; identical state/reference is a no-op. History reads return latest100,
+older history stays stored. This adds no HTTP/UI approval editor or actual
+staffing mutation. Company confirmation is a recorded operator assertion,
+not authenticated company authorization or actual-Rig/category certification.
+
+Read-only snapshot v3 includes related actual workers' driver revisions/cells
+from the same transaction and fingerprints them. Earlier read-only adapters and
+schema10 binaries reject schema11. Operational fallback requires a verified
+consistent schema10 backup and its compatible binary: never delete tables/history
+to downgrade a live profile. Synthetic migration rollback/retry and preservation
+are tested; native installation/upgrade/recovery and customer acceptance remain
+separate. No customer database is migrated by this development task.
+
 ## M0 demo fixture
 
 The initial EF Core migration creates `DemoProjects` with a numeric primary key, a unique job number, a site name and a required note. The SQLite constraint limits the note to 200 characters, and the domain limits .NET strings to 200 UTF-16 code units. The migration inserts exactly one fixture, `DEMO-001`, in the same migration transaction. EF records application in `__EFMigrationsHistory`. Reopening preserves operator edits.
