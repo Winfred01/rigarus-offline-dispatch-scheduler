@@ -93,6 +93,23 @@ locked/failed reads, deadline/limits return errors with no snapshot. Never migra
 or initialize a profile while calculating a recommendation. No published/history
 rewrite, actual-worker/Rig selection, HTTP/Tauri/UI or save path is introduced.
 
+## Saved-Draft personnel observations (#15)
+
+Snapshot v2 requires an all-Crew/horizon `personnel_assignments` tuple alongside
+selected-Crew occupancy. Both use actual DraftAssignments → WorkItems.ProjectId,
+native revisions and latest AssignmentStaffingChanges/Members in one read-only
+transaction. Saved staffing context must match the visit and refer to an earlier
+or current positive assignment revision; malformed sources fail without a
+fingerprint. History is not unioned into current workers. Cancelled releases
+capacity; still-Draft visits on inactive Crews count.
+
+All actual workers, including other Crews' borrowed workers, enter related
+employee observations and the logical fingerprint. Other-Crew changes in the
+horizon can make a snapshot Stale. Rebuild v1 inputs; no migration/write/derived
+conflict table/history rewrite. The pure report identifies employee/date/half
+and affected Assignment/Crew/WorkItem/Project IDs. Empty/unconfigured staffing
+is Pending. No attendance, Home Crew change or proposed approval is inferred.
+
 ## Crew roster
 
 The first #8 slice adds the Crews table to the local SQLite database. The stable generated ID survives name, type and status edits. Crew type is Civil or Tower. The roster keeps inactive rows visible and has no hard delete. Search uses literal substrings with SQLite's existing ASCII case behavior. Crew names are labels, so multiple rows may share a name. A roster row is master data and does not establish scheduling eligibility. Employee master data and Foreman appointment history are described below.

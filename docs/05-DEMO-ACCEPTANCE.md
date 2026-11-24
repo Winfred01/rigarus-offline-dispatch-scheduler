@@ -1,5 +1,28 @@
 # M0 acceptance walkthrough
 
+## Employee collision engineering check (#15 first slice)
+
+Use [the synthetic evidence](acceptance/2026-11-24-issue-15-personnel.md)
+and [Design-First checklist](design/2026-11-24-issue-15-personnel-checklist.md).
+Check same actual employee / local date / AM-PM across two or three Crews,
+multiple employees, WorkItems/Projects, Civil/Tower and borrowed workers.
+Explanations must include employee/date/half and every affected stable
+Assignment/Crew/WorkItem/Project ID. Different dates/halves are independent.
+Cancelled frees capacity; latest staffing replaces history. Missing/empty
+staffing, incomplete scope or no active visits stays Pending.
+
+Verify unselected and inactive Crews' Draft visits remain in the same consistent
+snapshot, other-Crew changes make it Stale, WAL reads return a complete old/new
+view, and logical records/history/assignments/employees/calendars remain unchanged.
+Retain duplicate-Crew-slot rejection and deterministic/bounded pure computation.
+The saved-Draft collision check may be Satisfied, but generated proposals still
+lack actual proposed workers and retain PersonnelConflicts Pending. No Apply,
+Publish, resource substitution or existing-Draft edit is introduced.
+Drivers #23, staffing/skills/qualifications #25, actual Rig #24 and weekend consent
+#27 remain required, followed by #18/#29 transaction/approval/audit.
+CI is engineering verification; native GUI, disconnected installation/upgrade,
+customer Demo B/D/E/UAT and production approval require separate evidence.
+
 ## Persisted recommendation adapter engineering check (#28 phase three)
 
 Read the [Design-First record](design/2026-11-24-issue-28-adapter-checklist.md)
