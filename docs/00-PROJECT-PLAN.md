@@ -39,3 +39,20 @@ PR #83 began with a pure calendar calculation foundation. Full #26 additionally 
 | M8 / v1.0 | Customer UAT, approved package, training and handover |
 
 Use an issue and a reviewed PR per slice after the initial repository commit. Publish releases only with explicit approval. Keep all examples fictional.
+
+## #28 phase-two owner scope (2026-11-24)
+
+The owner approved G1 single-Crew WorkItem generation, G2 explicit confirmed
+Remaining Half-days, and G3 accumulation across calendar gaps; see the
+[decision register](10-CLIENT-DECISIONS.md). Multi-Crew or missing confirmed
+duration returns Needs Review. Civil/Tower inherit their shared Project calendar
+with separate IDs. No Draft/history deduction is inferred.
+
+The internal Python generator computes proposed local AM/PM dates from supplied
+Crew/Project snapshots and sends complete plans to merged PR91's comparator.
+Unknown/closed/known-blocked slots and unapproved weekends never count. All
+results remain Pending / cannot Apply/Publish. This bounded foundation may
+precede full resource validators; it does not fulfil their gates or complete
+#28. No UI/API/schema change. See the
+[engineering scope](acceptance/2026-11-24-issue-28-generator.md).
+Customer Demo E, RC/UAT and production approval remain pending.

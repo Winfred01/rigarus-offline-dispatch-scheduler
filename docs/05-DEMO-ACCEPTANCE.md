@@ -1,5 +1,26 @@
 # M0 acceptance walkthrough
 
+## Automatic date generator engineering check (#28 phase two)
+
+Read the [Design-First record](design/2026-11-24-issue-28-generator-checklist.md)
+and [actual results](acceptance/2026-11-24-issue-28-generator.md). From the backend
+folder run the locked suite and `python -m rigarus_backend.recommendation_example`.
+Verify C1 Mon AM/Wed PM/Thu AM/Fri PM reaches 4/4 on Friday PM;
+C2 starts later but finishes Wednesday PM. Both sorts must be deterministic.
+
+Check missing/unconfirmed Remaining, multi-Crew, all closed/Unknown, gaps,
+weekend consent, Crew occupancy, independent resource blocks, wrong IDs/ranges,
+duplicates, year/leap/DST and annual bounds. Insufficient capacity retains
+partial/unfilled counts with no finish or complete ranked option. Guard
+file/network/SQL/clock calls and compare full synthetic SQLite logical records,
+IDs, assignments, staffing, employees and calendars before/after calculation.
+
+No HTTP/Tauri/UI or Apply/publication path exists here. Packaged-sidecar,
+frontend/Rust and legacy .NET checks establish compatibility only. New native
+GUI, disconnected installation/upgrade and customer Demo E remain NOT RUN.
+
+## Historical M0 walkthrough
+
 Use the synthetic dataset. For a physical offline check, disconnect Wi-Fi and Ethernet after building or extracting the package.
 
 1. Start `Rigarus.Desktop.exe` on Windows. Verify the title, Dashboard, sidebar placeholders and Demo Mode.

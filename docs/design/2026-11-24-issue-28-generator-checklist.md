@@ -92,3 +92,18 @@ continuity weights remain Open/out of scope; do not invent defaults.
 All new implementation/verification cases NOT RUN at this design commit.
 Customer Demo E / UAT NOT RUN; production NOT APPROVED. Final outcomes will be
 recorded separately in the linked acceptance evidence and PR.
+
+
+## Implementation and final local checks
+
+The [engineering record](../acceptance/2026-11-24-issue-28-generator.md) records
+156 Python / 27 new tests, 11 packaged-sidecar, 35 frontend, 8 Rust and 35 legacy
+.NET tests, locked restores/formats/builds and synthetic acceptance-tool harness.
+Shared Project snapshot consistency was added as input validation; it preserves
+inheritance rather than introducing a business rule. The per-slot scan reuses
+#26's assessment with indexed single-cell calendars, avoiding quadratic lookup.
+M5 milestone 6 was read live: Workdays and recommendations (Demo E), Open;
+main CI 45419720452 completed successfully at the recorded baseline. Original
+UI figures remain not applicable; no UI/API/migration/write path changed.
+Final staging/privacy/docs and feature-head Windows CI are reported in the PR;
+no native/offline GUI, customer acceptance or production approval is implied.

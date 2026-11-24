@@ -64,14 +64,62 @@ known Blocked option before limiting results, explains each slot/check/source,
 and deterministically orders earliest finish (default) or earliest start, with
 stable Crew/option-ID ties. Missing independent evidence remains Pending.
 
-There is no production snapshot adapter, date/duration allocator, safety
-validator, HTTP/Tauri/UI connection or SQLite write. Supplied Satisfied evidence
+The comparator itself has no allocator. There is no production snapshot
+adapter, safety validator, HTTP/Tauri/UI connection or SQLite write. Supplied Satisfied evidence
 is not certified current safety: every option/comparison is Validation pending,
 unapplyable and unpublishable, even if all supplied checks are satisfied. Home
 Crew, default Rig and employee Available never supply other missing checks.
 The raw internal gap count introduces no continuity weight or remaining-work
 deduction. Future #15/#23/#24/#25/#27 validators, approved generation semantics,
 and #18/#29 revision/lock/Apply gates remain necessary. No schema change.
+
+## Single-Crew date generation (#28 phase two)
+
+`recommendation_generator.py` generates actual proposed dates from immutable
+`GenerationRequest` snapshots: option/WorkItem/parent Project/Crew IDs, required
+Crew count, explicit Remaining Half-days and strict operator-confirmation bool,
+earliest local date, inclusive horizon, Crew/Project `WorkCalendar`s, optional
+`CrewOccupancySnapshot` and per-slot independent evidence. The caller resolves
+the persisted parent and correct/current context. No production adapter verifies
+source revisions, actual workers/Rig or resource approval in this slice.
+No WorkItem override, estimate fallback or Draft-work deduction exists.
+
+Index cells once, scan local ordinal dates AM before PM, reuse
+`assess_project_calendar` with constant-size indexed cells. Only both Working
+can count. Closure/unknown/conflict, known occupancy and supplied Blocked
+resource checks skip the slot. Weekends additionally need exact-slot Satisfied
+consent; missing/Pending consent cannot shorten dates. Other missing safety
+evidence remains Pending and never certifies dispatch. Gaps do not reset work.
+
+One earliest cumulative plan is generated per Crew/earliest-date scenario,
+rather than exhaustive start-date or multi-Crew optimization. Scans stop on the
+confirmed count or horizon. Multi-Crew and absent/unconfirmed remaining work
+return Needs Review without scanning. Exhaustion retains partial slots/unfilled
+count but no finish or complete comparator option. Every scanned/skipped slot
+retains date/half, source states, assessment and reasons. Calendar counters cover
+only scanned slots and may overlap (one closure with the other source unknown).
+
+Complete plans become PR91 `ExplicitOption`s. `generate_and_compare` validates
+same WorkItem/parent/remaining requirement, rejects conflicting shared Project
+snapshots on overlapping dates, and calls `compare_explicit_options` for canonical
+explanations, earliest-finish default/earliest-start alternate, Crew/option-ID ties
+and the 1–10 limit. Incomplete diagnostics remain outside ranking. Candidates
+are alternatives, not simultaneous reservations. Occupancy None is missing;
+empty means explicitly free within its snapshot range. Partial coverage stays
+Pending outside that range, never inferred free.
+
+The inclusive horizon ends before the next annual anniversary (Feb29 clamps to
+Feb28), also bounded to 366 dates / 732 slots. Dates near year 9999 never overflow.
+At most 100 requests; scan/index work is linear, comparator canonicalization
+O(H log H). No UTC instant, clock, file, SQL, network, dependency, migration,
+API, Tauri/UI, save/Apply or publication path is introduced. All outputs remain
+Validation pending or Needs Review, `validation_status=Pending`,
+`applyable=false`, `publishable=false`, even with every supplied check Satisfied.
+
+See the [design record](design/2026-11-24-issue-28-generator-checklist.md) and
+[engineering evidence](acceptance/2026-11-24-issue-28-generator.md). Trusted
+resource validators, revision adapters, operator preview/locks/Apply and customer
+Demo E remain separate requirements.
 
 ## WPF baseline
 
