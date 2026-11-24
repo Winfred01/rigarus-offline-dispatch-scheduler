@@ -107,3 +107,10 @@ local date/half and persistent Draft ID. Prototype-only features remain excluded
 ## Actual checks
 
 NOT RUN at this design commit. Customer Demo B/E/UAT pending; production not approved.
+
+Implementation follow-through: [actual verification](../acceptance/2026-11-24-issue-16-locate.md)
+records42 frontend tests,10 browser groups,4 viewport checks and scoped native
+Windows interaction. Native inspection required a wider review dialog and pinned
+action column; no data or business contract changed. L08 remains outside the
+available data sources. CI/privacy are reported against the actual delivered SHA
+in the Draft PR/Issue; the pre-code NOT RUN entry above remains historical.

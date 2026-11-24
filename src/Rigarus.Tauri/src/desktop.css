@@ -374,6 +374,68 @@ h1 {
   background: #dce8ff;
   color: #183f79;
 }
+
+.schedule-card.locate-highlight {
+  outline: 3px solid #b45309;
+  outline-offset: 2px;
+  animation: locate-pulse 1s ease-in-out 2;
+}
+@keyframes locate-pulse {
+  50% {
+    outline-color: #d97706;
+    outline-offset: 4px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .schedule-card.locate-highlight {
+    animation: none;
+  }
+}
+.schedule-span {
+  border: 1px solid #ccd9ed;
+  border-radius: 5px;
+  padding: 7px 10px;
+  color: #244883;
+  font-weight: 600;
+}
+.review-table-scroll {
+  overflow: auto;
+  max-height: 45dvh;
+  margin: 12px 0;
+}
+
+.desktop-dialog:has(.locate-review-table) {
+  width: min(1040px, calc(100vw - 48px));
+  max-width: calc(100vw - 48px);
+}
+
+.locate-review-table th:last-child,
+.locate-review-table td:last-child {
+  position: sticky;
+  right: 0;
+  background: var(--surface, #fff);
+}
+.locate-review-table {
+  width: 100%;
+  min-width: 620px;
+}
+.locate-review-table th {
+  background: #f7f9fc;
+  text-align: left;
+}
+.locate-review-table :is(th, td) {
+  padding: 10px;
+  border-bottom: 1px solid #d7e1ef;
+  vertical-align: top;
+}
+.locate-review-table small {
+  display: block;
+  color: #506581;
+}
+.locate-review-table ul {
+  padding-left: 16px;
+  margin: 0;
+}
 .schedule-card.tower-work {
   border-left-color: #82602a;
   background: #fbf0d8;

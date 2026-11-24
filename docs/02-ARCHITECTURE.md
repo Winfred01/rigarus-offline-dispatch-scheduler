@@ -1,5 +1,26 @@
 # Architecture
 
+## Exact saved-visit Locate (#16)
+
+The existing Publish review lists dated observations from saved visits' calendar
+assessments and actual staffing, including visits hidden by board filters. It is
+not a new resource validator. Review and draft details share Locate with the
+existing global saved-record search. Locate re-reads the persistent assignment
+ID and current workspace before navigating to its current local Sunday–Saturday
+week in Job Schedule / 1 Week. Only incompatible Crew/Project filters are cleared.
+Each AM/PM button keeps its assignment ID, including visits inside multiday strips.
+
+`schedule-locate.ts` isolates record guards, filter revelation, sticky-grid scroll
+geometry and an injected-clock cue controller. Rendering closes the source dialog,
+centers the exact card within the internal grid and focuses it without scrolling
+the document. Temporary amber highlighting is independent of detail selection;
+it expires after 2000ms, cancels on repeat/navigation/unmount and is static with
+reduced motion. Request tokens reject stale asynchronous responses. Unavailable,
+cancelled or invalid records produce recovery feedback before date/filter changes.
+An active draft editor is never silently discarded. No IPC/API, persistence,
+dependency, schema or publication contract changes. See [design](design/2026-11-24-issue-16-locate-checklist.md)
+and [verification](acceptance/2026-11-24-issue-16-locate.md).
+
 ## Explicit Crew capability requirements (#25 first slice)
 
 `capability_validation.py` checks actual saved Draft members against dated,

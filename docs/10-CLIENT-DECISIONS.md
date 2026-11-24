@@ -4,6 +4,7 @@ Source for this draft is the November 2026 project plan and delivery playbook. C
 
 | State | Decision or question | Gate or source |
 | --- | --- | --- |
+| Confirmed (owner UI development scope) | Prioritize the operator-facing Windows client: #16 exact saved AM/PM card Locate from existing real review/detail/search entries, local Sunday–Saturday / 1 Week, compatible filters, internal scrolling/focus and a two-second cue with reduced-motion support. Unsupported exception/maintenance/paused workflows are not fabricated. Follow with automatic scheduling UI, version rollback and employee calendar export; #45 sorting/pagination/bulk selection stays separate. This supersedes the earlier backend-only next-slice priority, without changing safety rules or authorizing automatic Apply/Publish. | Explicit owner continuation request November 24, 2026; L01–L03/L08/L14 updated local UI design inspected. Engineering scope only, customer acceptance and production approval pending. |
 | Confirmed | Single operator, Windows, local storage and offline operation | Both plans |
 | Confirmed | Option C proposals with operator approval and hard publishing constraints | Both plans |
 | Confirmed | Default dates adjustable; an operator can lock start, crew or full assignment | Delivery playbook |

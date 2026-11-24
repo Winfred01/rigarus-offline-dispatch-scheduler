@@ -1,5 +1,26 @@
 # M0 acceptance walkthrough
 
+## Saved half-day card Locate (#16)
+
+Read [design](design/2026-11-24-issue-16-locate-checklist.md) and
+[actual verification](acceptance/2026-11-24-issue-16-locate.md). In the Windows
+client open Schedule → Review & Publish, then a dated saved visit's Locate.
+The source closes, Job Schedule shows its current local Sunday–Saturday week
+and 1 Week, and its exact persisted AM/PM card is revealed and keyboard focused.
+Repeat from draft details or cross-week global Schedule search. Check same-day
+AM versus PM, a far project row, incompatible versus compatible Crew/Project
+filters, consecutive requests, two-second clearing, reduced motion and a stale
+source whose visit was cancelled. Locate must perform no assignment writes.
+
+Review includes whole-week saved observations even when board filters hide them;
+calendar Pending/conflict or missing staffing does not imply a complete dispatch
+validation result. Publish and formal export remain gated. Retest Draft creation,
+collision correction, edit, cancellation and persisted reload. L08 exception queue,
+maintenance, operational pause/resume, locks, version restoration, recommendation
+Apply and customer Demo B/E acceptance remain outside this slice. Distinguish
+browser proxy verification, native compiled client, disconnected installation and
+human customer acceptance in every result.
+
 ## Explicit staffing/skills/qualification check (#25)
 
 Read [design](design/2026-11-24-issue-25-capability-checklist.md) and
