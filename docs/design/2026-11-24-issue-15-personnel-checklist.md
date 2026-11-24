@@ -67,7 +67,11 @@ checks/UI/publish gate and customer acceptance are outside this slice.
    multiple Crew IDs yield a complete sorted conflict group. Cancelled ignored.
    Per-visit check Blocked/Pending/Satisfied plus overall result, missing reasons,
    exact affected references. Empty/unconfigured/explicit-empty staffing cannot
-   silently pass. Satisfied means only this bounded collision check, never safe
+   silently pass.
+   Conflict groups use compact Assignment/Crew/WorkItem/Project references rather
+   than repeating each visit's full roster for every shared employee, bounding
+   explanation serialization by memberships and avoiding unrelated worker details.
+   Satisfied means only this bounded collision check, never safe
    dispatch; validation Pending / applyable=false / publishable=false always.
 2. Extend RecommendationSnapshot with a required all-Crew personnel-assignment
    view in the same horizon/transaction. Existing selected assignments continue
@@ -101,5 +105,11 @@ checks/UI/publish gate and customer acceptance are outside this slice.
 
 ## Actual results
 
-NOT RUN at this design commit. Customer Demo B/D/E and UAT NOT RUN;
-production NOT APPROVED. Execution evidence will report actual gates separately.
+At initial design commit d50bbd5, checks were NOT RUN; product edits followed that
+commit. Now PASS: locked Python restore, Ruff61 files, backend208 (27 new),
+packaged sidecar11/build, frontend35/build/format, Rust8/Release/fmt,
+historical .NET35/locked restore/format/Release build and synthetic acceptance
+harness. See [actual scope/results](../acceptance/2026-11-24-issue-15-personnel.md).
+Staged privacy/docs and feature-head Windows CI are recorded at delivery.
+No schema/dependency/UI/HTTP change. Native GUI/disconnected install/upgrade/reboot
+NOT RUN. Customer Demo B/D/E/UAT NOT RUN; production NOT APPROVED.

@@ -151,7 +151,8 @@ replacement. Relevant employee observations include selected Home Crew members,
 observed actual workers (including borrowing) and current Foremen. Sparse
 availability includes native revision; absence is Unknown. Home Crew, Foreman,
 Available and Unverified Driver never produce staffing/driver/qualification/
-Rig/consent Satisfied evidence. Other-Crew personnel conflicts remain unvalidated.
+Rig/consent Satisfied evidence. The #15 saved-Draft collision report below now
+includes other Crews; proposed workers remain unvalidated.
 
 Frozen observations are detached before `generation_requests` constructs existing
 `GenerationRequest`/`CrewOccupancySnapshot` values. `generate_from_persisted_snapshot`
@@ -188,6 +189,43 @@ guarantee and require the caller's independent process budget when exposed later
 
 See [design](design/2026-11-24-issue-28-adapter-checklist.md) and
 [engineering evidence](acceptance/2026-11-24-issue-28-adapter.md).
+
+## Explicit employee collisions (#15 first resource slice)
+
+`personnel_conflicts.validate_employee_conflicts(tuple[StaffedVisit, ...],
+start_date=..., end_date=..., scope_complete=...)` is pure and deterministic.
+Inputs require explicit dated AM/PM Assignment/WorkItem/Project/Crew IDs, status,
+staffing configuration and unique actual Employee IDs. The validator checks
+annual scope and visit/membership limits, preserves unique active Crew/date/half
+occupancy, ignores Cancelled visits, and indexes active membership by local
+date/half/employee. Two or more distinct Crews produce EMPLOYEE_DOUBLE_BOOKED
+with every affected Assignment/Crew/WorkItem/Project. Compact references avoid
+repeating whole rosters for each shared worker. Space is O(visits + memberships);
+deterministic sorting takes O((visits + memberships) log(visits + memberships)).
+
+Per-visit checks are Blocked on collision, Pending on missing/explicit-empty
+staffing or incomplete scope, otherwise Satisfied for this collision check only.
+Known conflicts stay Blocked in partial views; no active visits means Pending.
+Every report retains Validation pending / applyable=false / publishable=false.
+No worker is inferred/reassigned and other resource gates remain independent.
+
+Snapshot contract `rigarus-recommendation-input-v2` requires
+`personnel_assignments`: all Crews' visits in the requested horizon, including
+inactive Crews' still-Draft visits and other WorkItems/Projects. Latest explicit
+staffing and related employees share the pinned read-only connection. Staffing
+context/revision is checked; the expanded scope participates in the fingerprint.
+Selected-Crew `assignments` still drives occupancy. Other-Crew staffing/visit
+changes now invalidate snapshots; rebuild v1 inputs. No database migration.
+
+`validate_snapshot_personnel(snapshot)` converts detached sources;
+`PersistedRecommendations.personnel_validation` carries saved-Draft results.
+It supplies no Satisfied PersonnelConflicts evidence to the PR91 comparator:
+generated dates have no explicit proposed workers. They retain Pending resource
+checks and false Apply/Publish flags. Draft save behavior, HTTP/UI and publication
+are unchanged. Future #18/#29 must obtain proposed membership and complete safety
+evidence, honor locks, and revalidate within Apply's transaction with rollback/audit.
+See [design](design/2026-11-24-issue-15-personnel-checklist.md) and
+[evidence](acceptance/2026-11-24-issue-15-personnel.md).
 
 ## WPF baseline
 

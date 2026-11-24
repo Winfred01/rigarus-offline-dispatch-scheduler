@@ -17,6 +17,11 @@ from typing import Literal
 
 from . import storage
 from .availability_store import snapshot as availability_snapshot
+from .personnel_conflicts import (
+    StaffedVisit,
+    PersonnelValidation,
+    validate_employee_conflicts,
+)
 from .recommendation_comparison import CHECKS, SortOrder, validate_comparison_settings
 from .recommendation_generator import (
     CrewOccupancySnapshot,
@@ -31,7 +36,7 @@ from .staffing_persistence import read_staffing
 from .working_calendar_store import owner, snapshot as calendar_snapshot
 from .work_calendars import WorkCalendar, WorkCalendarCell
 
-FORMAT = "rigarus-recommendation-input-v1"
+FORMAT = "rigarus-recommendation-input-v2"
 MAX_OBSERVED_ROWS = 100_000  # Technical workload bound, not staffing policy.
 READ_SECONDS = 30
 PENDING_VALIDATORS = tuple(
@@ -205,6 +210,7 @@ class RecommendationSnapshot:
     crews: tuple[CrewSource, ...]
     assignments: tuple[AssignmentSource, ...]
     employees: tuple[EmployeeSource, ...]
+    personnel_assignments: tuple[AssignmentSource, ...]
     input_fingerprint: str = field(default="", init=False)
 
     def __post_init__(self):
@@ -269,6 +275,45 @@ def _calendar_source(connection, scope, entity_id, query):
     )
 
 
+def _personnel_sources(connection, query):
+    """Every Crew in this horizon, read once in the caller's pinned view."""
+    assignments = []
+    observed_count = 0
+    for row in _rows(
+        connection,
+        """SELECT a.Id,a.WorkItemId,w.ProjectId,a.CrewId,a.LocalDate,a.Slot,a.Status,a.Revision,a.UpdatedAt
+        FROM DraftAssignments a JOIN WorkItems w ON w.Id=a.WorkItemId
+        WHERE a.LocalDate BETWEEN ? AND ? ORDER BY a.CrewId,a.LocalDate,a.Slot,a.Id""",
+        (query.earliest_start_date, query.horizon_end_date),
+    ):
+        staffing = read_staffing(connection, row[0])
+        if not staffing.configured and staffing.workers:
+            raise SnapshotReadError("DATABASE_INVALID")
+        if staffing.change_id:
+            context = connection.execute(
+                "SELECT WorkItemId,CrewId,LocalDate,Slot,AssignmentRevision FROM AssignmentStaffingChanges WHERE Id=?",
+                (staffing.change_id,),
+            ).fetchone()
+            if (
+                context is None
+                or tuple(context[:4]) != (row[1], row[3], row[4], row[5])
+                or not 1 <= context[4] <= row[7]
+            ):
+                raise SnapshotReadError("DATABASE_INVALID")
+        observed_count += 1 + len(staffing.workers)
+        if observed_count > MAX_OBSERVED_ROWS:
+            raise SnapshotReadError("READ_LIMIT_EXCEEDED")
+        assignments.append(
+            AssignmentSource(
+                *row,
+                staffing.change_id,
+                staffing.configured,
+                tuple(w.employee_id for w in staffing.workers),
+            )
+        )
+    return tuple(assignments), observed_count
+
+
 def _read_sources(connection, query, source_id, migrations):
     row = connection.execute(
         """SELECT w.Id,w.ProjectId,p.JobNumber,w.Type,w.RequiredCrewCount,w.EstimatedHalfDays
@@ -316,28 +361,9 @@ def _read_sources(connection, query, source_id, migrations):
             )
         )
     placeholders = ",".join("?" for _ in query.crew_ids)
-    assignments = []
-    observed_count = 0
-    for row in _rows(
-        connection,
-        f"""SELECT a.Id,a.WorkItemId,w.ProjectId,a.CrewId,a.LocalDate,a.Slot,a.Status,a.Revision,a.UpdatedAt
-        FROM DraftAssignments a JOIN WorkItems w ON w.Id=a.WorkItemId
-        WHERE a.CrewId IN ({placeholders}) AND a.LocalDate BETWEEN ? AND ?
-        ORDER BY a.CrewId,a.LocalDate,a.Slot,a.Id""",
-        (*query.crew_ids, query.earliest_start_date, query.horizon_end_date),
-    ):
-        staffing = read_staffing(connection, row[0])
-        observed_count += 1 + len(staffing.workers)
-        if observed_count > MAX_OBSERVED_ROWS:
-            raise SnapshotReadError("READ_LIMIT_EXCEEDED")
-        assignments.append(
-            AssignmentSource(
-                *row,
-                staffing.change_id,
-                staffing.configured,
-                tuple(w.employee_id for w in staffing.workers),
-            )
-        )
+    personnel_assignments, observed_count = _personnel_sources(connection, query)
+    selected = set(query.crew_ids)
+    assignments = tuple(a for a in personnel_assignments if a.crew_id in selected)
     employee_ids = {
         r[0]
         for r in _rows(
@@ -346,7 +372,7 @@ def _read_sources(connection, query, source_id, migrations):
             query.crew_ids,
         )
     }
-    employee_ids.update(e for a in assignments for e in a.actual_employee_ids)
+    employee_ids.update(e for a in personnel_assignments for e in a.actual_employee_ids)
     employee_ids.update(
         c.foreman.employee_id
         for c in crews
@@ -385,6 +411,7 @@ def _read_sources(connection, query, source_id, migrations):
         tuple(crews),
         tuple(assignments),
         tuple(employees),
+        personnel_assignments,
     )
 
 
@@ -450,6 +477,7 @@ class PersistedRecommendations:
     snapshot: RecommendationSnapshot
     generated: GenerationComparison
     crew_reviews: tuple[CrewReview, ...]
+    personnel_validation: PersonnelValidation
     pending_validators: tuple[str, ...] = field(default=PENDING_VALIDATORS, init=False)
     validation_status: Literal["Pending"] = field(default="Pending", init=False)
     applyable: Literal[False] = field(default=False, init=False)
@@ -493,6 +521,33 @@ def generation_requests(
     )
 
 
+def validate_snapshot_personnel(
+    snapshot: RecommendationSnapshot,
+) -> PersonnelValidation:
+    """Saved Drafts only; a clear check is not evidence for unstaffed proposals."""
+    if not isinstance(snapshot, RecommendationSnapshot):
+        raise ValueError("Supply a RecommendationSnapshot.")
+    return validate_employee_conflicts(
+        tuple(
+            StaffedVisit(
+                a.assignment_id,
+                a.work_item_id,
+                a.project_id,
+                a.crew_id,
+                a.local_date,
+                a.slot,
+                a.status,
+                a.staffing_configured,
+                a.actual_employee_ids,
+            )
+            for a in snapshot.personnel_assignments
+        ),
+        start_date=snapshot.query.earliest_start_date,
+        end_date=snapshot.query.horizon_end_date,
+        scope_complete=True,
+    )
+
+
 def generate_from_persisted_snapshot(
     snapshot: RecommendationSnapshot,
 ) -> PersistedRecommendations:
@@ -512,6 +567,7 @@ def generate_from_persisted_snapshot(
             for c in snapshot.crews
             if c.review_reasons
         ),
+        validate_snapshot_personnel(snapshot),
     )
 
 
