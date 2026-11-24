@@ -203,15 +203,26 @@ CREATE_EMPLOYEE_AVAILABILITY = (
 )
 
 
-def connect(path: Path, *, create: bool = False) -> sqlite3.Connection:
-    location = path if create else f"{path.resolve().as_uri()}?mode=rw"
+def connect(
+    path: Path, *, create: bool = False, read_only: bool = False
+) -> sqlite3.Connection:
+    if create and read_only:
+        raise ValueError("A read-only connection cannot create a database.")
+    mode = "ro" if read_only else "rw"
+    location = path if create else f"{path.resolve().as_uri()}?mode={mode}"
     connection = sqlite3.connect(
         location,
         uri=not create,
         timeout=5,
         autocommit=sqlite3.LEGACY_TRANSACTION_CONTROL,
     )
-    connection.execute("PRAGMA foreign_keys = ON")
+    try:
+        connection.execute("PRAGMA foreign_keys = ON")
+        if read_only:
+            connection.execute("PRAGMA query_only = ON")
+    except BaseException:
+        connection.close()
+        raise
     return connection
 
 

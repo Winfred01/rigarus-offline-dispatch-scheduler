@@ -1,7 +1,8 @@
 """Read-only comparison of explicit options, not an allocator or safety validator.
 
 Constraint evidence must come from independent, context-correct validators.
-There are no production adapters yet. Missing evidence stays Pending; supplied
+The SQLite adapter supplies calendar/occupancy inputs, not full resource safety.
+Missing evidence stays Pending; supplied
 Satisfied results never certify dispatch or enable Apply/Publish in this slice.
 """
 
@@ -189,6 +190,14 @@ def _evaluate(option: ExplicitOption) -> EvaluatedOption:
     )
 
 
+def validate_comparison_settings(*, max_options: int, order: SortOrder):
+    """Shared query/comparator settings validation without placeholder context."""
+    if order not in ("EarliestFinish", "EarliestStart"):
+        raise ValueError("Select EarliestFinish or EarliestStart.")
+    if type(max_options) is not int or not 1 <= max_options <= 10:
+        raise ValueError("Request 1 to 10 comparison options.")
+
+
 def compare_explicit_options(
     work_item_id: int,
     project_id: int,
@@ -206,10 +215,7 @@ def compare_explicit_options(
     """
     _positive_id(work_item_id)
     _positive_id(project_id)
-    if order not in ("EarliestFinish", "EarliestStart"):
-        raise ValueError("Select EarliestFinish or EarliestStart.")
-    if type(max_options) is not int or not 1 <= max_options <= 10:
-        raise ValueError("Request 1 to 10 comparison options.")
+    validate_comparison_settings(max_options=max_options, order=order)
     if (
         type(options) is not tuple
         or len(options) > MAX_INPUT_OPTIONS

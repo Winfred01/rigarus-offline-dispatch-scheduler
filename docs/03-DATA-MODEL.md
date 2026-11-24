@@ -69,6 +69,30 @@ Current Draft responses include `calendar_assessment`, both calendar revisions a
 
 Migration tests reconstruct synthetic schema nine, retain populated original tables, force a post-DDL history-insert failure, prove complete rollback and retry, and test stale/concurrent/partial-range failures. Schema-nine Python builds reject the newer migration history; operational fallback requires a verified consistent pre-upgrade backup and its compatible binary. Never edit migration history/drop tables to downgrade a customer database. Native installation/upgrade and backup-recovery evidence remain separately recorded in the linked acceptance record.
 
+## Read-only recommendation snapshots (#28 phase three)
+
+No schema/migration is added. `recommendation_adapter.py` reads the existing
+schema in one mode=ro/query-only transaction and returns detached frozen inputs.
+WorkItems.ProjectId is authoritative; caller Project IDs only check context.
+WorkingCalendars.ProjectId supplies the shared calendar for every child WorkItem.
+Crews and latest ForemanChanges remain master data. DraftAssignments of all
+WorkItems on selected Crews occupy only when Status=Draft; Cancelled rows retain
+history but release capacity. There is no replacement/exclusion or progress deduction.
+
+AssignmentStaffingChanges/Members supply current explicit employee IDs, never Home
+Crew expansion. Relevant Employees plus sparse EmployeeAvailability and per-employee
+revision are observations, not proposed attendance or resource approval. Current
+calendar revision/latest change ID, assignment revision and staffing/Foreman IDs
+are retained. Projects/WorkItems/Crews have no shared native revision; canonical
+logical content supplies scoped change detection without adding a global version.
+Fingerprint equality is not dispatch eligibility, a lock, or transaction Apply
+permission. See [architecture](02-ARCHITECTURE.md#consistent-persisted-recommendation-inputs-28-phase-three).
+
+Current schema validation is read-only: incompatible versions, bad integrity/FKs,
+locked/failed reads, deadline/limits return errors with no snapshot. Never migrate
+or initialize a profile while calculating a recommendation. No published/history
+rewrite, actual-worker/Rig selection, HTTP/Tauri/UI or save path is introduced.
+
 ## Crew roster
 
 The first #8 slice adds the Crews table to the local SQLite database. The stable generated ID survives name, type and status edits. Crew type is Civil or Tower. The roster keeps inactive rows visible and has no hard delete. Search uses literal substrings with SQLite's existing ASCII case behavior. Crew names are labels, so multiple rows may share a name. A roster row is master data and does not establish scheduling eligibility. Employee master data and Foreman appointment history are described below.

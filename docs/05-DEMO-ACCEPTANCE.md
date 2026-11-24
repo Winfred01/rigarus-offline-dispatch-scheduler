@@ -1,5 +1,27 @@
 # M0 acceptance walkthrough
 
+## Persisted recommendation adapter engineering check (#28 phase three)
+
+Read the [Design-First record](design/2026-11-24-issue-28-adapter-checklist.md)
+and [scope-specific evidence](acceptance/2026-11-24-issue-28-adapter.md).
+Run the complete locked backend suite and focused `test_recommendation_adapter.py`.
+Use only temporary synthetic databases populated through current application
+Stores. Generate C1/C2 from stored parent calendars and visits; compare both sorts.
+
+Verify real FK context, missing/inactive/mismatched Crew, confirmed Remaining,
+multi-Crew, gaps/unknown/closed, Crew/date/slot occupancy and cancellation. Observe
+borrowed actual employees separately from Home Crew/availability/Foreman and keep
+missing drivers/skills/qualifications/Rig/consent Pending. During a paused read,
+commit a multi-source WAL write from another connection: the result must equal
+the complete old view, then re-read must see the changed sources/fingerprint.
+
+Check native revisions and unversioned field changes, stable replay, unrelated
+scope, checkpoint/VACUUM, full logical no-write equality, read-only write rejection,
+invalid/corrupt/locked/old/new sources and closed handles on success/failure.
+This internal service has no GUI/API/Apply workflow. Native GUI, physical offline
+installation/upgrade/reboot and customer Demo E/UAT remain NOT RUN, separately
+from developer-host regressions and Windows CI. Production is not approved.
+
 ## Automatic date generator engineering check (#28 phase two)
 
 Read the [Design-First record](design/2026-11-24-issue-28-generator-checklist.md)
