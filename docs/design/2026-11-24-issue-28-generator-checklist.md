@@ -97,7 +97,7 @@ recorded separately in the linked acceptance evidence and PR.
 ## Implementation and final local checks
 
 The [engineering record](../acceptance/2026-11-24-issue-28-generator.md) records
-156 Python / 27 new tests, 11 packaged-sidecar, 35 frontend, 8 Rust and 35 legacy
+157 Python / 28 new tests, 11 packaged-sidecar, 35 frontend, 8 Rust and 35 legacy
 .NET tests, locked restores/formats/builds and synthetic acceptance-tool harness.
 Shared Project snapshot consistency was added as input validation; it preserves
 inheritance rather than introducing a business rule. The per-slot scan reuses
@@ -107,3 +107,7 @@ main CI 45419720452 completed successfully at the recorded baseline. Original
 UI figures remain not applicable; no UI/API/migration/write path changed.
 Final staging/privacy/docs and feature-head Windows CI are reported in the PR;
 no native/offline GUI, customer acceptance or production approval is implied.
+
+Delivery review also canonicalizes independent evidence ordering and retains
+missing checks for every scanned/skipped slot, including zero-capacity plans.
+The final full backend rerun passed all 157 tests (28 new). No scope change.

@@ -74,6 +74,36 @@ def evidence(day, half="AM", **states):
 
 
 class GeneratorTests(unittest.TestCase):
+    def test_evidence_order_is_canonical_and_empty_capacity_explains_missing_checks(
+        self,
+    ):
+        e = evidence("2026-11-23", Skills="Pending", ApprovedDriver="Blocked")
+        forward = request(slot_evidence=(e,))
+        reverse = replace(
+            forward, slot_evidence=(replace(e, evidence=tuple(reversed(e.evidence))),)
+        )
+        self.assertEqual(generate_candidate(forward), generate_candidate(reverse))
+        empty = generate_candidate(request(keys=()))
+        self.assertTrue(
+            any(
+                x.check == "CrewCalendar" and x.state == "Pending"
+                for x in empty.missing_evidence
+            )
+        )
+        weekend = generate_candidate(
+            request(
+                keys=(("2026-11-28", "AM"),),
+                earliest_start_date="2026-11-28",
+                horizon_end_date="2026-11-28",
+            )
+        )
+        self.assertTrue(
+            any(
+                x.check == "WeekendConsent" and x.source == "Missing"
+                for x in weekend.missing_evidence
+            )
+        )
+
     def test_reproducible_example_generates_then_sorts(self):
         from rigarus_backend.recommendation_example import synthetic_requests
 

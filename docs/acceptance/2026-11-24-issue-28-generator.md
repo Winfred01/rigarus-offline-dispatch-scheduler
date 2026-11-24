@@ -28,7 +28,7 @@ No estimate, Draft visit or historic progress inference changes remaining work.
 
 Results retain IDs, proposed first/last DateSlot, accumulated slots and counts,
 unfilled work, scanned/skipped assessments/reasons, calendar match/conflict/
-unknown/blocked counts and missing/pending check explanations. Calendar counts
+unknown/blocked counts and missing/pending check explanations for all scanned slots, including empty plans. Calendar counts
 cover scanned slots only, not unvisited dates after completion; counts may overlap.
 Multi-Crew/missing or unconfirmed duration returns Needs Review without scanning.
 Insufficient capacity has partial slots and unfilled amount, no finish and no
@@ -76,7 +76,7 @@ The example is a console engineering preview, not an installed product workflow.
 | --- | --- |
 | Locked Python restore | PASS, existing lock unchanged; uv 0.10.12, Python 3.13.7 |
 | Ruff check / format | PASS, 56 Python files |
-| Full Python regression | PASS, 156 tests, including 27 new generator/example/SQLite cases; 40.933 s |
+| Full Python regression | PASS, 157 tests, including 28 new generator/example/SQLite cases; 39.048 s |
 | Windows sidecar build | PASS, locked PyInstaller 6.22.3; compatibility build, generator not connected to packaged app |
 | Packaged sidecar regression | PASS, all 11 authenticated loopback/persistence/restart/upgrade cases; 39.512 s |
 | Frontend locked install / format / tests / build | PASS, npm ci; Prettier; 35 tests; TypeScript/Vite build |
@@ -117,7 +117,7 @@ services, not that a new native installer was verified on a disconnected PC.
 | Dual sort / stable permutations / 100 scenarios | PASS; C2,C1 vs C1,C2; stable ties, limit omission count |
 | Every supplied resource block | PASS; known hard blocks skipped, later safe slots used, absent other checks Pending |
 | SQLite logical immutability | PASS; whole synthetic iterdump before/after equal; saved assignment/staffing/employee/calendar IDs and values unchanged, integrity ok / FK empty |
-| No I/O / clock / immutable inputs / complexity | PASS; open/os.open/socket/SQL/time guards; exactly 732 constant-size assessments at maximum empty horizon |
+| No I/O / clock / immutable inputs / complexity | PASS; canonical evidence order and empty-plan missing checks; open/os.open/socket/SQL/time guards; exactly 732 constant-size assessments at maximum empty horizon |
 | Invalid dates / duplicate slots / IDs / ranges / requirements | PASS; explicit errors; inconsistent shared Project snapshots rejected |
 | Independent seeded oracle | PASS; 50 deterministic calendar cases agree on accumulated slots, shortage and finish |
 

@@ -12,6 +12,7 @@ from typing import Literal
 
 from .assignments import AssignmentDraft, HalfDay, local_date
 from .recommendation_comparison import (
+    CHECKS,
     MAX_INPUT_OPTIONS,
     ConstraintEvidence,
     ExplicitOption,
@@ -237,7 +238,7 @@ def generate_candidate(request: GenerationRequest) -> GeneratedCandidate:
     project_cells = {(x.local_date, x.slot): x for x in r.project_calendar.cells}
     evidence = {x.key: x.evidence for x in r.slot_evidence}
     occupied = set(r.occupancy.occupied) if r.occupancy else set()
-    scanned, slots = [], []
+    scanned, slots, missing = [], [], []
     if not review:
         first, last = _range(r.earliest_start_date, r.horizon_end_date)
         for ordinal in range(first, last + 1):
@@ -272,7 +273,28 @@ def generate_candidate(request: GenerationRequest) -> GeneratedCandidate:
                     ConstraintEvidence("CrewOccupancy", occupancy_state),
                     *evidence.get(key, ()),
                 )
+                checks = tuple(
+                    sorted(checks, key=lambda item: CHECKS.index(item.check))
+                )
                 supplied = {x.check: x.state for x in checks}
+                # Include missing evidence on skipped slots as well: an empty
+                # plan must still explain Unknown calendars/absent consent.
+                for check in CHECKS:
+                    if (
+                        check == "WeekendConsent"
+                        and date.fromordinal(ordinal).weekday() < 5
+                    ):
+                        continue
+                    if supplied.get(check, "Pending") == "Pending":
+                        missing.append(
+                            SlotExplanation(
+                                day,
+                                half,
+                                check,
+                                "Pending",
+                                "Supplied" if check in supplied else "Missing",
+                            )
+                        )
                 reasons = [
                     f"{scope.upper()}_CALENDAR_{cell.state.upper()}"
                     for scope, cell in (("Crew", crew_cell), ("Project", project_cell))
@@ -307,17 +329,6 @@ def generate_candidate(request: GenerationRequest) -> GeneratedCandidate:
         if slots
         else None
     )
-    # Reuse the comparator's canonical independent-check explanations even for
-    # partial accumulation; never expose that partial plan as a complete option.
-    explanations = (
-        compare_explicit_options(
-            r.work_item_id, r.project_id, (proposed,), max_options=1
-        )
-        .options[0]
-        .explanations
-        if proposed
-        else ()
-    )
     complete = not review
     return GeneratedCandidate(
         option_id=r.option_id,
@@ -349,7 +360,7 @@ def generate_candidate(request: GenerationRequest) -> GeneratedCandidate:
             for x in scanned
         ),
         calendar_blocked=sum(x.calendar.status == "Blocked" for x in scanned),
-        missing_evidence=tuple(x for x in explanations if x.state == "Pending"),
+        missing_evidence=tuple(missing),
         review_reasons=tuple(review),
         option=proposed if complete else None,
         status="Validation pending" if complete else "Needs Review",
