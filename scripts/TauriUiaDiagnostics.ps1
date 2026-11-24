@@ -108,8 +108,13 @@ function Get-UiaFocusedElement {
     [Windows.Automation.AutomationElement]::FocusedElement
 }
 
+function Test-UiaOwnedForeground {
+    $script:uiaOwnedHandle -and $script:uiaOwnedHandle -ne [IntPtr]::Zero -and
+        [RigarusUiaWindowState]::GetForegroundWindow() -eq $script:uiaOwnedHandle
+}
+
 function Write-UiaChoiceState([string]$Stage, $Window, $Control, [string]$Id,
-    [Diagnostics.Stopwatch]$Timer) {
+    [Diagnostics.Stopwatch]$Timer, [switch]$OmitChildren) {
     # Primitive snapshots only. Never serialize a UIA/provider object graph.
     $script:uiaLastOperation = "choice:${id}:$Stage"
     $script:uiaLastControl = $Control; $script:uiaLastOption = $null
@@ -140,7 +145,12 @@ function Write-UiaChoiceState([string]$Stage, $Window, $Control, [string]$Id,
     }
     catch { $record.focusError = @(Get-UiaExceptionChain $_.Exception) }
     try {
-        if ($fresh) {
+        if ($OmitChildren) {
+            # Enumerating a large native select can change the very readiness
+            # timing being tested. Keep target/focus evidence without that work.
+            $record.childrenOmittedForTiming = $true
+        }
+        elseif ($fresh) {
             $children = @($fresh.FindAll([Windows.Automation.TreeScope]::Children,
                     [Windows.Automation.Condition]::TrueCondition))
             $record.exposedChildCount = $children.Count

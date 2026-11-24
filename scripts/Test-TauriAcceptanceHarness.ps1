@@ -232,6 +232,7 @@ try {
     }
     Test-WeeklyCardAssertions
     & (Join-Path $PSScriptRoot 'Test-TauriUiaHarness.ps1')
+    & (Join-Path $PSScriptRoot 'Test-TauriProjectChoiceHarness.ps1')
     Write-Host 'PASS: Weekly native date order, invalid dates, consistent logical SQLite snapshots and missing-card timeout diagnostics.'
     Write-Host 'PASS: Synthetic offline acceptance harness scenarios.'
 }

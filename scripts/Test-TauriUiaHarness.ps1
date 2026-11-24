@@ -77,6 +77,16 @@ try {
         -not $choiceState.childrenTruncated -or $null -eq $choiceState.elapsedMs) {
         throw 'Detached-target evidence, owned-focus privacy or child snapshot bound failed.'
     }
+    $healthy | Add-Member ScriptMethod FindAll { param($Scope, $Condition) throw 'Pre-input children must not be enumerated.' } -Force
+    & {
+        function Get-UiaFocusedElement { $null }
+        Write-UiaChoiceState 'synthetic-pre-input' $ownerWindow $healthy 'working-owner' ([Diagnostics.Stopwatch]::StartNew()) -OmitChildren
+    }
+    $preInput = (Get-Content -LiteralPath $uiaDiagnosticLog -Tail 1 | ConvertFrom-Json).data
+    if (-not $preInput.childrenOmittedForTiming -or $preInput.childrenError -or
+        $null -ne $preInput.exposedChildren -or -not $preInput.freshlyResolved.present) {
+        throw 'Light pre-input evidence enumerated children or lost the current target.'
+    }
     $installer = Join-Path $testRoot 'synthetic-installer.exe'
     Set-Content -LiteralPath $installer -Value 'Synthetic package fixture, never executed'
     $kit = Join-Path $testRoot 'kit'
