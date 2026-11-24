@@ -108,7 +108,7 @@ No formal schedule or resource reservation is created.
 | Python locked restore | PASS, uv0.10.12 / Python3.13.7, lock unchanged |
 | Ruff check / format | PASS, 58 Python files |
 | Focused adapter integration | PASS, 24 tests in 8.059s |
-| Complete backend | PASS, 181 tests in 85.065s, includes existing generator/comparator suites |
+| Complete backend | PASS, 181 tests in 47.787s, includes existing generator/comparator suites |
 | Windows sidecar build / packaged regression | PASS, locked PyInstaller build and 11 auth/loopback/persistence/restart/upgrade tests in 18.906s; adapter is not connected to packaged UI |
 | Frontend | PASS, npm ci/Prettier/35 tests/TypeScript-Vite build; initial restricted mkdir EPERM resolved by authorized local rerun, no code/lock workaround |
 | Rust | PASS, 1.95.0 locked fetch/fmt, Windows Release compilation and 8 tests |
@@ -160,3 +160,7 @@ Publish, automatic messaging, dependency or migration. No real-data migration.
 
 One Draft PR for human review; no auto-merge, Issue closure or Release. Original
 planning/UI/Excel/PDF/DB/log files stay local; PUBLIC upload is synthetic/sanitized.
+
+Delivery review extracted shared comparison settings validation, eliminating
+placeholder context during query validation. Full backend rerun: 181/181 PASS
+in 47.787s; no date/resource rule or contract change.

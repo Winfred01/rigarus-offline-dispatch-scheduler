@@ -123,6 +123,12 @@ APPROVED. Design/engineering progress does not close those separate gates.
 
 ## Execution / final implementation
 
+Delivery refinement: extract the existing comparison sort/limit validation into
+one shared helper used by both comparison and query validation. This avoids
+using placeholder Project context solely to validate settings; no date/resource
+rule, model, supported limit or persisted-FK mapping changes. Re-run the full
+backend after this behavior-preserving extraction before final CI delivery.
+
 See [engineering evidence](../acceptance/2026-11-24-issue-28-adapter.md): 24 new
 adapter tests / 181 full backend, packaged-sidecar11, frontend35, Rust8, legacy
 .NET35 and synthetic acceptance-tool harness passed. Confirmed native working

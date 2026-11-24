@@ -17,7 +17,7 @@ from typing import Literal
 
 from . import storage
 from .availability_store import snapshot as availability_snapshot
-from .recommendation_comparison import CHECKS, SortOrder, compare_explicit_options
+from .recommendation_comparison import CHECKS, SortOrder, validate_comparison_settings
 from .recommendation_generator import (
     CrewOccupancySnapshot,
     DateSlot,
@@ -109,9 +109,7 @@ class RecommendationQuery:
         if type(self.remaining_confirmed_by_operator) is not bool:
             raise ValueError("Operator confirmation must be explicitly boolean.")
         _range(self.earliest_start_date, self.horizon_end_date)
-        compare_explicit_options(
-            self.work_item_id, 1, (), max_options=self.max_options, order=self.order
-        )
+        validate_comparison_settings(max_options=self.max_options, order=self.order)
 
 
 @dataclass(frozen=True)
