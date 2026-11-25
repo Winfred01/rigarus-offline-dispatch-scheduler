@@ -1,5 +1,48 @@
 # Architecture
 
+## Daily inputs (#101, day-based slice2A)
+
+`daily_calendars.py` resolves slotless Crew/Project Working/NotWorking/Unknown
+and Employee Available/Unavailable/Unknown (labelled Not recorded). No weekday,
+holiday, attendance, eligibility or weekend approval is inferred. WorkItems use
+their persisted ProjectId without overrides. Calendar Matched is only a calendar
+observation: resource validation Pending, Apply/Publish false.
+
+`daily_calendar_store.py` reads at most366 inclusive local dates in one
+mode=ro/query-only transaction, with connection-level snapshot/assessment helpers
+for a future daily adapter. Reads never initialize, migrate or write. Even two
+positive legacy halves remain Unknown until an explicit new daily assertion.
+Unreviewed/stale legacy negatives block; mixed/partial raw states and change IDs
+remain visible as Needs Review. Save requires explicit operator confirmation,
+daily revision/range review token and legacy acknowledgement when old cells exist.
+A reviewed new assertion may explicitly supersede old negative evidence for the
+daily workflow, while original values/history stay unchanged and conversion-required.
+
+BEGIN IMMEDIATE covers receipt comparison, immutable event append and range
+upserts. Concurrent writes cannot both use one expected revision. No-op requires
+matching state/notes/current receipt. Explicit Unknown is stored, never a fallback
+to legacy positives. Per-cell receipt hashes scope/owner/date/raw legacy states,
+change IDs and native legacy owner revision. Any subsequent legacy revision,
+including out-of-range changes conservatively, makes the receipt Stale: positives
+become Unknown until re-review, known negatives remain blocking. Tokens record
+observations for concurrency/review; they are not authentication or Apply locks.
+
+Schema14 is additive. Strict `/daily-calendars/{Crew|Project|Employee}/{id}`
+GET/PUT/history and `/daily-calendars/assessment` GET have no slot. Production
+writes remain **default closed**, independently of the closed day-Draft gate.
+Only app-factory test opt-in enables writes. No Tauri command/React control is added.
+The half-day recommendation adapter recognizes14 and refuses **any** in-horizon
+daily cell (even Unknown/unrelated owners conservatively), returning
+DAILY_CALENDAR_ADAPTER_REQUIRED. Prior snapshots become Stale; the guard shares
+the pinned read. Out-of-horizon daily data does not alter the old query scope.
+
+DayDraft payloads stay unchanged; dedicated bounded reads avoid introducing large
+per-worker lookups or partially visible feedback before coherent daily snapshot/UI
+integration. Day allocator, confirmed-day duration persistence, full daily snapshot,
+personnel/driver/qualification/Rig/consent validators and UI follow separately.
+See [design](design/2026-11-24-daily-calendars-checklist.md) and
+[evidence](acceptance/2026-11-24-daily-calendars.md).
+
 ## Day-based Draft compatibility (#99 slice1)
 
 New `DayDraft` is slotless: WorkItem/Crew/local date, notes and explicit nullable
@@ -27,7 +70,7 @@ retained as blocking evidence. Driver/capability coverage alone never satisfies 
 new daily resource check. Blank dates remain Unknown. No Project calendar override,
 Home Crew attendance, actual Rig or weekend consent is inferred.
 
-Legacy recommendation snapshots recognize schema13 but refuse any daily record
+Legacy recommendation snapshots now recognize schema14 (schema13 at slice1) and refuse any daily record
 in their requested horizon, including Cancelled history conservatively. The guard
 shares the existing pinned read transaction. Prior inputs become Stale on that
 context change; no half-day allocator ignores a daily occupancy row. Out-of-range

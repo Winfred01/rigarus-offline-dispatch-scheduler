@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from .domain import DemoProject
 from .day_draft_api import day_draft_router
+from .daily_calendar_api import daily_calendar_router
 from .assignment_api import assignment_router
 from .availability_api import availability_router
 from .working_calendar_api import working_calendar_router
@@ -28,6 +29,7 @@ def create_app(
     *,
     database_initialized: bool = False,
     enable_day_draft_writes: bool = False,
+    enable_daily_calendar_writes: bool = False,
 ) -> FastAPI:
     store = DemoStore(database_path)
 
@@ -44,6 +46,9 @@ def create_app(
         day_draft_router(database_path, enable_writes=enable_day_draft_writes)
     )
     app.include_router(availability_router(database_path))
+    app.include_router(
+        daily_calendar_router(database_path, enable_writes=enable_daily_calendar_writes)
+    )
     app.include_router(working_calendar_router(database_path))
     app.include_router(crew_router(database_path))
     app.include_router(employee_router(database_path))

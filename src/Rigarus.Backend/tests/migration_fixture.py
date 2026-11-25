@@ -57,6 +57,7 @@ def remove_capability_schema(connection):
 
 
 def remove_day_schema(connection):
+    remove_daily_calendar_schema(connection)
     # Synthetic fixture construction only. Never ship an operational down migration.
     from rigarus_backend.day_migration import DAY_DRAFTS
 
@@ -66,4 +67,15 @@ def remove_day_schema(connection):
         connection.execute(f"DROP TABLE IF EXISTS {table}")
     connection.execute(
         "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?", (DAY_DRAFTS,)
+    )
+
+
+def remove_daily_calendar_schema(connection):
+    # Synthetic schema13 fixture only, never an operational down migration.
+    from rigarus_backend.daily_calendar_migration import DAILY_CALENDARS
+
+    for table in ("DailyCalendarCells", "DailyCalendarChanges", "DailyCalendarOwners"):
+        connection.execute(f"DROP TABLE IF EXISTS {table}")
+    connection.execute(
+        "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?", (DAILY_CALENDARS,)
     )

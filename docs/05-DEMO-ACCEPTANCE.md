@@ -1,5 +1,24 @@
 # M0 acceptance walkthrough
 
+## Daily input engineering acceptance (#101, slice2A)
+
+See [design](design/2026-11-24-daily-calendars-checklist.md),
+[actual checks](acceptance/2026-11-24-daily-calendars.md) and
+[synthetic example](../samples/synthetic-only/daily-inputs.md).
+Verify independent slotless Crew/Project/Employee input; explicit confirmation
+and legacy review; mixed/partial raw evidence retained; no weekday defaults;
+negative blocking; Unknown tombstones; stale receipts/re-review; no-op/history/
+reopen; atomic range rollback; concurrent writers and complete pinned reads.
+WorkItems inherit Project; Calendar Matched is not full approval and weekend
+consent remains Pending. Verify13→14 preservation of all old rows/IDs/notes/
+relations/history/revisions/sequences, backup equality, failure/retry, idempotence,
+previous packaged binary rejection and independent backup reopening. Daily cells
+must block legacy generation with a specific Stale reason, including Unknown.
+Authenticated production daily-input and day-Draft write gates remain closed.
+
+This backend suite does not accept daily UI, day generator/full snapshot, daily
+resource validation, disconnected install/upgrade/reboot or customer Demo/UAT.
+
 ## Day-based compatibility slice1 (#99)
 
 The owner-approved November24 Full Day rule supersedes old half-day acceptance
@@ -26,8 +45,8 @@ Needs Review, never approve daily capacity from partial evidence. The legacy
 snapshot reader must refuse daily inputs and report previous snapshots Stale,
 while concurrent reads retain a complete pinned view.
 
-Daily calendars/availability/generator/resource validators and day UI/Locate remain
-separate slices. Native day GUI/no-AM-PM-controls, disconnected installation/upgrade,
+Daily input backend follows in slice2A above; daily UI, generator/full snapshot,
+resource validators and day UI/Locate remain separate. Native day GUI/no-AM-PM-controls, disconnected installation/upgrade,
 reboot and customer Demo B/E/UAT must be recorded NOT RUN until actually executed.
 No full scheduling migration, safety validation, customer acceptance or production
 readiness is certified by this first-slice regression suite.

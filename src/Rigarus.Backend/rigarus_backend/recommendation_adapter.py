@@ -79,6 +79,7 @@ CURRENT_HISTORY = (
     storage.DRIVER_APPROVALS,
     storage.CAPABILITY_EVIDENCE,
     storage.DAY_DRAFTS,
+    storage.DAILY_CALENDARS,
 )
 CURRENT_TABLES = storage.CREW_TABLES | {
     "Employees",
@@ -93,6 +94,7 @@ CURRENT_TABLES = storage.CREW_TABLES | {
     *storage.DRIVER_TABLES,
     *storage.CAPABILITY_TABLES,
     *storage.DAY_TABLES,
+    *storage.DAILY_TABLES,
 }
 
 
@@ -425,6 +427,13 @@ def _capability_sources(connection, query, assignments, employee_ids, observed_c
 
 
 def _read_sources(connection, query, source_id, migrations):
+    if connection.execute(
+        "SELECT 1 FROM DailyCalendarCells WHERE LocalDate BETWEEN ? AND ? LIMIT 1",
+        (query.earliest_start_date, query.horizon_end_date),
+    ).fetchone():
+        raise SnapshotContextError(
+            "DAILY_CALENDAR_ADAPTER_REQUIRED: daily evidence cannot be ignored by the legacy half-day generator."
+        )
     if connection.execute(
         "SELECT 1 FROM DayDraftAssignments WHERE LocalDate BETWEEN ? AND ? LIMIT 1",
         (query.earliest_start_date, query.horizon_end_date),
@@ -784,6 +793,8 @@ def check_snapshot_freshness(
             None,
             "DAY_BASED_ADAPTER_REQUIRED"
             if str(error).startswith("DAY_BASED_ADAPTER_REQUIRED:")
+            else "DAILY_CALENDAR_ADAPTER_REQUIRED"
+            if str(error).startswith("DAILY_CALENDAR_ADAPTER_REQUIRED:")
             else "SOURCE_RECORD_MISSING_OR_MOVED",
         )
     same = current.input_fingerprint == snapshot.input_fingerprint

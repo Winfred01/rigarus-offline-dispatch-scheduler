@@ -101,3 +101,15 @@ independent PRs follow those dependencies, then native day UI/offline acceptance
 All engineering checks NOT RUN at this pre-code commit; customer Demo D/E and
 production approval pending. Keep101/99/22/26/28 Open; Draft PR/human review,
 no merge/Release/customer database modification.
+
+## Implementation refinement and actual verification
+
+Pre-code checklist/plan committed as `a1bbf4b`. Delivered contracts, migration,
+tests, recovery hashes and actual PASS/FAIL/NOT RUN distinctions are recorded in
+[slice2A evidence](../acceptance/2026-11-24-daily-calendars.md).
+Optional plan step6 (DayDraft payload feedback) is deferred: keep its existing
+contract stable and expose dedicated bounded inherited daily assessment instead.
+Adding per-worker daily reads before a coherent daily adapter/visible UI would
+create large lookup paths and feedback the desktop cannot yet display. No worker
+inference or partial resource approval was added. This narrows optional scope;
+confirmed daily inputs and conservative compatibility remain delivered.

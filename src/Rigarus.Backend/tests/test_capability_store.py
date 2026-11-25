@@ -39,6 +39,9 @@ class CapabilityStoreTests(unittest.TestCase):
 
         with (
             patch.object(evidence, "snapshot", side_effect=counted),
+            # This case isolates the aggregate evidence budget. Schema14 has
+            # more than25 tables; schema workload limits have separate tests.
+            patch.object(adapter, "_read_schema", return_value=adapter.CURRENT_HISTORY),
             patch.object(adapter, "MAX_OBSERVED_ROWS", 25),
         ):
             with self.assertRaises(adapter.SnapshotReadError) as caught:

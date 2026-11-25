@@ -1,5 +1,11 @@
 # Project plan for repository use
 
+Daily input backend slice2A (#101) follows merged #100: additive schema14,
+explicit daily Crew/Project/Employee assertions, legacy review and stale receipts.
+See [design](design/2026-11-24-daily-calendars-checklist.md) and
+[evidence](acceptance/2026-11-24-daily-calendars.md). Production daily writes remain
+closed; day generator/full snapshot/resources and UI are later independent PRs.
+
 ## Current owner rule: full local days (November24,2026)
 
 The explicit owner day-based decision supersedes AM/PM and half-day duration

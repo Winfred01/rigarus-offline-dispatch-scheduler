@@ -1,5 +1,12 @@
 # Delivery playbook for repository use
 
+Slice2 is split into reviewable dependency steps. #101 delivers daily input
+backend/compatibility only, with closed production writes; then confirmed-day
+generation/full snapshot/Stale, daily #15/#23/#25, actual Rig #24/consent #27,
+and finally visible day UI/native offline acceptance. See
+[slice2A checks](acceptance/2026-11-24-daily-calendars.md). Green backend/CI does
+not accept customer Demo or authorize Apply/Publish.
+
 ## Day-based upgrade engineering gates (#99)
 
 November24 owner's Full Day decision supersedes the half-day previews below for
