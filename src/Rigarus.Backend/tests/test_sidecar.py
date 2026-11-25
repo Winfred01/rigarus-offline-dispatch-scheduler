@@ -18,6 +18,42 @@ from rigarus_backend.storage import DRAFT_ASSIGNMENTS, initialize_database
 
 
 class SidecarTests(unittest.TestCase):
+    def test_day_contract_is_authenticated_and_default_writes_are_closed(self):
+        token = secrets.token_hex(32)
+        process = self.launch(token)
+        port = self.read_port(process)
+        route = "/day-draft-assignments?start_date=2026-12-31&end_date=2027-01-01"
+        self.assertEqual(self.request(port, "GET", route)[0], 401)
+        self.assertEqual(self.request(port, "GET", route, token), (200, []))
+        body = dict(work_item_id=1, crew_id=1, local_date="2026-12-31")
+        self.assertEqual(
+            self.request(port, "POST", "/day-draft-assignments", token, payload=body)[
+                0
+            ],
+            409,
+        )
+        self.assertEqual(
+            self.request(
+                port,
+                "POST",
+                "/day-draft-assignments",
+                token,
+                payload=body | dict(slot="AM"),
+            )[0],
+            422,
+        )
+        status, report = self.request(
+            port,
+            "GET",
+            "/day-draft-assignments/legacy-compatibility?start_date=2026-12-31&end_date=2027-01-01",
+            token,
+        )
+        self.assertEqual(status, 200)
+        self.assertFalse(report["applyable"] or report["publishable"])
+        self.assertEqual(report["converted_records"], 0)
+        process.stdin.close()
+        self.assertEqual(process.wait(timeout=10), 0)
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -411,7 +447,7 @@ class SidecarTests(unittest.TestCase):
                 connection.execute(
                     "SELECT count(*) FROM __EFMigrationsHistory"
                 ).fetchone(),
-                (12,),
+                (13,),
             )
             self.assertEqual(
                 connection.execute("PRAGMA integrity_check").fetchone(), ("ok",)

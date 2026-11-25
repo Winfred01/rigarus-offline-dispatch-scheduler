@@ -129,6 +129,14 @@ class AssignmentStore:
                     is None
                 ):
                     raise ValueError(f"Select an existing {label}.")
+            daily = connection.execute(
+                "SELECT Id FROM DayDraftAssignments WHERE CrewId=? AND LocalDate=? AND Status='Draft'",
+                (draft.crew_id, draft.local_date),
+            ).fetchone()
+            if daily:
+                raise AssignmentConflict(
+                    f"Crew #{draft.crew_id} has Full-Day Draft #{daily[0]} on {draft.local_date}. Review the full-day visit; AM/PM cannot bypass daily occupancy."
+                )
             conflict = connection.execute(
                 """SELECT Id FROM DraftAssignments
                 WHERE CrewId = ? AND LocalDate = ? AND Slot = ? AND Status = 'Draft'

@@ -3,6 +3,8 @@ from contextlib import closing
 from pathlib import Path
 
 from .domain import DemoProject, validate_note
+from .day_migration import DAY_DRAFTS, DAY_TABLES, CREATE_DAY_DRAFTS
+from .day_backup import verified_upgrade_backup
 from .calendar_migration import (
     WORKING_CALENDARS,
     CALENDAR_TABLES,
@@ -236,6 +238,7 @@ def connect(
 
 def initialize_database(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    existing = path.is_file() and path.stat().st_size > 0
     with closing(connect(path, create=True)) as connection:
         # Acquire the write reservation before reading migration history.
         with connection:
@@ -260,6 +263,26 @@ def initialize_database(path: Path) -> None:
                     "SELECT MigrationId FROM __EFMigrationsHistory ORDER BY MigrationId"
                 )
             )
+            previous = (
+                *CREW_HISTORY,
+                EMPLOYEE_ROSTER,
+                RIG_INVENTORY,
+                FOREMAN_HISTORY,
+                DRAFT_ASSIGNMENTS,
+                ASSIGNMENT_STAFFING,
+                EMPLOYEE_AVAILABILITY,
+                WORKING_CALENDARS,
+                DRIVER_APPROVALS,
+                CAPABILITY_EVIDENCE,
+            )
+            if (
+                existing
+                and history
+                and history in tuple(previous[:i] for i in range(1, len(previous) + 1))
+            ):
+                # No DDL has run. The write reservation prevents a newer commit
+                # from falling between the verified recovery point and upgrade.
+                verified_upgrade_backup(path)
             if history == (INITIAL_DEMO,) and tables == {
                 "__EFMigrationsHistory",
                 "DemoProjects",
@@ -385,8 +408,18 @@ def initialize_database(path: Path) -> None:
                 record_migration(
                     connection, CAPABILITY_EVIDENCE, product_version="Rigarus 0.1.0"
                 )
-            elif history != (*driver_history, CAPABILITY_EVIDENCE) or tables != (
-                driver_tables | CAPABILITY_TABLES
+                history = (*driver_history, CAPABILITY_EVIDENCE)
+                tables = driver_tables | CAPABILITY_TABLES
+            capability_history = (*driver_history, CAPABILITY_EVIDENCE)
+            capability_tables = driver_tables | CAPABILITY_TABLES
+            if history == capability_history and tables == capability_tables:
+                for statement in CREATE_DAY_DRAFTS:
+                    connection.execute(statement)
+                record_migration(
+                    connection, DAY_DRAFTS, product_version="Rigarus 0.1.0"
+                )
+            elif history != (*capability_history, DAY_DRAFTS) or tables != (
+                capability_tables | DAY_TABLES
             ):
                 raise UnsupportedDatabaseError(
                     "This Rigarus database has an unsupported schema. Open it with a compatible version."

@@ -44,6 +44,7 @@ def remove_driver_schema(connection):
 
 
 def remove_capability_schema(connection):
+    remove_day_schema(connection)
     for table in (
         "CapabilityEvidenceCells",
         "CapabilityEvidenceChanges",
@@ -52,4 +53,17 @@ def remove_capability_schema(connection):
         connection.execute(f"DROP TABLE IF EXISTS {table}")
     connection.execute(
         "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?", (CAPABILITY_EVIDENCE,)
+    )
+
+
+def remove_day_schema(connection):
+    # Synthetic fixture construction only. Never ship an operational down migration.
+    from rigarus_backend.day_migration import DAY_DRAFTS
+
+    for name in ("DraftAssignments_DayInsert", "DraftAssignments_DayUpdate"):
+        connection.execute(f"DROP TRIGGER IF EXISTS {name}")
+    for table in ("DayDraftMembers", "DayDraftChanges", "DayDraftAssignments"):
+        connection.execute(f"DROP TABLE IF EXISTS {table}")
+    connection.execute(
+        "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?", (DAY_DRAFTS,)
     )

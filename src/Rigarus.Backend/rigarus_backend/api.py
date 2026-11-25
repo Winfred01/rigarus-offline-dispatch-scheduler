@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from .domain import DemoProject
+from .day_draft_api import day_draft_router
 from .assignment_api import assignment_router
 from .availability_api import availability_router
 from .working_calendar_api import working_calendar_router
@@ -22,7 +23,12 @@ class DemoNote(BaseModel):
     note: str
 
 
-def create_app(database_path: Path, *, database_initialized: bool = False) -> FastAPI:
+def create_app(
+    database_path: Path,
+    *,
+    database_initialized: bool = False,
+    enable_day_draft_writes: bool = False,
+) -> FastAPI:
     store = DemoStore(database_path)
 
     @asynccontextmanager
@@ -34,6 +40,9 @@ def create_app(database_path: Path, *, database_initialized: bool = False) -> Fa
     app = FastAPI(lifespan=lifespan, openapi_url=None)
     app.include_router(project_router(database_path))
     app.include_router(assignment_router(database_path))
+    app.include_router(
+        day_draft_router(database_path, enable_writes=enable_day_draft_writes)
+    )
     app.include_router(availability_router(database_path))
     app.include_router(working_calendar_router(database_path))
     app.include_router(crew_router(database_path))

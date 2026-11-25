@@ -1,5 +1,18 @@
 # Project plan for repository use
 
+## Current owner rule: full local days (November24,2026)
+
+The explicit owner day-based decision supersedes AM/PM and half-day duration
+conventions below for **new scheduling contracts**. See [decision](10-CLIENT-DECISIONS.md)
+and [Issue99 audit/rollout](design/2026-11-24-day-based-checklist.md).
+Preserve legacy half-day records and events without rounding, merging or implicit
+conversion. Slice1 supplies additive compatibility/storage and daily Crew safety;
+daily calendars/recommendations/resource checks and then day UI follow separately.
+Until that cutover, legacy desktop functionality remains a protected compatibility
+path and new daily HTTP writes are disabled by default. This is not a completed
+day UI upgrade or customer Demo B/E acceptance. Older half-day sections remain
+historical implementation context, not authority to undo this decision.
+
 Repository-safe summary of the November 2026 project plan. The source planning documents remain in local development storage.
 
 ## Scope

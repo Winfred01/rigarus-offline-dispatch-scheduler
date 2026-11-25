@@ -1,5 +1,17 @@
 # Delivery playbook for repository use
 
+## Day-based upgrade engineering gates (#99)
+
+November24 owner's Full Day decision supersedes the half-day previews below for
+new business contracts; retain them as legacy regression examples. Deliver three
+reviewable slices: compatibility/schema/Day Draft Crew occupancy first; daily
+calendars/availability/recommendations/snapshots/resources second; day UI and native
+offline upgrade third. First-slice daily writes stay behind a default-closed HTTP
+gate until the operator can see and safely manage them in the desktop. No automatic
+conversion, Apply, publication or distribution is authorized. A green first-slice
+PR does not complete the upgrade or accept Demo B/E. See [audit](design/2026-11-24-day-based-checklist.md)
+and [actual checks](acceptance/2026-11-24-day-based.md).
+
 Repository-safe summary of the delivery playbook. The complete planning copy remains in local development storage.
 
 ## Gates
