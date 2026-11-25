@@ -1,5 +1,41 @@
 # Architecture
 
+## Day-based Draft compatibility (#99 slice1)
+
+New `DayDraft` is slotless: WorkItem/Crew/local date, notes and explicit nullable
+Employee IDs. `ConfirmedRemainingDays` accepts only an operator-confirmed positive
+integer; no half-day estimate is converted or deducted. `DayDraftStore` uses a
+write reservation, daily Crew/date uniqueness, cross-model overlap guards and
+append-only dated revision/member snapshots. Every result stays Pending with
+missing calendar/resource evidence and false Apply/Publish. Explicit staffing is
+not attendance, company-driver or eligibility certification.
+
+Additive schema13 preserves all old tables/IDs/Slot/history/revisions/FKs. Daily
+and legacy IDs are separate **record-kind namespaces**, with separate HTTP routes;
+future UI/Locate must retain the kind and never route a daily ID to old assignment
+commands. `day_draft_api.py` offers strict local read/list/history/legacy-report
+contracts, but daily HTTP writes are **default disabled**. Only explicit app-factory
+opt-in (synthetic tests) enables create/edit/cancel. The production sidecar does not
+opt in. React/Rust stay on protected legacy paths until the independent day UI slice.
+This intentional staging exception does not authorize new AM/PM business contracts.
+
+`day_compatibility.py` reads one bounded mode=ro transaction. It preserves original
+half values/change IDs and owner context; reports same/different/single legacy
+visits and complete/partial/mixed evidence with Needs Review, never conversion.
+Known calendar closure/unavailability or suspended/expired driver evidence is
+retained as blocking evidence. Driver/capability coverage alone never satisfies a
+new daily resource check. Blank dates remain Unknown. No Project calendar override,
+Home Crew attendance, actual Rig or weekend consent is inferred.
+
+Legacy recommendation snapshots recognize schema13 but refuse any daily record
+in their requested horizon, including Cancelled history conservatively. The guard
+shares the existing pinned read transaction. Prior inputs become Stale on that
+context change; no half-day allocator ignores a daily occupancy row. Out-of-range
+daily data does not alter that legacy query scope. Detached legacy algorithms
+remain legacy-only, not a daily recommendation API. Daily generation/validation
+and full UI integration remain slices2/3. Earlier AM/PM sections below describe
+historical code behavior, superseded as new business requirements.
+
 ## Exact saved-visit Locate (#16)
 
 The existing Publish review lists dated observations from saved visits' calendar

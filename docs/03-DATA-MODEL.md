@@ -1,5 +1,57 @@
 # SQLite data model
 
+## Full-day Draft compatibility (schema thirteen)
+
+`20261124030000_AddDayDraftCompatibility` is additive after schema12. Original
+DraftAssignments, WorkItems.EstimatedHalfDays, staffing, availability/calendars,
+driver/capability evidence and histories keep their exact values and stable IDs.
+The original Crew/date/Slot unique index is retained; no failing global Crew/date
+index is applied to historical AM+PM rows. No data is rounded, merged or converted.
+
+| New table | Contract |
+| --- | --- |
+| DayDraftAssignments | Independent stable integer ID namespace, WorkItem/Crew RESTRICT FKs, canonical local date, notes, Draft/Cancelled, positive revision, separate UTC timestamps; **no Slot column** |
+| DayDraftChanges | Immutable assignment/revision/WorkItem/Crew/date/notes/status/staffing-configured snapshots; one per revision |
+| DayDraftMembers | Immutable explicit Employee ID, saved name/Home Crew snapshot per change; Employee/Crew FKs; never automatically expands a Home Crew |
+
+Daily partial unique `(CrewId,LocalDate) WHERE Status='Draft'` handles two daily
+writers. Symmetric INSERT/UPDATE triggers on daily and legacy assignments reject
+overlap with the other model's active Crew/date, regardless of AM versus PM.
+Cancelled releases occupancy; reactivation cannot bypass those guards. Store
+preflight returns actionable 409 conflict details under BEGIN IMMEDIATE; SQL is
+the final cross-model guard. Saved cancellation retains identity/history.
+Daily full PUT explicitly replaces membership: null is unconfigured, [] explicitly
+empty; callers retain the current IDs for note edits or explicitly reconfirm them
+for a new context. No old staffing history is repointed to the new namespace.
+
+Separate `/day-draft-assignments` read/list/history/legacy-compatibility routes
+identify `record_kind=FullDayDraft`; old `/draft-assignments` returns old IDs plus
+LegacyHalfDay/Needs Review/conversion-required metadata. Default sidecar daily
+write gate is closed until visible daily UI and safety integration. No new Tauri
+command or frontend record can accidentally invoke the new write path. A daily
+record must never be joined to an old assignment merely because integer IDs match.
+
+Before DDL on an existing recognized pre13 profile, initialization holds a write
+reservation and uses a separate pinned read connection/SQLite backup API. It
+creates an exclusive `*.before-day-<random-id>.bak` alongside the source; previous
+backups are never overwritten. Verification compares complete logical schema,
+rows, types, duplicate rows, sqlite_sequence and migration history plus integrity
+and FK checks. Technical verification bounds:1million rows/128MiB counted encoding,
+30-second best-effort deadline and normal five-second SQLite busy wait. Exceeding
+them or failing backup/storage verification aborts the upgrade; no partial success.
+Fresh profiles need no pre-upgrade backup. Already13 startup is idempotent.
+
+DDL/history insertion share the existing transaction and roll back on failure.
+Fallback is **a verified independent backup with its compatible previous binary**,
+never table/history deletion or an in-place down migration. Schema12 binaries
+reject13; actual packaged rejection and restored12 reopening were tested using
+synthetic data. Preserve the upgraded file separately; restoring a pre-upgrade
+copy does not preserve later daily edits and requires operator reconciliation.
+No automatic restore or customer profile modification was performed by this task.
+
+Earlier half-day sections below are retained historical schema/API references;
+the owner's new Full Day rule takes precedence for new scheduling.
+
 ## Explicit capability evidence (#25, schema twelve)
 
 Necessary additive `20261124020000_AddCapabilityEvidence` follows schema11

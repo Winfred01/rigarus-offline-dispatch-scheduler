@@ -1,5 +1,37 @@
 # M0 acceptance walkthrough
 
+## Day-based compatibility slice1 (#99)
+
+The owner-approved November24 Full Day rule supersedes old half-day acceptance
+examples as new business targets. Those examples remain protected legacy regressions.
+Read [audit/plan](design/2026-11-24-day-based-checklist.md) and
+[actual evidence](acceptance/2026-11-24-day-based.md).
+
+Use synthetic schema12 data with same/different WorkItem AM/PM visits, a single
+half, explicit workers, mixed or missing availability/calendars and partial
+driver/qualification evidence. Upgrade and compare every original table row,
+ID/revision/history/FK/sequence. Confirm verified backup equality and recovery
+using an actual compatible old binary. Force backup failure, busy lock and
+post-DDL failure; require unchanged source and safe retry. Do not delete migration
+history on an operational profile.
+
+Through explicit test-only write opt-in create/edit/cancel/reopen a slotless daily
+Draft. Same Crew/date must reject another daily or active legacy visit, including
+opposite halves; other Crews/dates and released Cancelled dates remain independent.
+Test concurrent writers/direct SQL guards, immutable member/event history, exact
+dates across year/leap/DST, strict IDs and no inferred workers or half-day duration
+conversion. Production sidecar daily POST/PUT/cancel must remain disabled by
+default. Read-only compatibility reports must preserve original values and show
+Needs Review, never approve daily capacity from partial evidence. The legacy
+snapshot reader must refuse daily inputs and report previous snapshots Stale,
+while concurrent reads retain a complete pinned view.
+
+Daily calendars/availability/generator/resource validators and day UI/Locate remain
+separate slices. Native day GUI/no-AM-PM-controls, disconnected installation/upgrade,
+reboot and customer Demo B/E/UAT must be recorded NOT RUN until actually executed.
+No full scheduling migration, safety validation, customer acceptance or production
+readiness is certified by this first-slice regression suite.
+
 ## Saved half-day card Locate (#16)
 
 Read [design](design/2026-11-24-issue-16-locate-checklist.md) and

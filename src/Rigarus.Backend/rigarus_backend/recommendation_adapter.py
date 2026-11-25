@@ -78,6 +78,7 @@ CURRENT_HISTORY = (
     storage.WORKING_CALENDARS,
     storage.DRIVER_APPROVALS,
     storage.CAPABILITY_EVIDENCE,
+    storage.DAY_DRAFTS,
 )
 CURRENT_TABLES = storage.CREW_TABLES | {
     "Employees",
@@ -91,6 +92,7 @@ CURRENT_TABLES = storage.CREW_TABLES | {
     *storage.CALENDAR_TABLES,
     *storage.DRIVER_TABLES,
     *storage.CAPABILITY_TABLES,
+    *storage.DAY_TABLES,
 }
 
 
@@ -423,6 +425,13 @@ def _capability_sources(connection, query, assignments, employee_ids, observed_c
 
 
 def _read_sources(connection, query, source_id, migrations):
+    if connection.execute(
+        "SELECT 1 FROM DayDraftAssignments WHERE LocalDate BETWEEN ? AND ? LIMIT 1",
+        (query.earliest_start_date, query.horizon_end_date),
+    ).fetchone():
+        raise SnapshotContextError(
+            "DAY_BASED_ADAPTER_REQUIRED: full-day records cannot enter the legacy half-day generator."
+        )
     row = connection.execute(
         """SELECT w.Id,w.ProjectId,p.JobNumber,w.Type,w.RequiredCrewCount,w.EstimatedHalfDays
         FROM WorkItems w JOIN Projects p ON p.Id=w.ProjectId WHERE w.Id=?""",
@@ -768,9 +777,14 @@ def check_snapshot_freshness(
         raise ValueError("Supply a RecommendationSnapshot.")
     try:
         current = build_recommendation_snapshot(path, snapshot.query)
-    except (SnapshotNotFound, SnapshotContextError):
+    except (SnapshotNotFound, SnapshotContextError) as error:
         return SnapshotFreshness(
-            "Stale", snapshot.input_fingerprint, None, "SOURCE_RECORD_MISSING_OR_MOVED"
+            "Stale",
+            snapshot.input_fingerprint,
+            None,
+            "DAY_BASED_ADAPTER_REQUIRED"
+            if str(error).startswith("DAY_BASED_ADAPTER_REQUIRED:")
+            else "SOURCE_RECORD_MISSING_OR_MOVED",
         )
     same = current.input_fingerprint == snapshot.input_fingerprint
     return SnapshotFreshness(

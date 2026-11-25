@@ -69,6 +69,9 @@ class DraftAssignment:
     publishable: bool = False
     staffing: StaffingState = field(default_factory=StaffingState)
     calendar_assessment: dict | None = None
+    scheduling_unit: str = "LegacyHalfDay"
+    compatibility_status: str = "Needs Review"
+    conversion_required: bool = True
 
 
 class AssignmentNotFound(ValueError):
