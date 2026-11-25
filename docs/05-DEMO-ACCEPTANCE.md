@@ -1,5 +1,26 @@
 # M0 acceptance walkthrough
 
+## Day recommendation engineering check (#103, slice2B)
+
+Read [design](design/2026-11-24-day-recommendations-checklist.md) and
+[actual evidence](acceptance/2026-11-24-day-recommendations.md). Run locked Python
+tests and `python -m rigarus_backend.day_recommendation_example`. Verify confirmed
+integer days, four dates across a closed Tuesday, two deterministic sort orders,
+explicit skipped/Unknown/block/occupied/weekend reasons and partial deficits with
+no fictional finish. Multi-Crew/missing confirmation is Needs Review; every
+proposal remains Pending / Apply=false / Publish=false, even with supplied checks.
+
+Read real schema14 daily inputs and both namespaced visit kinds in one query-only
+transaction. Legacy single halves block whole dates; cancellation releases; saved
+work is never deducted. Mixed legacy/calendar stale receipts and daily employee
+availability remain visible. Other-Crew actual staffing, old resources and their
+changes participate without inferring new workers/approval. Verify SHA256 replay,
+strict query/context, every source-change category Stale, coherent old/new WAL
+views, logical no-writes, frozen inputs and bounded/deadline failures without
+fingerprints. Missing/old/future/corrupt/inconsistent/storage errors never Current.
+Production daily-input/day-Draft gates stay closed. No desktop UI/API route or
+customer Demo E/native/offline acceptance is supplied by this backend suite.
+
 ## Daily input engineering acceptance (#101, slice2A)
 
 See [design](design/2026-11-24-daily-calendars-checklist.md),

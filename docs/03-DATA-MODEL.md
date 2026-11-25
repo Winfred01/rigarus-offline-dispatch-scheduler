@@ -1,5 +1,32 @@
 # SQLite data model
 
+## Daily recommendation observations (#103, no migration)
+
+Slice2B reads current schema14, including schema13 DayDraft tables, using one
+pinned query-only transaction. It adds no table, column, revision counter or
+duration write contract. Remaining Days is an explicitly confirmed query input;
+WorkItems.EstimatedHalfDays and historical visits are never converted/deducted.
+Older13 alone is unsupported by this read path; startup migration remains separate.
+
+Day and legacy visits retain separate ID namespaces, parent/date/status/revision
+and current staffing. Any active legacy half or day visit occupies the full Crew
+date; Cancelled releases it without deletion. All-Crew horizon visits preserve
+other-Crew borrowing/resource context. Daily calendar/availability observations
+include effective/raw state, native daily/legacy revisions, current cell/change
+identity and legacy review receipts. No silent positive legacy projection.
+Related old driver/capability/qualification data stays compatibility evidence,
+not full-day certification. Employee Home Crew remains master data, not attendance.
+
+Frozen snapshot format `rigarus-day-recommendation-input-v1` uses canonical logical
+SHA256, query confirmation/days/bounds/Crews/order/limit, opaque source scope and
+all consumed observations. Same-query re-read detects changed daily/old calendars,
+visits, members, metadata and related evidence; unobserved scope/checkpoints are
+not mutations. Current is not future Apply authority. Errors produce no partial
+fingerprint. No DB/WAL copy/hash, checkpoint, initialization or business/schema
+write in recommendation reads. Existing backup/recovery remains unchanged;
+full migration regression tests are still required. See
+[actual checks](acceptance/2026-11-24-day-recommendations.md).
+
 ## Daily assertions (schema fourteen, #101)
 
 `20261124040000_AddDailyCalendars` follows13 additively. No old Assignment,

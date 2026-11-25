@@ -230,6 +230,12 @@ def compare_explicit_options(
     ):
         raise ValueError("Options must share the intended WorkItem and parent Project.")
     evaluated = tuple(_evaluate(item) for item in options)
+    options, excluded, omitted = _rank_evaluated(evaluated, max_options, order)
+    return OptionComparison(work_item_id, project_id, order, options, excluded, omitted)
+
+
+def _rank_evaluated(evaluated, max_options, order):
+    """Common hard filter, stable dual sorting and limit for both date units."""
     excluded = tuple(
         sorted(
             (item for item in evaluated if item.evidence_status == "Blocked"),
@@ -246,11 +252,158 @@ def compare_explicit_options(
             item.option.option_id,
         )
     )
-    return OptionComparison(
-        work_item_id,
-        project_id,
-        order,
+    return (
         tuple(remaining[:max_options]),
         excluded,
         max(0, len(remaining) - max_options),
+    )
+
+
+@dataclass(frozen=True)
+class ProposedDay:
+    local_date: str
+    evidence: tuple[ConstraintEvidence, ...] = ()
+
+    def __post_init__(self):
+        local_date(self.local_date)
+        if type(self.evidence) is not tuple or any(
+            not isinstance(e, ConstraintEvidence) for e in self.evidence
+        ):
+            raise ValueError("Supply immutable daily constraint evidence.")
+        names = [e.check for e in self.evidence]
+        if len(names) != len(set(names)):
+            raise ValueError("Duplicate daily constraint evidence requires resolution.")
+        if (
+            date.fromisoformat(self.local_date).weekday() < 5
+            and "WeekendConsent" in names
+        ):
+            raise ValueError("Weekend consent must target a weekend date.")
+
+
+@dataclass(frozen=True)
+class ExplicitDayOption:
+    option_id: int
+    work_item_id: int
+    project_id: int
+    crew_id: int
+    days: tuple[ProposedDay, ...]
+
+    def __post_init__(self):
+        for v in (self.option_id, self.work_item_id, self.project_id, self.crew_id):
+            _positive_id(v)
+        if (
+            type(self.days) is not tuple
+            or not 1 <= len(self.days) <= 366
+            or any(not isinstance(d, ProposedDay) for d in self.days)
+        ):
+            raise ValueError("Supply 1 to 366 immutable proposed full dates.")
+        dates = [d.local_date for d in self.days]
+        if len(dates) != len(set(dates)):
+            raise ValueError("A Crew cannot occupy the same full date twice.")
+        if (
+            date.fromisoformat(max(dates)) - date.fromisoformat(min(dates))
+        ).days >= 366:
+            raise ValueError("Supply at most 366 local dates.")
+
+
+@dataclass(frozen=True)
+class DayExplanation:
+    local_date: str
+    check: str
+    state: CheckState
+    source: Literal["Supplied", "Missing"]
+
+
+def explain_day(day: ProposedDay):
+    supplied = {e.check: e.state for e in day.evidence}
+    return tuple(
+        DayExplanation(
+            day.local_date,
+            check,
+            supplied.get(check, "Pending"),
+            "Supplied" if check in supplied else "Missing",
+        )
+        for check in CHECKS
+        if check != "WeekendConsent"
+        or date.fromisoformat(day.local_date).weekday() >= 5
+    )
+
+
+@dataclass(frozen=True)
+class EvaluatedDayOption:
+    option: ExplicitDayOption
+    start: str
+    finish: str
+    unplanned_days_between: int
+    evidence_status: Literal["Blocked", "Pending", "AllSuppliedSatisfied"]
+    explanations: tuple[DayExplanation, ...]
+    validation_status: Literal["Pending"] = field(default="Pending", init=False)
+    applyable: Literal[False] = field(default=False, init=False)
+    publishable: Literal[False] = field(default=False, init=False)
+
+
+@dataclass(frozen=True)
+class DayOptionComparison:
+    work_item_id: int
+    project_id: int
+    order: SortOrder
+    options: tuple[EvaluatedDayOption, ...]
+    excluded: tuple[EvaluatedDayOption, ...]
+    omitted_by_limit: int
+    validation_status: Literal["Pending"] = field(default="Pending", init=False)
+    applyable: Literal[False] = field(default=False, init=False)
+    publishable: Literal[False] = field(default=False, init=False)
+
+
+def compare_day_options(
+    work_item_id, project_id, options, *, max_options, order="EarliestFinish"
+):
+    """PR91 policy applied to genuine full dates, without invented half-day slots."""
+    _positive_id(work_item_id)
+    _positive_id(project_id)
+    validate_comparison_settings(max_options=max_options, order=order)
+    if (
+        type(options) is not tuple
+        or len(options) > MAX_INPUT_OPTIONS
+        or any(not isinstance(o, ExplicitDayOption) for o in options)
+    ):
+        raise ValueError("Supply at most 100 immutable daily options.")
+    if len({o.option_id for o in options}) != len(options):
+        raise ValueError("Option IDs must be unique.")
+    if any(
+        (o.work_item_id, o.project_id) != (work_item_id, project_id) for o in options
+    ):
+        raise ValueError("Daily options must share WorkItem and parent Project.")
+    evaluated = []
+    for o in options:
+        days = tuple(
+            replace(
+                d,
+                evidence=tuple(sorted(d.evidence, key=lambda e: CHECKS.index(e.check))),
+            )
+            for d in sorted(o.days, key=lambda d: d.local_date)
+        )
+        explanations = tuple(e for d in days for e in explain_day(d))
+        states = {e.state for e in explanations}
+        status = (
+            "Blocked"
+            if "Blocked" in states
+            else "Pending"
+            if "Pending" in states
+            else "AllSuppliedSatisfied"
+        )
+        start, finish = days[0].local_date, days[-1].local_date
+        gap = (
+            (date.fromisoformat(finish) - date.fromisoformat(start)).days
+            + 1
+            - len(days)
+        )
+        evaluated.append(
+            EvaluatedDayOption(
+                replace(o, days=days), start, finish, gap, status, explanations
+            )
+        )
+    ranked, excluded, omitted = _rank_evaluated(evaluated, max_options, order)
+    return DayOptionComparison(
+        work_item_id, project_id, order, ranked, excluded, omitted
     )

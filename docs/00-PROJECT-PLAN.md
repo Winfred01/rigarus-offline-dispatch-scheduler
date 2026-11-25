@@ -1,5 +1,12 @@
 # Project plan for repository use
 
+Slice2B (#103) connects explicitly confirmed Remaining Days to pure full-date
+allocation and coherent schema14 recommendation snapshots. Legacy half-day
+contracts remain compatibility-only; new generation uses independent day inputs.
+See [design](design/2026-11-24-day-recommendations-checklist.md) and
+[evidence](acceptance/2026-11-24-day-recommendations.md). Resource validators and
+visible daily UI remain later slices; production daily writes stay closed.
+
 Daily input backend slice2A (#101) follows merged #100: additive schema14,
 explicit daily Crew/Project/Employee assertions, legacy review and stale receipts.
 See [design](design/2026-11-24-daily-calendars-checklist.md) and

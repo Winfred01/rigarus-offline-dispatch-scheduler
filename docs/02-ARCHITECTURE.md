@@ -1,5 +1,82 @@
 # Architecture
 
+## Daily recommendation engine and coherent inputs (#103, slice2B)
+
+New planning uses independent `ConfirmedRemainingDays(days, confirmed_by_operator)`
+from `day_drafts.py`; positive integer only, strict explicit confirmation. Missing
+duration is Needs Review. Old EstimatedHalfDays stays a reference observation;
+neither estimates nor saved visits/history are converted or deducted. Legacy
+half-day generator/adapter contracts remain compatibility code, never the new day path.
+
+`day_recommendation_generator.py` accepts immutable DayGenerationRequest with
+WorkItem/parent/Crew IDs, required Crew count, confirmed days, earliest/horizon
+local dates, separate DayCalendars and DayOccupancy, plus explicitly scoped
+independent per-date evidence. It indexes inputs and scans each local ordinal
+date once. Both calendars must be current Working; Unknown/closure/conflict/
+unreviewed/stale positive evidence, occupied date or known resource blocker is
+skipped with reasons. Missing/partial occupancy coverage is also skipped as
+Unknown, never inferred free. Weekends require exact full-date Satisfied consent;
+persisted planning has no such approval source yet, so it skips weekends.
+Other missing resources remain Pending; gaps do not reset accumulated work.
+One earliest cumulative option per Crew scenario, not exhaustive optimization.
+
+Outputs retain actual allocated dates, confirmed/accumulated/unfilled days,
+proposed start/finish, scanned/skipped states/reasons, calendar counters and missing
+checks. Insufficient capacity retains partial dates/deficit but no finish or ranked
+complete option. Multi-Crew/missing confirmed work returns Needs Review without
+scanning. Annual bound is before next anniversary (Feb29 clamps to Feb28), at
+most366 inclusive dates, with year9999 safe. Up to100 alternative scenarios.
+
+PR91 `recommendation_comparison.py` now also has genuine ProposedDay/
+ExplicitDayOption/DayOptionComparison contracts. Shared constraint definitions,
+evidence policy and `_rank_evaluated` retain hard-filter-before-limit, default
+EarliestFinish, alternate EarliestStart, then Crew/option-ID stable ties and1–10
+limit. No day is represented by fake AM/PM. Pure scan/index work is linear in
+bounded input/horizon; comparison sorting O(H log H). No I/O, SQL or system clock
+in generation/comparison. All proposals/comparisons stay Pending/false flags.
+
+`day_recommendation_adapter.py` exposes internal build_day_recommendation_snapshot,
+day_generation_requests, generate_from_day_snapshot and check_day_snapshot_freshness.
+DayRecommendationQuery has a confirmed-day object or explicit missing None; no
+half-day field or fallback. One mode=ro/query-only `BEGIN` transaction pins current
+schema14/integrity/FKs and all reads: actual parent/Crew/Foreman metadata, schema13
+day Drafts/current immutable staffing, all Crews' old visits/current staffing,
+daily Crew/Project/related-employee inputs and raw legacy evidence/receipts, old
+company-driver and capability/qualification observations. Existing connection-level
+read helpers share this view; public Store reads are never composed. Older13,
+future/unknown or broken schema is rejected without initialization/migration.
+
+Both ID namespaces remain distinct. Any active old AM or PM blocks the whole
+date for that Crew, including same WorkItem; day Drafts also occupy the whole
+date. Cancelled records remain observations but release capacity. Related actual
+workers, selected Home Crew/Foreman employees are **observations only**, never
+attendance or proposed membership. Old driver/qualification evidence is not daily
+approval; daily resource validators #15/#23/#25 and actual #24/#27 remain missing.
+
+Snapshots are detached frozen dataclasses with canonical immutable JSON source
+payloads. A shared ReadBudget/BudgetCursor charges materialized SQL rows and daily
+projection cells against100,000 units, including nested legacy helpers. A30-second
+SQL progress/end deadline and existing5-second busy timeout fail without a partial
+snapshot/fingerprint. Synchronous OS work still needs an independent caller budget.
+
+Fingerprint format `rigarus-day-recommendation-input-v1` hashes canonical logical
+query/confirmed days/sort/limit, opaque normalized source-location scope, migrations,
+metadata, current daily/raw legacy cells/receipts/native revisions, all horizon
+visits/current staffing and related old resource observations. No DB/WAL byte
+hash or global version. Observed-owner revisions can conservatively stale changes
+outside the horizon; unrelated unobserved owners stay outside scope. Re-reading
+the exact query returns Current on equality, Stale on changed/missing/moved inputs.
+Storage/schema/limit/deadline errors propagate as failures, never false Current.
+Current is observation equality then, not a lock, authenticity or Apply authority.
+
+No database migration, HTTP recommendation route, Tauri/UI, selected workers/Rig,
+Apply/Publish/export or opening daily write gates. Production daily-input/day-Draft
+writes remain default closed. Packaged-sidecar tests verify compatibility/gates;
+the new internal algorithm is exercised by locked Python tests and the synthetic
+SQLite console example, not a new packaged GUI/API workflow. See
+[design](design/2026-11-24-day-recommendations-checklist.md) and
+[evidence](acceptance/2026-11-24-day-recommendations.md).
+
 ## Daily inputs (#101, day-based slice2A)
 
 `daily_calendars.py` resolves slotless Crew/Project Working/NotWorking/Unknown
