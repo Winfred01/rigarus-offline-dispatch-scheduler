@@ -25,6 +25,15 @@ import {
   DraftCalendarPreview,
 } from "./working-calendar";
 
+import {
+  locateProblem,
+  locateWeek,
+  revealFilters,
+  reviewFeedback,
+  locateScroll,
+  createLocateCue,
+} from "./schedule-locate";
+
 type Editor = {
   id: number | null;
   revision?: number;
@@ -85,6 +94,20 @@ export function Schedule({
   const [cancelling, setCancelling] = useState<DraftAssignment>();
   const [selected, setSelected] = useState<number>();
   const [review, setReview] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [highlighted, setHighlighted] = useState<number>();
+  const [pendingLocate, setPendingLocate] = useState<{
+    id: number;
+    request: number;
+  }>();
+  const locateRequest = useRef(0);
+  const consumedTarget = useRef<typeof target>(undefined);
+  const [locateCue] = useState(() =>
+    createLocateCue(setHighlighted, {
+      schedule: (run, ms) => window.setTimeout(run, ms),
+      cancel: (id) => window.clearTimeout(id),
+    }),
+  );
   const [crewFilter, setCrewFilter] = useState("");
   const [projectFilter, setProjectFilter] = useState("");
   const [busy, setBusy] = useState(true);
@@ -129,6 +152,8 @@ export function Schedule({
     void refresh();
     return () => {
       alive.current = false;
+      locateRequest.current++;
+      locateCue.dispose();
     };
   }, []);
   useEffect(() => {
@@ -168,14 +193,144 @@ export function Schedule({
       }
     }
   }, [editor, selected, busy, view]);
-  useEffect(() => {
-    if (target) {
-      setDay(target.date);
-      setDateField(target.date);
-      setSelected(target.id);
+  async function locate(id: number) {
+    if (busy || editor || cancelling) {
+      setError(
+        "Close the current draft editor or wait for the schedule before locating a visit.",
+      );
+      return;
     }
-  }, [target]);
+    const request = ++locateRequest.current;
+    locateCue.clear();
+    setPendingLocate(undefined);
+    setReview(false);
+    setSelected(undefined);
+    setLocating(true);
+    setError("");
+    setStatus("");
+    try {
+      const fresh = await invoke<DraftAssignment>("read_assignment", { id });
+      if (!alive.current || request !== locateRequest.current) return;
+      const problem = locateProblem(id, fresh);
+      if (problem) {
+        if (fresh.status !== "Draft")
+          setData((value) => ({
+            ...value,
+            assignments: value.assignments.filter((row) => row.id !== id),
+          }));
+        setError(problem);
+        return;
+      }
+      const loaded = await readWorkspace();
+      if (!alive.current || request !== locateRequest.current) return;
+      const current = loaded.assignments.find((row) => row.id === id);
+      setData(loaded);
+      const changed = locateProblem(id, current);
+      if (
+        changed ||
+        !current ||
+        !loaded.projects.some((p) => p.id === current.project_id)
+      ) {
+        setError(
+          changed ||
+            "This visit's project could not be displayed. Reload assignments.",
+        );
+        return;
+      }
+      setBlocked(false);
+      setCrewFilter(
+        (crew) => revealFilters({ crew, project: "" }, current).crew,
+      );
+      setProjectFilter(
+        (project) => revealFilters({ crew: "", project }, current).project,
+      );
+      const anchor = locateWeek(current.local_date);
+      setDay(anchor);
+      setDateField(anchor);
+      onView("Job Schedule");
+      setPendingLocate({ id, request });
+      setStatus(
+        `Located Draft #${id} · ${current.local_date} ${current.slot}. Press Enter on the card to open details.`,
+      );
+    } catch {
+      if (alive.current && request === locateRequest.current)
+        setError(
+          "Could not load this saved visit. Reload assignments and try Locate again.",
+        );
+    } finally {
+      if (alive.current && request === locateRequest.current)
+        setLocating(false);
+    }
+  }
+  useEffect(() => {
+    if (
+      target &&
+      target !== consumedTarget.current &&
+      !busy &&
+      !editor &&
+      !cancelling
+    ) {
+      consumedTarget.current = target;
+      void locate(target.id);
+    }
+  }, [target, busy, editor, cancelling]);
+  useEffect(() => {
+    if (!pendingLocate || busy || locating || view !== "Job Schedule") return;
+    const frame = requestAnimationFrame(() => {
+      if (!alive.current || pendingLocate.request !== locateRequest.current)
+        return;
+      const card = document.getElementById(`assignment-${pendingLocate.id}`);
+      const grid = card?.closest<HTMLElement>(".week-scroll");
+      if (card && grid) {
+        const box = grid.getBoundingClientRect();
+        const rect = card.getBoundingClientRect();
+        const position = locateScroll(
+          {
+            top: box.top + grid.clientTop,
+            left: box.left + grid.clientLeft,
+            width: grid.clientWidth,
+            height: grid.clientHeight,
+          },
+          rect,
+          {
+            top: grid.scrollTop,
+            left: grid.scrollLeft,
+            width: grid.scrollWidth,
+            height: grid.scrollHeight,
+          },
+          {
+            top:
+              grid.querySelector("thead")?.getBoundingClientRect().height ?? 0,
+            left: grid.querySelector("th")?.getBoundingClientRect().width ?? 0,
+          },
+        );
+        grid.scrollTo({ ...position, behavior: "instant" });
+        card.focus({ preventScroll: true });
+        locateCue.start(pendingLocate.id);
+      } else
+        setError(
+          "The saved visit could not be revealed. Reload assignments and try again.",
+        );
+      setPendingLocate(undefined);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [
+    pendingLocate,
+    busy,
+    locating,
+    view,
+    data,
+    crewFilter,
+    projectFilter,
+    locateCue,
+  ]);
+  useEffect(() => {
+    if (view !== "Job Schedule") locateCue.clear();
+  }, [view, locateCue]);
   function navigate(date: string) {
+    locateCue.clear();
+    setPendingLocate(undefined);
+    locateRequest.current++;
     if (!validLocalDate(date)) {
       setError("Choose a valid local date (years 0001–9999).");
       return;
@@ -318,7 +473,13 @@ export function Schedule({
             project,
             crew: undefined as Crew | undefined,
           }));
-  const controlsDisabled = busy || !!editor || !!cancelling;
+  const reviewRows = data.assignments.filter(
+    (row) => row.status === "Draft" && inWeek(row.local_date, days),
+  );
+  const reviewIssues = reviewRows
+    .map((row) => ({ row, reasons: reviewFeedback(row) }))
+    .filter((entry) => entry.reasons.length);
+  const controlsDisabled = busy || locating || !!editor || !!cancelling;
   const closeEditor = () => {
     setEditor(undefined);
     if (!blocked) setError("");
@@ -402,6 +563,9 @@ export function Schedule({
           />
           <button disabled={controlsDisabled}>Go</button>
         </form>
+        <span className="schedule-span" aria-label="Schedule span">
+          1 Week
+        </span>
         <span className="draft-state">Draft · Validation pending</span>
         <button
           disabled={controlsDisabled || view === "Employee Week"}
@@ -450,7 +614,11 @@ export function Schedule({
         )}
       </div>
       <div className="schedule-feedback" aria-live="polite">
-        {busy ? "Loading or saving local schedule…" : status}
+        {busy
+          ? "Loading or saving local schedule…"
+          : locating
+            ? "Locating saved visit…"
+            : status}
       </div>
       {!editor && error && (
         <p className="error" role="alert">
@@ -473,7 +641,7 @@ export function Schedule({
         <button
           id="reload-assignments"
           className="secondary-button"
-          disabled={busy}
+          disabled={busy || locating}
           onClick={() => {
             if (editor && validLocalDate(editor.local_date))
               navigate(editor.local_date);
@@ -662,6 +830,7 @@ export function Schedule({
                                         key={row.id}
                                         row={row}
                                         selected={selected}
+                                        highlighted={highlighted}
                                         showCrew={false}
                                         compact
                                         onSelect={setSelected}
@@ -677,6 +846,7 @@ export function Schedule({
                               key={row.id}
                               row={row}
                               selected={selected}
+                              highlighted={highlighted}
                               showCrew={view === "Job Schedule"}
                               onSelect={setSelected}
                             />
@@ -808,6 +978,12 @@ export function Schedule({
           />
           <div className="actions">
             <button
+              disabled={busy || blocked || locating}
+              onClick={() => void locate(selectedRow.id)}
+            >
+              Locate in Job Schedule
+            </button>
+            <button
               aria-label={`Edit Draft ${selectedRow.id}`}
               disabled={busy || blocked}
               onClick={() => {
@@ -871,7 +1047,66 @@ export function Schedule({
           <p>
             {displayDate(days[0])} – {displayDate(days[6])} · Draft
           </p>
-          <p>{rows.length} visits in current filters. Validation pending.</p>
+          <p>
+            {reviewRows.length} saved visits in this week. Review includes
+            visits hidden by Crew or Project filters.
+          </p>
+          <p>
+            Observed calendar and staffing feedback only. The complete dispatch
+            checks remain pending.
+          </p>
+          {reviewIssues.length ? (
+            <div className="review-table-scroll">
+              <table
+                className="locate-review-table"
+                aria-label="Saved visit feedback"
+              >
+                <thead>
+                  <tr>
+                    <th>Date / half-day</th>
+                    <th>Project / work</th>
+                    <th>Observed feedback</th>
+                    <th>Locate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reviewIssues.map(({ row, reasons }) => (
+                    <tr key={row.id}>
+                      <td>
+                        {row.local_date} · {row.slot}
+                        <small>Draft #{row.id}</small>
+                      </td>
+                      <td>
+                        {row.job_number} · {row.work_type}
+                        <small>{row.crew_name}</small>
+                      </td>
+                      <td>
+                        <ul>
+                          {reasons.map((reason) => (
+                            <li key={reason}>{reason}</li>
+                          ))}
+                        </ul>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          aria-label={`Locate Draft ${row.id}, ${row.local_date} ${row.slot}`}
+                          onClick={() => void locate(row.id)}
+                        >
+                          Locate
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p>
+              No calendar or missing-staffing feedback is recorded for these
+              visits. This is not full dispatch validation.
+            </p>
+          )}
           <ul>
             {publishBlockers.map((reason) => (
               <li key={reason}>{reason}</li>
@@ -887,12 +1122,14 @@ export function Schedule({
 function ScheduleCard({
   row,
   selected,
+  highlighted,
   showCrew,
   compact = false,
   onSelect,
 }: {
   row: DraftAssignment;
   selected?: number;
+  highlighted?: number;
   showCrew: boolean;
   compact?: boolean;
   onSelect: (id: number) => void;
@@ -900,7 +1137,7 @@ function ScheduleCard({
   return (
     <button
       id={`assignment-${row.id}`}
-      className={`schedule-card ${row.work_type === "Tower" ? "tower-work" : "field-work"} ${compact ? "strip-visit" : ""}`}
+      className={`schedule-card ${row.work_type === "Tower" ? "tower-work" : "field-work"} ${compact ? "strip-visit" : ""} ${highlighted === row.id ? "locate-highlight" : ""}`}
       aria-label={`Draft ${row.id}, ${row.job_number}, ${row.local_date} ${row.slot}, ${row.crew_name}`}
       aria-pressed={selected === row.id}
       onClick={() => onSelect(row.id)}
