@@ -777,9 +777,14 @@ def check_snapshot_freshness(
         raise ValueError("Supply a RecommendationSnapshot.")
     try:
         current = build_recommendation_snapshot(path, snapshot.query)
-    except (SnapshotNotFound, SnapshotContextError):
+    except (SnapshotNotFound, SnapshotContextError) as error:
         return SnapshotFreshness(
-            "Stale", snapshot.input_fingerprint, None, "SOURCE_RECORD_MISSING_OR_MOVED"
+            "Stale",
+            snapshot.input_fingerprint,
+            None,
+            "DAY_BASED_ADAPTER_REQUIRED"
+            if str(error).startswith("DAY_BASED_ADAPTER_REQUIRED:")
+            else "SOURCE_RECORD_MISSING_OR_MOVED",
         )
     same = current.input_fingerprint == snapshot.input_fingerprint
     return SnapshotFreshness(

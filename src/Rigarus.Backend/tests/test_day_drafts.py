@@ -508,6 +508,10 @@ class DailySnapshotBoundaryTests(unittest.TestCase):
         self.assertEqual(
             adapter.check_snapshot_freshness(self.database, old).status, "Stale"
         )
+        self.assertEqual(
+            adapter.check_snapshot_freshness(self.database, old).reason,
+            "DAY_BASED_ADAPTER_REQUIRED",
+        )
         DayDraftStore(self.database).cancel(day["id"], 1)
         with self.assertRaises(adapter.SnapshotContextError):
             self.snapshot()
