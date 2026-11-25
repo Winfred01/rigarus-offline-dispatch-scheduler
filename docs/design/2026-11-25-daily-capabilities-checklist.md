@@ -25,7 +25,7 @@ Modification times are checkout observations, not business decision authority.
 |05-DEMO-ACCEPTANCE.md | Living acceptance /0634276 |05:22:30 | Daily resource checks and Pending boundaries |
 |10-CLIENT-DECISIONS.md | Register /5f3f218 |05:22:30 | Daily scope, explicit Level/count policies, open Foreman/authority |
 |acceptance/2026-11-24-daily-drivers.md |2C2 /0634276 |05:22:30 | Source/target,523 regressions and limitations |
-|acceptance/2026-11-24-issue-25-capability.md | Legacy #25 engineering |05:22:30 | Explicit requirements, definite/possible counts, immutable company evidence |
+|acceptance/2026-11-24-issue-25-capability.md | Legacy #25 engineering /27c7c1c |05:22:30 | Explicit requirements, definite/possible counts, immutable company evidence |
 | Local Rigarus_UI_Design_Updated_2026-11-24.docx | SHA256 d8a7c0de16dcbbe3c0a4aafe62ab136b4ef4c58737c2fb6c6d818f7981cf743c | November24 23:15:38.7114232 | L14,L17,L19,L20, qualification/borrowing/review text |
 
 Original DOCX stays local in authorized design directory. XML text inspected;
@@ -82,3 +82,20 @@ No UI/API/dependency/gate change. #24 Rig/#27 consent and daily UI/manual Apply
 remain later slices. Customer Demo D/E, authority/legal policy and production
 approval are separate and pending. One Draft PR for109, human review, no merge,
 Release, Issue closure, real data upload or customer database modification.
+
+Pre-verification refinement: bounded JSON payloads can still amplify total memory.
+Add a shared64MiB SQL/projected-text byte budget alongside existing100,000 read
+units and deadline; bound retained legacy capability JSON to250,000 characters.
+This technical workload bound is not a company rule; errors return no fingerprint.
+
+## Delivery baseline refresh
+
+PR108 was subsequently human-merged to main
+`15879cd72832e9a90047220f184684fb819c822e`, main CI45553296541 success; no review
+submissions were present. Its product/document tree equals the previously inspected
+0634276 dependency tree. Rebased this isolated branch onto that latest main with
+all pending work preserved; original pre-code plan07e8303 is now c9f9801. New PR
+therefore targets main directly, and contains only2C3. No dependency/source/scope
+change or repeated implementation was needed. Full results are recorded in
+[acceptance](../acceptance/2026-11-25-daily-capabilities.md). Human review remains
+required, production gates stay closed, native/offline/customer acceptance pending.

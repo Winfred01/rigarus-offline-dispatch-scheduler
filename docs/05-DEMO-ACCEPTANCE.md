@@ -1,5 +1,22 @@
 # M0 acceptance walkthrough
 
+## Daily capability engineering (#109,2C3)
+
+See [design](design/2026-11-25-daily-capabilities-checklist.md),
+[actual checks](acceptance/2026-11-25-daily-capabilities.md) and
+[synthetic reproduction](../samples/synthetic-only/daily-capabilities.md).
+Validate explicit full-date member minimum/Level1–3 Exact or AtLeast and separate
+exact-code qualification requirements. Missing proof Pending; possible capacity
+below minimum Blocked. Driver pass never certifies the Crew. Check source and
+target after explicit borrowing, including source member/Level/unique qualification
+loss, qualified replacement, unchanged source staffing without override, retained
+old half occupancy and independent Project/WorkItem IDs. Old positive half-day
+proof and half availability never become daily capacity. Preserve negative proof,
+null/Unknown tombstones/history, SQL transaction/revision/receipt guards and gates.
+Check snapshot coherence/byte budgets/SHA256/Current-Stale/pure no-I/O/no-writes,
+schema15→16 preservation/rollback/retry/reopen and actual prior-binary recovery.
+Foreman, actual #24 Rig/#27 consent and manual Apply/UI/UAT remain pending.
+
 ## Daily driver engineering checks (#107,2C2)
 
 Follow [design](design/2026-11-24-daily-drivers-checklist.md),

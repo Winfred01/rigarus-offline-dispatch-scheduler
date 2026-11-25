@@ -1,5 +1,13 @@
 # Delivery playbook for repository use
 
+Daily2C3 engineering preview: `python -m rigarus_backend.day_capability_example`
+in the locked backend environment. Synthetic source and target both retain
+eligible drivers, yet borrowing below the source's explicit member/Level minimum
+is Blocked. An explicit qualified replacement clears those subchecks only; full
+validation stays Pending/false flags. Changed qualification makes the prior proof
+Stale. See [checks](acceptance/2026-11-25-daily-capabilities.md). No gate opening,
+native/offline UI pass, manual Apply or customer dispatch approval is established.
+
 Daily2C2 preview: run `python -m rigarus_backend.day_driver_example` in the locked
 backend environment. Synthetic no-removal borrowing is Blocked by collision;
 explicit sole-driver removal leaves source Blocked; an explicit eligible source

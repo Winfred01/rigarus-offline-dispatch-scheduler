@@ -1,5 +1,40 @@
 # SQLite data model
 
+## Daily policy and qualification provenance (schema sixteen, #109)
+
+Necessary additive `20261125010000_AddDailyCapabilities` follows15. Existing
+CapabilityEvidenceOwners remains immutable WorkItem or Employee+exact-code
+identity. New DailyCapabilityChanges stores positive per-owner native revision,
+canonical inclusive local dates, bounded strict versioned payload, company/full-day
+confirmation, reference, legacy review/native revision/raw snapshot and UTC event
+time. New DailyCapabilityCells has unique owner/date without Slot, immutable-event
+FK/context triggers and per-date legacy SHA256 receipt. Old capability/driver/
+calendar/assignment/master/history/notes/IDs/revisions/FKs/sequences stay untouched.
+
+Policy payload reuses explicit CapabilityRequirements; null is an explicit
+unknown-policy tombstone. Employee payload has Verified/NotVerified/Unknown,
+independent of Employee.SkillLevel or driver status. The daily table plus explicit
+full-day confirmation establishes new provenance; shared owner identity alone
+never promotes old AM/PM evidence. Duplicate JSON keys/types/context reject.
+Save reserves BEGIN IMMEDIATE before revision/range-token comparison; event/cells
+commit together or roll back. Same current payload/reference no-op; legacy change
+requires re-review. No daily evidence HTTP/UI writer or authenticated authority.
+
+Recognized15 startup now receives the same independent verified pre-DDL backup
+under the write reservation. Migration DDL/history rolls back on failure, backup
+failure aborts before DDL, current16 reopening is idempotent. Recovery requires
+independent15 backup plus compatible prior binary, never remove live migration
+history. [Actual evidence](acceptance/2026-11-25-daily-capabilities.md) includes
+synthetic actual15→16 sidecar upgrade/rejection/backup reopening and fault tests.
+
+Daily snapshot SHA256 format v4 includes raw/effective daily policy/qualification
+source, current event IDs/reference, native revisions/legacy receipts and existing
+actual-worker context in one budgeted read-only view. Legacy reader recognizes16
+but refuses any in-range daily capability cell, even Unknown/null, with
+DAILY_CAPABILITY_ADAPTER_REQUIRED; old proofs become Stale. Recommendation reads
+never initialize or migrate15. Production daily writes remain closed. Current
+schema is16; earlier schema sections remain historical compatibility references.
+
 ## Independent daily company-driver assertions (schema fifteen, #107)
 
 Necessary additive `20261124050000_AddDailyDriverApprovals` follows14. Reusing old
