@@ -1,10 +1,15 @@
 # Rigarus Offline Dispatch Scheduler
 
-**English** · [简体中文](docs/README.zh-CN.md)
+**English** · [简体中文](docs/README.zh-CN.md) · [English user guide](docs/USER-GUIDE.en.md) · [中文使用说明书](docs/USER-GUIDE.zh-CN.md)
 
 Rigarus is a **Windows-first, fully offline dispatch-planning desktop application** for a single local operator. It opens without a user account or sign-in. The application uses **Tauri/Rust + React/TypeScript**, a bundled **Python FastAPI** sidecar, and **local SQLite**. No Google Calendar account, cloud sync, or hosted scheduling service is required.
 
-> **Engineering preview — 24 November 2026.** Code merged into `main` is not the same as a customer-approved release. Demo A–F sign-off, full dispatch-safety validation, production distribution, and UAT remain pending. Use fictional data for demonstrations and CI; do not treat a Draft as a confirmed crew dispatch.
+> **Engineering preview — 25 November 2026. Baseline main 7ee8d9b (human-merged PR114).** Code merged into `main` is not the same as a customer-approved release. Demo A–F sign-off, full dispatch-safety validation, production distribution, and UAT remain pending. Use fictional data for demonstrations and CI; do not treat a Draft as a confirmed crew dispatch.
+
+The owner confirmed **Full Day** for new scheduling on November24. The desktop
+AM/PM controls below remain legacy compatibility, not a completed full-day
+workflow. Production daily writers stay closed. Never silently merge or round old
+records. The [user guides](docs/USER-GUIDE.en.md#scope) explain the transition.
 
 ## What's implemented
 
@@ -18,20 +23,47 @@ Rigarus is a **Windows-first, fully offline dispatch-planning desktop applicatio
 | **Schedule → Working calendars** | Explicit working / nonworking / unknown AM/PM dates for each Crew and Project; WorkItems inherit their parent Project calendar. Calendar conflicts and missing information are shown as Draft feedback. No default Monday–Friday or weekend permission is inferred. |
 | **Items / Data / device tools** | Rig inventory and optional default Crew (not actual dated vehicle allocation); read-only Excel import preview; separate demo-note fixture; local workspace search (`Ctrl+K`), appearance settings and Help. |
 
-### Automatic scheduling: internal calculation only
+### Full-day recommendation and resource backend
 
-Merged [#28 phase-one comparison](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/pull/91) and [phase-two date generator](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/pull/92) are **pure Python engineering modules**, **not a desktop “Auto Schedule” workflow**. They can:
+Daily foundations through merged [PR114](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/pull/114)
+extend the [PR91 comparator](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/pull/91).
+These are **backend engineering capabilities**, not a desktop Auto Schedule workflow:
 
-- Calculate dates for **one Crew per WorkItem** from **operator-confirmed remaining half-days** and explicitly supplied Crew/parent-Project calendar and occupancy snapshots.
-- Accumulate AM/PM work across gaps, retain skipped-slot explanations, and return **Needs Review** instead of a made-up finish date when duration or capacity is insufficient.
-- Compare supplied/generated alternatives by **earliest finish** (default) or **earliest start**, excluding supplied known hard blocks and keeping missing safety evidence pending.
+- One Crew per WorkItem; explicitly confirmed positive integer **Remaining Days**.
+  No estimate/half-day conversion or automatic deduction of saved work.
+- Accumulate whole working dates across gaps, retain skipped dates/reasons and
+  unfilled days. Missing confirmation, multi-Crew requirements or insufficient
+  capacity returns Needs Review without a false finish date.
+- Deterministic earliest-finish default / earliest-start sorting.
+- One bounded query-only schema18 SQLite snapshot, daily/legacy compatibility
+  observations, SHA-256 and Current/Stale checks. Current is not an Apply lock.
+- Actual daily personnel conflicts, company-driver evidence, explicit staffing/
+  Level/separate qualifications, actual Rig occupancy/conditions and worker-specific
+  weekend consent; borrowing rechecks source and destination. Missing evidence
+  stays Pending, known blockers Blocked. These are independent subchecks.
 
-The generator is **not yet connected to trusted persisted scheduling snapshots, an API, or the UI**. It does not certify worker/driver qualifications, staffing minimums, actual Rig availability or weekend consent. Every result remains **Validation pending; Apply = false; Publish = false**. See the [engineering acceptance record](docs/acceptance/2026-11-24-issue-28-generator.md).
+The generator **is connected to coherent persisted snapshots**. Recommendation
+API/desktop controls, safe human Apply and production daily writers remain closed
+or unimplemented. Only all relevant workers Confirmed permits consented weekend
+planning capacity. Home Crew, Available, calendar matched and default Rig never
+imply attendance/approval. Every overall result remains **Validation Pending /
+Apply=false / Publish=false**. See [daily recommendations](docs/acceptance/2026-11-24-day-recommendations.md)
+and [latest resource evidence](docs/acceptance/2026-11-25-daily-weekend.md).
+
+After backend locked restore, run temporary synthetic examples from
+`src/Rigarus.Backend`:
+
+```powershell
+uv run --locked python -m rigarus_backend.day_recommendation_example
+uv run --locked python -m rigarus_backend.day_weekend_example
+```
+
+These console examples do not create a desktop recommendation screen.
 
 ## Not yet available for operational dispatch
 
-- Full employee/Rig overlap checks, approved-driver and skills/qualification gates, actual Rig swaps/maintenance and worker-specific weekend approvals ([#15](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/issues/15), [#23–#27](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/issues)).
-- Trusted recommendation input adapters, safe multi-option review/Apply, delay and early-finish propagation, locks, and immutable **Published** schedule revisions ([#18–#29](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/issues)).
+- Full-day desktop scheduling, daily evidence editors and visible recommendation/resource previews. Whole-roster availability, Foreman, vehicle-category/legal policy and approval/recording authority remain independent follow-up.
+- Safe multi-option review/Apply with locks, transaction-time revalidation/audit, delay/early-finish propagation and recoverable Published versions (#18/#29).
 - Company, Crew or employee **PDF/XLSX dispatch exports**. `Reports → Weekly Export` shows the unmet checks; export actions remain disabled. The Employee Week preview is not a sendable confirmed schedule.
 - Complete historical workbook reconciliation, cross-machine application-level backup/restore, different-version upgrade and enterprise-policy distribution acceptance. A successful Windows CI build or isolated offline VM test is **not** customer UAT or production authorization.
 
@@ -44,6 +76,10 @@ The generator is **not yet connected to trusted persisted scheduling snapshots, 
 Installed operator machines do not need a separate Python, Node.js, Rust, or .NET development environment. Clean-image, no-network installation and same-version build replacement have passed **specific** Windows 11 VM checks, but signed distribution, managed-device policies, different semantic-version upgrades, and customer acceptance remain separate gates. See [release/acceptance instructions](docs/08-RELEASE-HANDBOOK.md).
 
 ### Short synthetic walkthrough
+
+Use these legacy compatibility steps only with an isolated synthetic profile, not
+as a new full-day dispatch procedure. Full instructions: [English](docs/USER-GUIDE.en.md)
+· [中文](docs/USER-GUIDE.zh-CN.md).
 
 1. In **Project Management**, create a fictional Project and Civil/Tower WorkItem (or use **Bulk Add Projects**).
 2. In **People**, create a Crew and employee; optionally appoint a Foreman and record the employee's availability.
