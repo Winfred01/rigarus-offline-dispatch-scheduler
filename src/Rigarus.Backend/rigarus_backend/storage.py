@@ -1,6 +1,9 @@
 import sqlite3
 from contextlib import closing
 from pathlib import Path
+from uuid import uuid4
+
+from .day_editor_migration import DAY_EDITOR, DAY_EDITOR_TABLES, CREATE_DAY_EDITOR
 
 from .domain import DemoProject, validate_note
 from .day_migration import DAY_DRAFTS, DAY_TABLES, CREATE_DAY_DRAFTS
@@ -300,6 +303,7 @@ def initialize_database(path: Path) -> None:
                 DAILY_DRIVERS,
                 DAILY_CAPABILITIES,
                 DAILY_RIGS,
+                DAILY_WEEKEND,
             )
             if (
                 existing
@@ -494,8 +498,21 @@ def initialize_database(path: Path) -> None:
                 record_migration(
                     connection, DAILY_WEEKEND, product_version="Rigarus 0.1.0"
                 )
-            elif history != (*rig_day_history, DAILY_WEEKEND) or tables != (
-                rig_day_tables | DAILY_WEEKEND_TABLES
+                history = (*rig_day_history, DAILY_WEEKEND)
+                tables = rig_day_tables | DAILY_WEEKEND_TABLES
+            weekend_history = (*rig_day_history, DAILY_WEEKEND)
+            weekend_tables = rig_day_tables | DAILY_WEEKEND_TABLES
+            if history == weekend_history and tables == weekend_tables:
+                for statement in CREATE_DAY_EDITOR:
+                    connection.execute(statement)
+                connection.execute(
+                    "INSERT INTO DayEditorWorkspace VALUES(1,?)", (str(uuid4()),)
+                )
+                record_migration(
+                    connection, DAY_EDITOR, product_version="Rigarus 0.1.0"
+                )
+            elif history != (*weekend_history, DAY_EDITOR) or tables != (
+                weekend_tables | DAY_EDITOR_TABLES
             ):
                 raise UnsupportedDatabaseError(
                     "This Rigarus database has an unsupported schema. Open it with a compatible version."

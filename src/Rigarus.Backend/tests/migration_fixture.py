@@ -133,6 +133,7 @@ def remove_daily_rig_schema(connection):
 
 
 def remove_daily_weekend_schema(connection):
+    remove_day_editor_schema(connection)
     # Synthetic17 fixtures only. Never an operational downgrade.
     from rigarus_backend.daily_weekend_migration import DAILY_WEEKEND
 
@@ -140,4 +141,15 @@ def remove_daily_weekend_schema(connection):
         connection.execute(f"DROP TABLE IF EXISTS {table}")
     connection.execute(
         "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?", (DAILY_WEEKEND,)
+    )
+
+
+def remove_day_editor_schema(connection):
+    # Synthetic18 reconstruction only, never an operational downgrade.
+    from rigarus_backend.day_editor_migration import DAY_EDITOR
+
+    for table in ("DayEditorReceipts", "DayEditorWorkspace"):
+        connection.execute(f"DROP TABLE IF EXISTS {table}")
+    connection.execute(
+        "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?", (DAY_EDITOR,)
     )

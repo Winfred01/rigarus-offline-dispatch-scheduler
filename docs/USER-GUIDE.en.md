@@ -3,7 +3,7 @@
 [中文使用说明书](USER-GUIDE.zh-CN.md) · [Project README](../README.md)
 
 **Edition:** November25,2026 engineering preview. **Source baseline:** main
-`6d93916` plus Issue119 read-only workbench (awaiting human review). The desktop
+`9d40765` plus Issue120 editor (awaiting human review). The desktop
 interface is English. Confirm the commit of your installed build.
 It is an operator reference, not customer acceptance or production authorization.
 
@@ -47,12 +47,35 @@ or assume an AM/PM record proves a whole day.
 | Full-day Drafts, daily date generation and resource checks | Backend engineering; production daily writes remain closed |
 | Full-day WorkItem Auto-Recommend | Read-only date alternatives, explanations and Current/Stale checks |
 | Full-day weekly boards | Read-only daily/legacy workbench, typed Locate and saved resource checks |
-| Independent daily editing | Next slice #120; production daily writes remain closed |
+| Independent daily editing | Manual create/edit/cancel, explicit workers and request recovery in a synthetic test profile; production Save disabled |
 | Human Apply, locks, transaction revalidation, recoverable versions | Awaiting complete workflow |
 | Published schedules and company/Crew/employee PDF/Excel | Unavailable; export controls remain disabled |
 
 Every Draft/proposal remains **Validation Pending**. Do not distribute it as a
 confirmed employee schedule. A resource subcheck passing does not approve dispatch.
+
+### Independent Full Day editor (engineering preview)
+
+Use **New / Recover Full Day Draft** or **Edit Full Day Draft** on a saved daily
+card. Normal installations show a preview with Save disabled; synthetic test
+write opt-in is for maintainer-controlled fixtures, not customer rollout.
+Choose a saved WorkItem, Crew and full local date; edit notes and explicitly
+choose whether actual workers are unrecorded or a confirmed list. Home Crew
+does not select attendance. Changing WorkItem/Crew/date requires reconfirmation.
+**Close without saving** makes no Draft change. Saved cancellation names the ID
+and revision, retains history and removes only that daily record from active
+boards. **Open saved Full Day ID, including cancelled** and **Read latest 100
+immutable Draft revisions** preserve access after reopening.
+
+Stale revision retains unsaved fields; explicitly loading current saved values
+replaces them for review, never silently overwrites a newer revision. Unknown
+save outcome retains an original recovery request: **Resolve original request**
+reads its receipt; absence is not rejection. If needed, only **Retry same
+unchanged request** may resubmit that original identity. Do not create another
+request to work around uncertainty. A confirmed save with failed weekly refresh
+is already saved: use **Retry weekly refresh — no writes**, not Save. Keep local
+recovery evidence if the journal cannot be read; it must not be silently cleared.
+Review independent Blocked/Pending reasons. Apply/Publish remain unavailable.
 
 The default **Job Schedule / Crew Board** is a read-only Full Day workbench.
 Both views use the same weekly snapshot. Blue daily cards retain slotless dates;

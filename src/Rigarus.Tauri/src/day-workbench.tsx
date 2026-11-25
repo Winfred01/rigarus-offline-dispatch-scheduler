@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import type { ScheduleView } from "./schedule";
 import { Dialog } from "./dialog";
 import { DayRecommendationPreview } from "./day-recommendation-preview";
+import { DayEditor } from "./day-editor";
+import type { DraftRecord } from "./day-editor-state";
 import { PreviewEpoch, reasonLabel } from "./day-preview-state";
 import { localToday, validLocalDate } from "./assignment-fields";
 import { displayDate, shiftDay } from "./week";
@@ -87,6 +89,7 @@ export function DayWorkbench({
   const [workId, setWorkId] = useState(""),
     [kind, setKind] = useState<SavedKind>("FullDayDraft"),
     [identity, setIdentity] = useState("");
+  const [editor, setEditor] = useState<{ id?: number }>();
   const [focusKey, setFocusKey] = useState<string>(),
     [highlight, setHighlight] = useState<string>();
   const epoch = useRef(new PreviewEpoch()),
@@ -156,7 +159,7 @@ export function DayWorkbench({
   async function locate(recordKind: SavedKind, id: number) {
     if (!savedKind(recordKind) || !Number.isSafeInteger(id) || id <= 0) {
       setError("Choose a record type and a positive saved ID.");
-      return;
+      return false;
     }
     const ticket = epoch.current.next();
     cue.clear();
@@ -170,7 +173,7 @@ export function DayWorkbench({
         action: "locate",
         input: { kind: recordKind, id },
       });
-      if (!alive.current || !epoch.current.current(ticket)) return;
+      if (!alive.current || !epoch.current.current(ticket)) return false;
       const row = value.records.find(
         (r) => r.record_kind === recordKind && r.id === id,
       );
@@ -193,11 +196,48 @@ export function DayWorkbench({
       onView("Job Schedule");
       onDay(row.local_date);
       setFocusKey(savedKey(row));
+      return true;
     } catch {
       if (alive.current && epoch.current.current(ticket))
         setError(
           "Locate failed: the typed record may be removed, cancelled or unreadable. Week and filters were retained; reload and check its type/ID.",
         );
+      return false;
+    } finally {
+      if (alive.current && epoch.current.current(ticket)) setBusy(false);
+    }
+  }
+  async function refreshSaved(row: DraftRecord): Promise<boolean> {
+    if (row.status === "Draft") return locate("FullDayDraft", row.id);
+    const ticket = epoch.current.next();
+    const next = weekRange(row.local_date);
+    setBusy(true);
+    cue.clear();
+    setFocusKey(undefined);
+    try {
+      const value = await invoke<Weekly>("schedule_workbench", {
+        action: "week",
+        input: { start_date: next.start, end_date: next.end },
+      });
+      if (
+        !alive.current ||
+        !epoch.current.current(ticket) ||
+        !validResult(value) ||
+        value.start_date !== next.start ||
+        value.end_date !== next.end
+      )
+        return false;
+      if (`${next.start}/${next.end}` !== rangeKey)
+        skipRange.current = `${next.start}/${next.end}`;
+      setData(value);
+      onDay(row.local_date);
+      setError("");
+      return true;
+    } catch {
+      setError(
+        "Cancellation receipt confirmed; week refresh failed. Reload without cancelling again.",
+      );
+      return false;
     } finally {
       if (alive.current && epoch.current.current(ticket)) setBusy(false);
     }
@@ -209,7 +249,7 @@ export function DayWorkbench({
     }
   }, [target]);
   useEffect(() => {
-    if (!focusKey || busy || !data) return;
+    if (!focusKey || busy || !data || editor) return;
     const card = document.getElementById(`saved-${focusKey}`),
       scroll = card?.closest<HTMLElement>(".week-scroll");
     if (!card || !scroll) {
@@ -238,7 +278,7 @@ export function DayWorkbench({
     card.focus({ preventScroll: true });
     cue.start(focusKey);
     setFocusKey(undefined);
-  }, [focusKey, busy, data, view]);
+  }, [focusKey, busy, data, view, editor]);
   const shown =
     data?.start_date === range.start && data.end_date === range.end
       ? data
@@ -304,11 +344,22 @@ export function DayWorkbench({
       </nav>
       <p className="preview-pending">
         <strong>Full Day workbench · Draft / Validation pending</strong> —
-        read-only saved records. Legacy AM/PM is retained for review. Daily
-        editor, human Apply, locks and version recovery are not available here.
-        No dispatch or publication approval.
+        saved-record views. Legacy AM/PM is retained for review. The independent
+        daily editor is gated for synthetic testing; production daily writes,
+        human Apply, locks and version recovery remain unavailable. No dispatch
+        or publication approval.
       </p>
       <div className="week-toolbar">
+        <button
+          disabled={busy}
+          id="open-day-editor"
+          onClick={() => {
+            setDetail(undefined);
+            setEditor({});
+          }}
+        >
+          New / Recover Full Day Draft
+        </button>
         <button
           aria-label="Previous week"
           disabled={range.start < "0001-01-08"}
@@ -643,7 +694,15 @@ export function DayWorkbench({
             >
               Auto-Recommend
             </button>
-            <button disabled>Daily edit — next slice</button>
+            <button
+              disabled={detail.record_kind !== "FullDayDraft"}
+              onClick={() => {
+                setEditor({ id: detail.id });
+                setDetail(undefined);
+              }}
+            >
+              Edit Full Day Draft
+            </button>
             <button disabled>Apply / Publish — not available</button>
             <button onClick={() => setDetail(undefined)}>Close</button>
           </div>
@@ -688,6 +747,17 @@ export function DayWorkbench({
           jobNumber={recommend.job_number}
           workType={recommend.type}
           onClose={() => setRecommend(undefined)}
+        />
+      )}
+      {editor && (
+        <DayEditor
+          id={editor.id}
+          day={day}
+          works={data?.work_items ?? []}
+          crews={data?.crews ?? []}
+          people={data?.people ?? []}
+          onSaved={refreshSaved}
+          onClose={() => setEditor(undefined)}
         />
       )}
     </main>

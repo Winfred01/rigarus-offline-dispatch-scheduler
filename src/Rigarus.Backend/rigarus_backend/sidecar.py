@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import hmac
 import json
+import os
 import re
 import socket
 import sqlite3
@@ -42,8 +43,17 @@ def private_api(app, token: bytes):
     return authenticated
 
 
-async def serve(listener: socket.socket, database: Path, token: bytes) -> bool:
-    app = private_api(create_app(database, database_initialized=True), token)
+async def serve(
+    listener: socket.socket, database: Path, token: bytes, *, editor_test=False
+) -> bool:
+    app = private_api(
+        create_app(
+            database,
+            database_initialized=True,
+            enable_day_editor_test_writes=editor_test,
+        ),
+        token,
+    )
     config = uvicorn.Config(
         app,
         loop="asyncio",
@@ -88,7 +98,18 @@ async def serve(listener: socket.socket, database: Path, token: bytes) -> bool:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--database", required=True, type=Path)
+    parser.add_argument("--synthetic-day-editor", action="store_true")
     arguments = parser.parse_args()
+    if arguments.synthetic_day_editor:
+        root = os.environ.get("RIGARUS_SMOKE_DATA_ROOT", "")
+        if (
+            not root
+            or arguments.database.resolve()
+            != (Path(root) / "data" / "rigarus.db").resolve()
+        ):
+            parser.error(
+                "Synthetic day editor requires its separate smoke-root database."
+            )
 
     # Pass the per-launch secret over the pipe, not via command line or logs.
     token = sys.stdin.buffer.readline(66).rstrip(b"\r\n")
@@ -116,7 +137,14 @@ def main() -> int:
             if sys.platform == "win32":
                 listener.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
             listener.bind(("127.0.0.1", 0))
-            if asyncio.run(serve(listener, arguments.database, token)):
+            if asyncio.run(
+                serve(
+                    listener,
+                    arguments.database,
+                    token,
+                    editor_test=arguments.synthetic_day_editor,
+                )
+            ):
                 return 0
     except OSError:
         pass

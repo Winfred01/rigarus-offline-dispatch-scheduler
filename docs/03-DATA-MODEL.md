@@ -1,5 +1,27 @@
 # SQLite data model
 
+## Manual Draft recovery (schema nineteen, #120)
+
+`20261125040000_AddDayEditorReceipts` is additive after18; original tables,
+IDs, estimates, slots, notes, personnel, relations and history are unchanged.
+
+| Added table | Contract |
+| --- | --- |
+| DayEditorWorkspace | One immutable database-lineage UUID at Id1; scope recovery to the database rather than an assignment integer |
+| DayEditorReceipts | Immutable canonical request UUID, exact payload SHA256, serialized Committed/Rejected result and UTC time; unique key committed atomically with saved Draft/history |
+
+UPDATE/DELETE triggers protect identity/receipts. Identical replay returns the
+same JSON; changed payload never replaces the original receipt. A receipt can
+refer to an older revision after later edits: reload current state before another
+edit. Unknown read errors are distinct from absent receipts. NotFound is uncertain,
+not permission for a new create key. Existing occupancy/history/Rig guards stay.
+
+Verified backup precedes DDL, failure rolls back, retry preserves recovery data,
+19 startup is idempotent. Actual old18 binary rejects19 and reopens an independent
+restored18 backup unchanged. No in-place downgrade/customer restore was performed;
+old backup recovery loses later edits and requires operator reconciliation.
+Production writes stay closed; all Draft safety/Apply/Publish gates remain pending.
+
 ## Actual-worker full-day consent (schema eighteen, #113)
 
 Additive `20261125030000_AddDailyWeekendConsent` follows17. No existing row,

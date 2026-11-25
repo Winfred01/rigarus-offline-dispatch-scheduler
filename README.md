@@ -4,7 +4,7 @@
 
 Rigarus is a **Windows-first, fully offline dispatch-planning desktop application** for a single local operator. It opens without a user account or sign-in. The application uses **Tauri/Rust + React/TypeScript**, a bundled **Python FastAPI** sidecar, and **local SQLite**. No Google Calendar account, cloud sync, or hosted scheduling service is required.
 
-> **Engineering preview — 25 November 2026. Baseline main 6d93916 plus Issue119 workbench.** This branch awaits human review. Code merged into `main` is not the same as a customer-approved release. Demo A–F sign-off, full dispatch-safety validation, production distribution, and UAT remain pending. Use fictional data for demonstrations and CI; do not treat a Draft as a confirmed crew dispatch.
+> **Engineering preview — 25 November 2026. Baseline main 9d40765 plus Issue120 editor.** This branch awaits human review. Production daily writes remain closed. Code merged into `main` is not a customer-approved release. Demo A–F sign-off, full dispatch safety, production distribution and UAT remain pending. Use fictional data; a Draft is not confirmed dispatch.
 
 The owner confirmed **Full Day** for new scheduling on November24. The desktop
 AM/PM controls below remain legacy compatibility, not a completed full-day
@@ -15,7 +15,7 @@ records. The [user guides](docs/USER-GUIDE.en.md#scope) explain the transition.
 
 | Area | Available engineering-preview behavior |
 | --- | --- |
-| **Schedule → Job Schedule / Crew Board** | Default read-only Full Day workbench shows saved daily Drafts and unchanged Legacy AM/PM records, actual-resource subchecks, details, filters and typed Locate. Recommendation preview is available without saving. Existing half-day create/edit/cancel/strips remain under explicit **Legacy compatibility**; new daily editing is the next slice. |
+| **Schedule → Job Schedule / Crew Board** | Saved Full Day/Legacy AM/PM views, independent resource reasons, typed Locate and read-only recommendation preview. The separate Full Day editor provides manual create/edit/cancel, explicit workers, revision checks and request recovery in an isolated synthetic test profile. Production Save remains disabled. Half-day editing stays under **Legacy compatibility**. |
 | **Project Management** | Create, edit, search and sort Projects and their Small/Civil/Tower/Other WorkItems. Bulk Add accepts pasted CSV, Excel-style TAB-separated text, or local `.xlsx`, with read-only preview, duplicate/error diagnostics and explicit transactional confirmation. |
 | **People → Employees / Crews** | Employee and Civil/Tower Crew rosters; Home Crew, skill level, current Foreman assignment and retained appointment history. Explicitly select workers for a dated Draft visit; a temporary assignment to another Crew does **not** change Home Crew. |
 | **People → Availability** | Record an employee as Available, Unavailable or Not recorded, for a full day, AM or PM, over inclusive dates; review the calendar and change history. These statuses are advisory, not dispatch clearance. |

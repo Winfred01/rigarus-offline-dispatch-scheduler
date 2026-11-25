@@ -7,6 +7,13 @@ versions; then validated company/Crew/employee PDF/Excel. Full-day writer rollou
 requires the editor's own native/offline evidence and human review. This read-only
 slice cannot accept customer UAT, authorize publication or complete the upgrade.
 
+Issue120 exercises manual day create/edit/cancel/actual workers and durable
+request recovery in an isolated synthetic profile. Default production writes
+remain closed. Require candidate-specific native/offline install/upgrade/restart
+evidence before reviewing controlled writer rollout; an expired-license VM is
+not stable acceptance. Next human Apply/recoverable versions → delay-chain
+replanning → formal PDF/Excel. No customer Demo/UAT or production approval.
+
 Weekend engineering preview: `python -m rigarus_backend.day_weekend_example`
 in the locked backend environment. Two confirmed days start Friday: missing,
 partial and Declined consent retain Monday finish; both explicit Saturday workers

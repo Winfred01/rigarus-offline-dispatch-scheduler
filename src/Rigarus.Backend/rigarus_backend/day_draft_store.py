@@ -137,83 +137,89 @@ class DayDraftStore:
             raise ValueError("Supply a slotless Full-Day Draft.")
         with closing(connect(self.path)) as c, c:
             c.execute("BEGIN IMMEDIATE")
-            old = None
-            if assignment_id is not None:
-                old = read_day(c, assignment_id)
-                self._revision(old, expected_revision)
-                if old["status"] != "Draft":
-                    raise AssignmentConflict(
-                        "This Full-Day Draft is cancelled. Create a new visit."
-                    )
-            for table, identity in (
-                ("WorkItems", draft.work_item_id),
-                ("Crews", draft.crew_id),
-            ):
-                if not c.execute(
-                    f"SELECT 1 FROM {table} WHERE Id=?", (identity,)
-                ).fetchone():
-                    raise ValueError("Select an existing WorkItem and Crew.")
-            legacy = c.execute(
-                "SELECT Id,Slot FROM DraftAssignments WHERE CrewId=? AND LocalDate=? AND Status='Draft' ORDER BY Id",
-                (draft.crew_id, draft.local_date),
-            ).fetchall()
-            if legacy:
-                details = ", ".join(f"Legacy #{i} {slot}" for i, slot in legacy)
+            return self.save_in(c, draft, assignment_id, expected_revision)
+
+    def save_in(self, c, draft, assignment_id=None, expected_revision=None):
+        old = None
+        if assignment_id is not None:
+            old = read_day(c, assignment_id)
+            self._revision(old, expected_revision)
+            if old["status"] != "Draft":
                 raise AssignmentConflict(
-                    f"Crew #{draft.crew_id} is occupied on {draft.local_date}: {details}. Conversion Required; review or explicitly cancel legacy visits. No automatic merge."
+                    "This Full-Day Draft is cancelled. Create a new visit."
                 )
-            daily = c.execute(
-                "SELECT Id FROM DayDraftAssignments WHERE CrewId=? AND LocalDate=? AND Status='Draft' AND (? IS NULL OR Id<>?)",
-                (draft.crew_id, draft.local_date, assignment_id, assignment_id),
-            ).fetchone()
-            if daily:
-                raise AssignmentConflict(
-                    f"Crew #{draft.crew_id} already has Full-Day Draft #{daily[0]} on {draft.local_date}. Choose another Crew or date."
-                )
-            if old and (
-                old["work_item_id"],
-                old["crew_id"],
-                old["local_date"],
-                old["notes"],
-                old["employee_ids"],
-            ) == (
-                draft.work_item_id,
-                draft.crew_id,
-                draft.local_date,
-                draft.notes,
-                draft.employee_ids,
-            ):
-                return old
-            now = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
-            values = (draft.work_item_id, draft.crew_id, draft.local_date, draft.notes)
-            if old:
-                c.execute(
-                    "UPDATE DayDraftAssignments SET WorkItemId=?,CrewId=?,LocalDate=?,Notes=?,Revision=Revision+1,UpdatedAt=? WHERE Id=?",
-                    (*values, now, assignment_id),
-                )
-            else:
-                assignment_id = c.execute(
-                    "INSERT INTO DayDraftAssignments(WorkItemId,CrewId,LocalDate,Notes,Status,Revision,CreatedAt,UpdatedAt) VALUES(?,?,?,?,'Draft',1,?,?)",
-                    (*values, now, now),
-                ).lastrowid
-            append_change(c, assignment_id, draft.employee_ids)
-            return read_day(c, assignment_id)
+        for table, identity in (
+            ("WorkItems", draft.work_item_id),
+            ("Crews", draft.crew_id),
+        ):
+            if not c.execute(
+                f"SELECT 1 FROM {table} WHERE Id=?", (identity,)
+            ).fetchone():
+                raise ValueError("Select an existing WorkItem and Crew.")
+        legacy = c.execute(
+            "SELECT Id,Slot FROM DraftAssignments WHERE CrewId=? AND LocalDate=? AND Status='Draft' ORDER BY Id",
+            (draft.crew_id, draft.local_date),
+        ).fetchall()
+        if legacy:
+            details = ", ".join(f"Legacy #{i} {slot}" for i, slot in legacy)
+            raise AssignmentConflict(
+                f"Crew #{draft.crew_id} is occupied on {draft.local_date}: {details}. Conversion Required; review or explicitly cancel legacy visits. No automatic merge."
+            )
+        daily = c.execute(
+            "SELECT Id FROM DayDraftAssignments WHERE CrewId=? AND LocalDate=? AND Status='Draft' AND (? IS NULL OR Id<>?)",
+            (draft.crew_id, draft.local_date, assignment_id, assignment_id),
+        ).fetchone()
+        if daily:
+            raise AssignmentConflict(
+                f"Crew #{draft.crew_id} already has Full-Day Draft #{daily[0]} on {draft.local_date}. Choose another Crew or date."
+            )
+        if old and (
+            old["work_item_id"],
+            old["crew_id"],
+            old["local_date"],
+            old["notes"],
+            old["employee_ids"],
+        ) == (
+            draft.work_item_id,
+            draft.crew_id,
+            draft.local_date,
+            draft.notes,
+            draft.employee_ids,
+        ):
+            return old
+        now = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+        values = (draft.work_item_id, draft.crew_id, draft.local_date, draft.notes)
+        if old:
+            c.execute(
+                "UPDATE DayDraftAssignments SET WorkItemId=?,CrewId=?,LocalDate=?,Notes=?,Revision=Revision+1,UpdatedAt=? WHERE Id=?",
+                (*values, now, assignment_id),
+            )
+        else:
+            assignment_id = c.execute(
+                "INSERT INTO DayDraftAssignments(WorkItemId,CrewId,LocalDate,Notes,Status,Revision,CreatedAt,UpdatedAt) VALUES(?,?,?,?,'Draft',1,?,?)",
+                (*values, now, now),
+            ).lastrowid
+        append_change(c, assignment_id, draft.employee_ids)
+        return read_day(c, assignment_id)
 
     def cancel(self, assignment_id, expected_revision):
         with closing(connect(self.path)) as c, c:
             c.execute("BEGIN IMMEDIATE")
-            old = read_day(c, assignment_id)
-            self._revision(old, expected_revision)
-            if old["status"] == "Draft":
-                c.execute(
-                    "UPDATE DayDraftAssignments SET Status='Cancelled',Revision=Revision+1,UpdatedAt=? WHERE Id=?",
-                    (
-                        datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
-                        assignment_id,
-                    ),
-                )
-                append_change(c, assignment_id, old["employee_ids"])
-            return read_day(c, assignment_id)
+            return self.cancel_in(c, assignment_id, expected_revision)
+
+    def cancel_in(self, c, assignment_id, expected_revision):
+        old = read_day(c, assignment_id)
+        self._revision(old, expected_revision)
+        if old["status"] == "Draft":
+            c.execute(
+                "UPDATE DayDraftAssignments SET Status='Cancelled',Revision=Revision+1,UpdatedAt=? WHERE Id=?",
+                (
+                    datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+                    assignment_id,
+                ),
+            )
+            append_change(c, assignment_id, old["employee_ids"])
+        return read_day(c, assignment_id)
 
     def history(self, assignment_id):
         with closing(connect(self.path)) as c, c:

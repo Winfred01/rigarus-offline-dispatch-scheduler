@@ -76,3 +76,12 @@ Retain Rigarus shell, local fonts, restrained status colors and two-column field
 that stack within the dialog; no new branding, charts, web assets or fake totals.
 Known warnings and exact recovery actions are adjacent to the Save outcome.
 Native desktop is the target; phone inspector findings cannot certify it.
+
+Native first candidate: create/explicit borrowed worker/save/reveal exactID3 and
+real stale-revision refusal passed. Original-image comparison found the generic
+600px dialog truncates WorkItem IDs and inherited full-width checkbox styling
+separates boxes from labels. Before further UI work, widen only this editor,
+collapse saved-ID utilities, align checkboxes, and keep secondary/recovery actions
+outlined. Preserve same request/revision logic; rebuild and repeat native checks.
+App sheet framed-sheet seed744846122 retained brand palette/type. The original
+Rigarus shell overrides the sheet's generic shell; no rebranding, charts or fonts.
