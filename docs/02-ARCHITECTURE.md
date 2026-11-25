@@ -1,5 +1,54 @@
 # Architecture
 
+## Actual full-day weekend consent (#113/#27)
+
+`daily_weekend_consent.py` is pure and bounded: explicit dated actual/proposed
+rosters plus latest full-day employee decisions. Identity is WorkItem/Project/
+Crew/local Saturday-or-Sunday/Employee, never HomeCrew/global availability.
+Confirmed requires exact nonempty roster fingerprint; saved evidence additionally
+matches stable day Assignment ID/revision. Even removing then returning the same
+workers cannot resurrect saved approval. Pending/missing/stale/legacy attendance
+requires review; applicable Declined blocks despite other missing evidence.
+Cancelled visits release capacity; weekday consent is not applicable.
+
+`daily_weekend_store.py` internally records explicit employee-decision/full-day/
+reference assertions, append-only revisions and proposed versus saved provenance.
+BEGIN IMMEDIATE protects expected consent revision, saved assignment revision and
+current roster. Planned consent never proves saved attendance; the saved helper
+records actual current workers independently. No HTTP/UI consent writer, employee
+communication, authenticated approval authority or production gate opening exists.
+
+Daily snapshot v6 observes relevant target/source WorkItems' latest consent rows
+and native max event IDs in the same pinned query-only transaction as calendars,
+availability, people, drivers, capabilities and Rigs. Optional immutable
+WeekendCrewDay(Crew,date,Employee IDs) declares weekend alternative rosters, and
+captures those employee observations. No membership is inferred. Query/observations
+enter SHA256; any relevant decision edit, including conservative outside-horizon
+edit, invalidates old proofs. Existing100k units/64MiB/30second bounds include
+decoded consent memberships. Errors fail without Current/partial fingerprints;
+readers never migrate17. Rebuild v5; legacy generation refuses new consent.
+
+Only fully confirmed exact planned workers can supply WeekendConsent Satisfied
+to existing daily accumulation/PR91 comparison. Working calendars and free Crew
+date remain independent; Pending/Declined is skipped with reasons and per-member
+planned checks retained even for skipped dates. Different Crew plans are
+alternatives, never simultaneous reservations. All other resource evidence remains
+independent; consent is not employee availability or safe dispatch certification.
+
+All proposed weekend members must match the query roster even at the lower-level
+personnel entry point; changing workers requires a new query/candidate. The
+`day_weekend_proposal.py` wrapper reuses personnel/driver/capability/Rig checks,
+then checks effective target and every borrowed source roster before/after.
+Source refusal excludes with WeekendConsent Blocked; changed positive source
+roster Pending. No implicit source removal, approval transfer or saved mutation.
+Input/proposal SHA and same-query freshness are observations, never future locks.
+Every root result remains Validation Pending/Apply=false/Publish=false.
+
+Next independent slice prioritizes daily desktop weekly visibility and visible
+recommendation/consent reasons; native/offline interaction acceptance remains
+required. #18/#29 must later implement locks, Before/After, transaction revalidation,
+explicit human Apply/audit/recoverable versions before validated file delivery.
+
 ## Actual daily Rig evidence and proposal-only replacement (#111/#24)
 
 `daily_rig_store.py` records explicit actual vehicle facts per stable saved day or

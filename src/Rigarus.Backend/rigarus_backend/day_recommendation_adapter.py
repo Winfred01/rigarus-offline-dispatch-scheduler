@@ -22,6 +22,13 @@ from .daily_driver_store import snapshot as daily_driver_snapshot
 from .daily_capability_store import snapshot as daily_capability_snapshot
 from .daily_rig_store import rig_sources
 from .daily_rig_validation import DailyRigValidation
+from .daily_weekend_consent import (
+    WeekendCrewDay,
+    WeekendValidation,
+    validate_weekend_consent,
+)
+from .daily_weekend_store import consent_sources, snapshot_consent_facts
+from .recommendation_comparison import ProposedDay, ConstraintEvidence
 from .recommendation_generator import _range
 from .recommendation_comparison import SortOrder, validate_comparison_settings
 from .recommendation_adapter import (
@@ -55,7 +62,7 @@ from .day_recommendation_generator import (
     generate_days_and_compare,
 )
 
-FORMAT = "rigarus-day-recommendation-input-v5"
+FORMAT = "rigarus-day-recommendation-input-v6"
 MAX_READ_UNITS = 100_000
 MAX_READ_BYTES = 64 * 1024 * 1024
 READ_SECONDS = 30
@@ -83,6 +90,7 @@ class DayRecommendationQuery:
     max_options: int = 3
     proposed_employee_ids: tuple[int, ...] = ()
     proposed_rig_ids: tuple[int, ...] = ()
+    weekend_members: tuple[WeekendCrewDay, ...] = ()
 
     def __post_init__(self):
         if (
@@ -131,6 +139,31 @@ class DayRecommendationQuery:
                 "Supply independent explicitly ConfirmedRemainingDays; no half-day fallback."
             )
         _range(self.earliest_start_date, self.horizon_end_date)
+        if (
+            type(self.weekend_members) is not tuple
+            or len(self.weekend_members) > 100_000
+            or any(not isinstance(m, WeekendCrewDay) for m in self.weekend_members)
+        ):
+            raise ValueError("Supply bounded immutable explicit weekend rosters.")
+        if sum(len(m.employee_ids) for m in self.weekend_members) > 100_000:
+            raise ValueError("Weekend membership observation limit exceeded.")
+        if len({(m.crew_id, m.local_date) for m in self.weekend_members}) != len(
+            self.weekend_members
+        ):
+            raise ValueError("Duplicate Crew/weekend rosters require resolution.")
+        if any(
+            m.crew_id not in self.crew_ids
+            or not self.earliest_start_date <= m.local_date <= self.horizon_end_date
+            for m in self.weekend_members
+        ):
+            raise ValueError("Weekend roster is outside the selected Crew/date scope.")
+        object.__setattr__(
+            self,
+            "weekend_members",
+            tuple(
+                sorted(self.weekend_members, key=lambda m: (m.crew_id, m.local_date))
+            ),
+        )
         validate_comparison_settings(max_options=self.max_options, order=self.order)
 
 
@@ -264,6 +297,7 @@ class DayRecommendationSnapshot:
     legacy_capability_sources: CapabilitySources
     daily_capability_sources: tuple[DailyCapabilitySource, ...]
     rig_source_json: str
+    weekend_source_json: str
     validation_status: Literal["Pending"] = field(default="Pending", init=False)
     applyable: Literal[False] = field(default=False, init=False)
     publishable: Literal[False] = field(default=False, init=False)
@@ -348,7 +382,10 @@ def _read_day_sources(c, query, source_id, migrations):
         )
     }
     employee_ids.update(e for a in (*legacy, *days) for e in a.actual_employee_ids)
-    employee_ids.update(query.proposed_employee_ids)
+    nominated_employees = set(query.proposed_employee_ids) | {
+        e for m in query.weekend_members for e in m.employee_ids
+    }
+    employee_ids.update(nominated_employees)
     employee_ids.update(
         crew.foreman[1]
         for crew in crews
@@ -374,7 +411,7 @@ def _read_day_sources(c, query, source_id, migrations):
             (identity,),
         ).fetchone()
         if metadata is None:
-            if identity in query.proposed_employee_ids:
+            if identity in nominated_employees:
                 raise SnapshotNotFound("An explicitly proposed Employee was not found.")
             raise SnapshotReadError("DATABASE_INVALID")
         read_daily("Employee", identity)
@@ -427,6 +464,15 @@ def _read_day_sources(c, query, source_id, migrations):
         raise SnapshotNotFound("A proposed or observed Rig was not found.") from None
     rig_json = canonical(rig_source)
     c.charge_bytes(len(rig_json.encode("utf-8")))
+    weekend_json = canonical(
+        consent_sources(
+            c,
+            {work.work_item_id, *(a.work_item_id for a in (*legacy, *days))},
+            query.earliest_start_date,
+            query.horizon_end_date,
+        )
+    )
+    c.charge_bytes(len(weekend_json.encode("utf-8")))
     return DayRecommendationSnapshot(
         source_id,
         query,
@@ -440,6 +486,7 @@ def _read_day_sources(c, query, source_id, migrations):
         capability,
         tuple(daily_capabilities),
         rig_json,
+        weekend_json,
     )
 
 
@@ -495,6 +542,14 @@ def day_generation_requests(snapshot: DayRecommendationSnapshot):
     q, work = snapshot.query, snapshot.work_item
     inputs = {(s.scope, s.entity_id): s for s in snapshot.daily_inputs}
     visits = (*snapshot.day_assignments, *snapshot.legacy_assignments)
+    planned = {}
+    for check in validate_planned_weekend(snapshot).checks:
+        planned.setdefault(check.visit.crew_id, []).append(
+            ProposedDay(
+                check.visit.local_date,
+                (ConstraintEvidence("WeekendConsent", check.state),),
+            )
+        )
     return tuple(
         DayGenerationRequest(
             crew.crew_id,
@@ -521,6 +576,7 @@ def day_generation_requests(snapshot: DayRecommendationSnapshot):
                     )
                 ),
             ),
+            tuple(planned.get(crew.crew_id, ())),
         )
         for crew in snapshot.crews
         if not crew.review_reasons
@@ -536,6 +592,8 @@ class PersistedDayRecommendations:
     driver_validation: "DailyDriverValidation"
     capability_validation: "DailyCapabilityValidation"
     rig_validation: DailyRigValidation
+    weekend_validation: "WeekendValidation"
+    planned_weekend_validation: WeekendValidation
     pending_validators: tuple[str, ...] = field(default=PENDING_VALIDATORS, init=False)
     validation_status: Literal["Pending"] = field(default="Pending", init=False)
     applyable: Literal[False] = field(default=False, init=False)
@@ -568,6 +626,8 @@ def generate_from_day_snapshot(snapshot: DayRecommendationSnapshot):
         validate_day_snapshot_drivers(snapshot),
         validate_day_snapshot_capabilities(snapshot),
         validate_day_snapshot_rigs(snapshot),
+        validate_day_snapshot_weekend(snapshot),
+        validate_planned_weekend(snapshot),
     )
 
 
@@ -616,6 +676,32 @@ def validate_day_snapshot_personnel(snapshot: DayRecommendationSnapshot):
         end_date=snapshot.query.horizon_end_date,
         scope_complete=True,
     )
+
+
+def validate_day_snapshot_weekend(snapshot: DayRecommendationSnapshot):
+    return validate_weekend_consent(
+        day_staffed_visits(snapshot), snapshot_consent_facts(snapshot)
+    )
+
+
+def validate_planned_weekend(snapshot: DayRecommendationSnapshot):
+    q, work = snapshot.query, snapshot.work_item
+    visits = tuple(
+        DailyStaffedVisit(
+            "Proposal",
+            m.crew_id,
+            work.work_item_id,
+            work.project_id,
+            m.crew_id,
+            m.local_date,
+            1,
+            "Draft",
+            True,
+            m.employee_ids,
+        )
+        for m in q.weekend_members
+    )
+    return validate_weekend_consent(visits, snapshot_consent_facts(snapshot))
 
 
 def check_day_snapshot_freshness(path: Path, snapshot: DayRecommendationSnapshot):

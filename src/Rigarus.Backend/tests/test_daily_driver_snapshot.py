@@ -491,7 +491,7 @@ class DailyDriverSnapshotTests(unittest.TestCase):
         two = validate_day_driver_proposal(
             snap, candidate, self.members(p), (replace(source, employee_ids=(r.id,)),)
         )
-        self.assertEqual(adapter.FORMAT, "rigarus-day-recommendation-input-v5")
+        self.assertEqual(adapter.FORMAT, "rigarus-day-recommendation-input-v6")
         self.assertNotEqual(one.proposal_fingerprint, two.proposal_fingerprint)
         self.approve(r, "Suspended")
         self.assertEqual(
@@ -609,7 +609,7 @@ class DailyDriverMigrationTests(unittest.TestCase):
             self.assertEqual(c.execute("PRAGMA foreign_key_check").fetchall(), [])
             self.assertEqual(
                 c.execute("SELECT count(*) FROM __EFMigrationsHistory").fetchone(),
-                (17,),
+                (18,),
             )
         after = self.digest()
         storage.initialize_database(self.database)
@@ -638,7 +638,7 @@ class DailyDriverMigrationTests(unittest.TestCase):
                 storage.initialize_database(self.database)
         self.assertEqual(self.digest(), before)
         storage.initialize_database(self.database)
-        self.assertEqual(len(self.snapshot().migrations), 17)
+        self.assertEqual(len(self.snapshot().migrations), 18)
 
     def test_read_only_adapter_does_not_migrate14(self):
         self.old14()

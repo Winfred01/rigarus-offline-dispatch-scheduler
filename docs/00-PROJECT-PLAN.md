@@ -1,5 +1,15 @@
 # Project plan for repository use
 
+Daily actual-worker consent (#113/#27) adds independent full-day decisions and
+roster-bound weekend planning in coherent snapshot v6. Pending/partial/refusal
+cannot shorten dates through weekend capacity; all relevant workers confirmed
+permits re-proposal only. Membership changes and borrowing recheck both Crews.
+See [design](design/2026-11-25-daily-weekend-checklist.md) and
+[checks](acceptance/2026-11-25-daily-weekend.md). Overall validation remains
+Pending/false flags; production daily writes closed. Next priority is real daily
+desktop visibility and visible recommendation previews, followed by #18/#29
+transactional human Apply/recoverable versions, then validated PDF/Excel.
+
 Daily Rig safety (#111/#24) adds explicit dated original/actual vehicle evidence,
 independent maintenance/inspection/out-of-service periods, whole-date SQL guards
 and coherent snapshot v5. Defaults are suggestions, not actual occupancy. Swaps

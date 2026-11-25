@@ -1,5 +1,33 @@
 # SQLite data model
 
+## Actual-worker full-day consent (schema eighteen, #113)
+
+Additive `20261125030000_AddDailyWeekendConsent` follows17. No existing row,
+stable ID/Slot/note/relation/revision/history/sequence is converted or rewritten.
+
+| Table | Contract |
+| --- | --- |
+| WeekendConsentScopes | Immutable WorkItem/Project/Crew/local weekend date/Employee FKs and unique scope; parent/date validated |
+| WeekendConsentChanges | Immutable sequential per-scope revision; Pending/Confirmed/Declined; explicit employee-decision/full-day assertion; exact roster JSON/SHA256; Proposed or FullDayDraft source with saved ID/revision; reference/UTC timestamp |
+
+Indexes support dated lookup. SQL enforces valid explicit nonempty unique existing
+employee roster, decision scope membership, full-day confirmation, exact current
+saved context/roster, sequential append and immutable identities/history. Store
+write reservation and expected revisions protect concurrent callers; failure
+rolls back scope creation/sequence and history together. Identical current decision/
+reference/context is a no-op; latest Pending cannot resurrect older Confirmed.
+There is no old half-day consent table to convert. Legacy attendance remains
+Needs Review even with separately recorded full-day employee evidence.
+
+Recognized17 startup takes an independently verified pre-DDL backup under the
+existing reservation. DDL/history faults roll back; backup failure aborts before
+DDL;18 reopens idempotently. Recovery uses independent verified17 backup and its
+compatible prior binary, retains live18 separately for later edits/reconciliation,
+and never deletes migration history. See [actual evidence](acceptance/2026-11-25-daily-weekend.md).
+Recommendation reads use query-only current18 and never initialize/migrate17.
+Snapshot v6 SHA includes raw decisions, exact planned rosters and native revision.
+Earlier schema identities below are historical descriptions.
+
 ## Dated Rig allocation and independent conditions (schema seventeen, #111)
 
 Necessary additive `20261125020000_AddDailyRigs` follows16. No previous table values,

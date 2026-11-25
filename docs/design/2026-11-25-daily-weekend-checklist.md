@@ -16,7 +16,7 @@ documents are living November2026 summaries, not new customer approvals.
 
 | Source | Revision / identity | Checkout modified UTC | Relevant sections |
 | --- | --- | --- | --- |
-| AGENTS.md / DEV-DESIGN-CHECKLIST | Mandatory Design-First | November25 08:03:47 | Workflow/invariants/template |
+| AGENTS.md / DEV-DESIGN-CHECKLIST | Mandatory Design-First /d3b9bea | November25 08:03:47 | Workflow/invariants/template |
 |00-PROJECT-PLAN.md |7867419 |08:03:47.8641166 | Daily Rig/priority3, Option C, scope/M5 |
 |09-DELIVERY-PLAYBOOK.md |7867419 |08:03:47.8681168 | Rig preview, engineering/Demo/production gates |
 |02-ARCHITECTURE.md |7867419 |08:03:47.8651178 | Actual members/borrowing, v5 pinned view, daily generator weekend gate |
@@ -91,3 +91,19 @@ Next slice must deliver real daily desktop visibility and visible recommendation
 not another isolated resource algorithm. #18/#29 follows with locks/transactional
 revalidation/human Apply/audit/recoverable versions, then validated exports.
 Keep113/27/99 Open; one Draft PR, human review, no merge/Release/customer data.
+
+## Implementation refinements and actual checks
+
+Saved confirmations bind the exact saved revision as well as the entire roster,
+conservatively including note-only changes; planned positives require separate
+saved actual-context review. Per-member planned checks are retained even when a
+date is skipped. SQL additionally checks exact saved roster and sequential events;
+the lower-level personnel entry also rejects changed target weekend rosters.
+These safeguards do not authenticate an approver or introduce a production writer.
+
+Executed:545 backend/33 focused,13 repeated packaged,42 frontend,8 Rust,35 .NET,
+locked builds/format, synthetic example/harness and actual17→18 preservation/
+verified backup/prior-binary rejection/independent recovery PASS. Staged privacy/
+docs PASS (350 indexed paths/nine Markdown sources); exact-head CI recorded in Draft PR after push.
+Native day GUI/offline install/reboot/customer Demo/UAT NOT RUN.
+See [actual checks and remaining UI deliverable](../acceptance/2026-11-25-daily-weekend.md).

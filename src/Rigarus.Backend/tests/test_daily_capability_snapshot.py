@@ -399,7 +399,7 @@ class DailyCapabilityIntegrationTests(unittest.TestCase):
                 snap, candidate, tuple(reversed(self.members(p))), (source,)
             ),
         )
-        self.assertEqual(adapter.FORMAT, "rigarus-day-recommendation-input-v5")
+        self.assertEqual(adapter.FORMAT, "rigarus-day-recommendation-input-v6")
         self.assertEqual(
             check_day_capability_proposal_freshness(self.database, result).status,
             "Current",
@@ -539,7 +539,7 @@ class DailyCapabilityMigrationTests(unittest.TestCase):
                 storage.initialize_database(self.database)
         self.assertEqual(self.digest(), before)
         storage.initialize_database(self.database)
-        self.assertEqual(len(self.snapshot().migrations), 17)
+        self.assertEqual(len(self.snapshot().migrations), 18)
 
     def test_readonly15_never_initializes_or_migrates(self):
         self.old15()

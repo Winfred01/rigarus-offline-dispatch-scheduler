@@ -107,6 +107,7 @@ def remove_daily_capability_schema(connection):
 
 
 def remove_daily_rig_schema(connection):
+    remove_daily_weekend_schema(connection)
     # Synthetic schema16 reconstruction only, never an operational downgrade.
     from rigarus_backend.daily_rig_migration import DAILY_RIGS
 
@@ -128,4 +129,15 @@ def remove_daily_rig_schema(connection):
         connection.execute(f"DROP TABLE IF EXISTS {table}")
     connection.execute(
         "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?", (DAILY_RIGS,)
+    )
+
+
+def remove_daily_weekend_schema(connection):
+    # Synthetic17 fixtures only. Never an operational downgrade.
+    from rigarus_backend.daily_weekend_migration import DAILY_WEEKEND
+
+    for table in ("WeekendConsentChanges", "WeekendConsentScopes"):
+        connection.execute(f"DROP TABLE IF EXISTS {table}")
+    connection.execute(
+        "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?", (DAILY_WEEKEND,)
     )
