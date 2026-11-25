@@ -1,5 +1,12 @@
 # Delivery playbook for repository use
 
+Daily2B engineering preview: run `python -m rigarus_backend.day_recommendation_example`
+in the locked backend environment. It seeds only a temporary synthetic schema14
+profile, demonstrates both sorts, confirmed4-day accumulation across a closed day
+and Stale after editing calendar input. The recommendation steps read only.
+See [scope/checks](acceptance/2026-11-24-day-recommendations.md). No UI/Apply/Publish
+or opening production writes; following #15/#23/#25 and actual #24/#27 are required.
+
 Slice2 is split into reviewable dependency steps. #101 delivers daily input
 backend/compatibility only, with closed production writes; then confirmed-day
 generation/full snapshot/Stale, daily #15/#23/#25, actual Rig #24/consent #27,

@@ -104,10 +104,19 @@ Rig/consent and full dispatch safety remain Open/Pending; never guessed.
    Run locked Python/Ruff/full suite, packaged sidecar, frontend/Rust/Tauri/.NET,
    synthetic PowerShell harness, docs/privacy and exact-head Windows CI. Native
    day GUI/disconnected install/upgrade/reboot/customer Demo/UAT NOT RUN.
-10. Dedicated Draft PR103 child delivery; synchronize #103/#99/#28, keep Issues
+10. Dedicated Draft PR for child103; synchronize #103/#99/#28, keep Issues
     Open. Human review; no merge/Release/customer data access. Next daily safety
     validators #15/#23/#25 then actual #24/#27, UI and #18/#29 remain separate.
 
 All new execution checks NOT RUN at this design-only commit. Existing14 records
 and migration history unchanged; operational recovery remains verified backup
 with compatible binary, never deleting history. No UI screenshot pass is claimed.
+
+## Implementation and verification follow-up
+
+Pre-code plan commit65f63c1; main CI45532690079 subsequently completed success.
+Scope unchanged. Actual modules/contracts/algorithm,40 new grouped acceptance
+cases, full regression results and explicit limitations are recorded in
+[slice2B evidence](../acceptance/2026-11-24-day-recommendations.md).
+Malformed stored text now sanitizes to DATABASE_INVALID without a fingerprint;
+this implements planned invalid-source handling. Schemas13/14 remain unchanged.
