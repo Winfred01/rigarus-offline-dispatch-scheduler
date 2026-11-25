@@ -1,5 +1,27 @@
 # Architecture
 
+## Read-only full-day WorkItem preview (#117/#28)
+
+`day_recommendation_api.py` exposes strict POST `/day-recommendations/preview`
+and `/day-recommendations/freshness` projections over the existing query-only v6
+snapshot/generator. No writer gate, migration, membership or resource inference
+is added. Explicit safe IDs, confirmed Remaining Days, inclusive local dates,
+100 Crew/366 date/1–10 result limits retain adapter bounds. Missing confirmation
+remains Needs Review. Whitelisted results include coherent WorkItem titles,
+ranked alternatives, skipped dates/reasons and grouped missing-check counts;
+never full snapshots, database paths or raw personnel evidence. Read failures
+return sanitized errors, never Current. Context edits make freshness Stale.
+
+The authenticated Rust sidecar command accepts only `preview`/`freshness`, bounded
+payloads and fixed read-only paths. Project WorkItem Auto-Recommend uses the
+existing Dialog, independent preview/freshness epochs, input invalidation,
+manual/window-focus rechecks and close/unmount guards. No late reply restores
+old output. Current means observed at read time, not a reservation. Every result
+remains FullDay / Validation Pending / Apply=false / Publish=false; actions are
+disabled. Daily boards/evidence editors and human Apply remain separate work.
+See [design](design/2026-11-25-issue-117-day-preview-checklist.md) and
+[actual verification](acceptance/2026-11-25-issue-117-day-preview.md).
+
 ## Actual full-day weekend consent (#113/#27)
 
 `daily_weekend_consent.py` is pure and bounded: explicit dated actual/proposed

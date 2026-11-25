@@ -958,3 +958,60 @@ kbd {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+.desktop-dialog:has(.day-recommendation-preview) {
+  width: min(880px, calc(100vw - 32px));
+}
+.day-preview-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+}
+.desktop-dialog .day-preview-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.desktop-dialog .day-preview-check input {
+  width: auto;
+  flex: 0 0 auto;
+}
+.day-preview-crews {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-height: 160px;
+  overflow: auto;
+}
+.day-preview-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+.day-preview-candidate {
+  border: 1px solid #d7e1ef;
+  border-radius: 8px;
+  padding: 14px;
+  margin: 12px 0;
+  background: #f6f9ff;
+}
+.day-preview-candidate h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.preview-pending {
+  background: #fff8e7;
+  border-left: 3px solid #b57a22;
+  padding: 12px;
+}
+.day-preview-candidate details {
+  margin: 12px 0;
+}
+.day-preview-candidate summary {
+  cursor: pointer;
+}
+@media (max-width: 600px) {
+  .day-preview-fields,
+  .day-preview-crews {
+    grid-template-columns: 1fr;
+  }
+}

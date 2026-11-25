@@ -4,7 +4,7 @@
 
 Rigarus is a **Windows-first, fully offline dispatch-planning desktop application** for a single local operator. It opens without a user account or sign-in. The application uses **Tauri/Rust + React/TypeScript**, a bundled **Python FastAPI** sidecar, and **local SQLite**. No Google Calendar account, cloud sync, or hosted scheduling service is required.
 
-> **Engineering preview — 25 November 2026. Baseline main 7ee8d9b (human-merged PR114).** Code merged into `main` is not the same as a customer-approved release. Demo A–F sign-off, full dispatch-safety validation, production distribution, and UAT remain pending. Use fictional data for demonstrations and CI; do not treat a Draft as a confirmed crew dispatch.
+> **Engineering preview — 25 November 2026. Baseline main a3da29a plus Issue117 read-only preview.** This branch awaits human review. Code merged into `main` is not the same as a customer-approved release. Demo A–F sign-off, full dispatch-safety validation, production distribution, and UAT remain pending. Use fictional data for demonstrations and CI; do not treat a Draft as a confirmed crew dispatch.
 
 The owner confirmed **Full Day** for new scheduling on November24. The desktop
 AM/PM controls below remain legacy compatibility, not a completed full-day
@@ -27,7 +27,8 @@ records. The [user guides](docs/USER-GUIDE.en.md#scope) explain the transition.
 
 Daily foundations through merged [PR114](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/pull/114)
 extend the [PR91 comparator](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/pull/91).
-These are **backend engineering capabilities**, not a desktop Auto Schedule workflow:
+The backend provides the following capabilities, now exposed through a bounded
+**read-only WorkItem Auto-Recommend** dialog in Project Management:
 
 - One Crew per WorkItem; explicitly confirmed positive integer **Remaining Days**.
   No estimate/half-day conversion or automatic deduction of saved work.
@@ -42,9 +43,13 @@ These are **backend engineering capabilities**, not a desktop Auto Schedule work
   weekend consent; borrowing rechecks source and destination. Missing evidence
   stays Pending, known blockers Blocked. These are independent subchecks.
 
-The generator **is connected to coherent persisted snapshots**. Recommendation
-API/desktop controls, safe human Apply and production daily writers remain closed
-or unimplemented. Only all relevant workers Confirmed permits consented weekend
+The generator **is connected to coherent persisted snapshots**. Select a saved
+WorkItem's **Auto-Recommend**, enter and explicitly confirm Remaining Days, select
+candidate Crews and dates, then preview earliest finish/start with explanations.
+Current/Stale checks only observe inputs; **Apply and Publish remain disabled**.
+Daily evidence editors and safe human Apply remain unimplemented; production
+daily writers stay closed. Old AM/PM controls do not populate full-day calendars;
+missing daily facts produce Needs Review. Only all relevant workers Confirmed permits consented weekend
 planning capacity. Home Crew, Available, calendar matched and default Rig never
 imply attendance/approval. Every overall result remains **Validation Pending /
 Apply=false / Publish=false**. See [daily recommendations](docs/acceptance/2026-11-24-day-recommendations.md)
@@ -58,11 +63,12 @@ uv run --locked python -m rigarus_backend.day_recommendation_example
 uv run --locked python -m rigarus_backend.day_weekend_example
 ```
 
-These console examples do not create a desktop recommendation screen.
+For the desktop preview and its limits, see the [user guide](docs/USER-GUIDE.en.md#recommendations)
+and [Issue117 evidence](docs/acceptance/2026-11-25-issue-117-day-preview.md).
 
 ## Not yet available for operational dispatch
 
-- Full-day desktop scheduling, daily evidence editors and visible recommendation/resource previews. Whole-roster availability, Foreman, vehicle-category/legal policy and approval/recording authority remain independent follow-up.
+- Full-day desktop weekly boards and daily evidence editors. The WorkItem recommendation dialog is read-only and does not select actual workers/Rigs. Whole-roster availability, Foreman, vehicle-category/legal policy and approval/recording authority remain independent follow-up.
 - Safe multi-option review/Apply with locks, transaction-time revalidation/audit, delay/early-finish propagation and recoverable Published versions (#18/#29).
 - Company, Crew or employee **PDF/XLSX dispatch exports**. `Reports → Weekly Export` shows the unmet checks; export actions remain disabled. The Employee Week preview is not a sendable confirmed schedule.
 - Complete historical workbook reconciliation, cross-machine application-level backup/restore, different-version upgrade and enterprise-policy distribution acceptance. A successful Windows CI build or isolated offline VM test is **not** customer UAT or production authorization.

@@ -4,7 +4,7 @@
 
 Rigarus 是一款面向**单名办公室调度员**的 Windows 离线桌面排班软件，**无需注册或登录账号**即可使用。技术栈为 **Tauri/Rust + React/TypeScript + 随应用打包的 Python FastAPI + 本地 SQLite**。运行时不需要 Google Calendar、云同步或外部排班服务，软件界面为英文。
 
-> **工程预览版 · 2026-11-25，基线 main 7ee8d9b（人工合并 PR114）。** GitHub 代码已合并不代表客户正式验收。Demo A–F、完整派工安全检查、正式分发及 UAT 仍未完成。开发、演示和 CI 应使用合成数据；Draft 不等于正式施工派工。
+> **工程预览版 · 2026-11-25，基线 main a3da29a 加 Issue117 只读预览。** 本分支等待人工审核。GitHub 代码已合并不代表客户正式验收。Demo A–F、完整派工安全检查、正式分发及 UAT 仍未完成。开发、演示和 CI 应使用合成数据；Draft 不等于正式施工派工。
 
 所有者已于2026-11-24确认新排班使用 **Full Day**。下述桌面 AM/PM 控件仅为旧数据兼容路径，整天界面尚未完成，生产每日写入仍关闭。不得擅自合并、四舍五入或转换历史记录。[使用说明书](USER-GUIDE.zh-CN.md#scope)区分现有界面与后端能力。
 
@@ -23,7 +23,8 @@ Rigarus 是一款面向**单名办公室调度员**的 Windows 离线桌面排�
 ### 整天推荐与资源后端
 
 合并的 [PR114](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/pull/114)
-及前置切片扩展了 PR91 比较器。这些是**后端工程能力**，尚不是桌面 Auto Schedule 流程：
+及前置切片扩展了 PR91 比较器。以下后端能力现已通过 Project Management 内
+**WorkItem Auto-Recommend 只读对话框**提供预览：
 
 - 单个 WorkItem、单支 Crew；仅使用明确确认的正整数 **Remaining Days**。
   不将旧半天数或估算自动转换，不从已排记录推断完成量。
@@ -35,8 +36,11 @@ Rigarus 是一款面向**单名办公室调度员**的 Windows 离线桌面排�
 - 每日实际人员冲突、公司认可司机、明确人数/Level/独立资质、实际 Rig 占用/维修检查、
   实际员工周末同意；借调复核原 Crew 和目标 Crew。缺证据 Pending，已知阻断 Blocked。
 
-生成器**已经接入一致的真实存储快照**；推荐 API/桌面操作、人工 Apply 及生产每日写入
-仍未开放或尚未实现。仅所有相关员工 Confirmed 才可提供已同意的周末规划容量。
+生成器**已经接入一致的真实存储快照**。在已保存 WorkItem 旁选择 **Auto-Recommend**，
+明确输入并确认 Remaining Days、选择候选 Crew 和日期，再查看最早完工/开工及解释。
+Current/Stale 只是输入观察，**Apply、Publish 仍禁用**。每日证据编辑和安全人工 Apply
+尚未实现，生产每日写入仍关闭；旧 AM/PM 控件不会填充整天日历，缺少每日资料会得到
+Needs Review。仅所有相关员工 Confirmed 才可提供已同意的周末规划容量。
 Home Crew、Available、Calendar matched 和默认 Rig 都不代表实际出勤或批准。
 所有总体结果保持 **Validation Pending / Apply=false / Publish=false**。
 参阅[每日推荐验收](acceptance/2026-11-24-day-recommendations.md)和
@@ -49,11 +53,12 @@ uv run --locked python -m rigarus_backend.day_recommendation_example
 uv run --locked python -m rigarus_backend.day_weekend_example
 ```
 
-这些控制台示例不代表桌面已有推荐按钮。
+桌面预览步骤和限制见[使用说明](USER-GUIDE.zh-CN.md#recommendations)及
+[Issue117 验证记录](acceptance/2026-11-25-issue-117-day-preview.md)。
 
 ## 尚未具备的正式业务功能
 
-- 整天桌面排班、每日证据编辑、可见推荐与资源解释。全体人员可用性、Foreman、车辆类别/法律政策、审批及记录权限仍须独立完善。
+- 整天桌面周排班板和每日证据编辑。WorkItem 推荐对话框仅只读，不选择实际人员或 Rig。全体人员可用性、Foreman、车辆类别/法律政策、审批及记录权限仍须独立完善。
 - 带锁定、事务内重新验证/审计的人工 Apply、多方案审查、延期/提前完工处理及可恢复 Published 版本（#18/#29）。
 - 公司、Crew 或员工的**正式 PDF/XLSX 派工导出**。`Reports → Weekly Export` 会列出尚未满足的检查，相关按钮未开放；Employee Week 的草稿预览不能当作已确认的员工日程文件。
 - 完整历史 Excel 核对导入、应用级跨机备份恢复、不同版本号升级和企业托管设备分发验收。Windows CI 或单个虚拟机离线测试通过，**不等于**客户 UAT 或投产批准。

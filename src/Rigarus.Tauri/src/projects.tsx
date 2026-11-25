@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState, type SubmitEvent } from "react";
 import { nextSort, sortRows, type SortState } from "./table-sort";
 import { BulkProjects } from "./bulk-projects";
+import { DayRecommendationPreview } from "./day-recommendation-preview";
 import {
   projectLabels,
   projectFieldError,
@@ -92,6 +93,12 @@ export function ProjectMaster({
   const [detail, setDetail] = useState<Project>();
   const [editor, setEditor] = useState<{ project?: Project }>();
   const [bulk, setBulk] = useState(false);
+  const [dayPreview, setDayPreview] = useState<{
+    projectId: number;
+    workItemId: number;
+    jobNumber: string;
+    workType: string;
+  }>();
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -344,6 +351,21 @@ export function ProjectMaster({
                             >
                               Assign
                             </button>
+                            <button
+                              className="job-link"
+                              aria-label={`Auto-Recommend Work Item ${item.id}`}
+                              disabled={loading || item.id === null}
+                              onClick={() =>
+                                setDayPreview({
+                                  projectId: detail.id,
+                                  workItemId: item.id!,
+                                  jobNumber: detail.job_number,
+                                  workType: item.type,
+                                })
+                              }
+                            >
+                              Auto-Recommend
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -356,6 +378,13 @@ export function ProjectMaster({
             </section>
           )}
         </>
+      )}
+      {dayPreview && (
+        <DayRecommendationPreview
+          key={`${dayPreview.projectId}:${dayPreview.workItemId}`}
+          {...dayPreview}
+          onClose={() => setDayPreview(undefined)}
+        />
       )}
     </main>
   );

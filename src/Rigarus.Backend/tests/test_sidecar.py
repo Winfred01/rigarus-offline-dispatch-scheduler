@@ -18,6 +18,74 @@ from rigarus_backend.storage import DRAFT_ASSIGNMENTS, initialize_database
 
 
 class SidecarTests(unittest.TestCase):
+    def test_day_recommendation_preview_authenticated_read_only_and_restart(self):
+        token = secrets.token_hex(32)
+        process = self.launch(token)
+        port = self.read_port(process)
+        status, project = self.request(
+            port,
+            "POST",
+            "/projects",
+            token,
+            payload=dict(
+                job_number="SYN-PREVIEW-117",
+                site_id="0117",
+                site_name="Synthetic preview",
+                work_items=[
+                    dict(type="Civil", required_crew_count=1, estimated_half_days=99)
+                ],
+            ),
+        )
+        self.assertEqual(status, 201)
+        status, crew = self.request(
+            port,
+            "POST",
+            "/crews",
+            token,
+            payload=dict(name="Synthetic preview Crew", type="Civil"),
+        )
+        self.assertEqual(status, 201)
+        body = dict(
+            work_item_id=project["work_items"][0]["id"],
+            expected_project_id=project["id"],
+            crew_ids=[crew["id"]],
+            remaining_days=2,
+            remaining_confirmed=True,
+            earliest_start_date="2026-11-23",
+            horizon_end_date="2026-11-27",
+        )
+        route = "/day-recommendations/preview"
+        self.assertEqual(self.request(port, "POST", route, payload=body)[0], 401)
+        self.assertEqual(
+            self.request(
+                port,
+                "POST",
+                route,
+                token,
+                headers={"Host": "other.invalid"},
+                payload=body,
+            )[0],
+            401,
+        )
+        status, preview = self.request(port, "POST", route, token, payload=body)
+        self.assertEqual(status, 200)
+        self.assertEqual(preview["unit"], "FullDay")
+        self.assertEqual(
+            preview["ranked_crew_ids"], []
+        )  # No explicit daily calendars: never assume capacity.
+        self.assertFalse(preview["applyable"] or preview["publishable"])
+        proof = dict(query=body, input_fingerprint=preview["input_fingerprint"])
+        process.stdin.close()
+        self.assertEqual(process.wait(timeout=10), 0)
+        token = secrets.token_hex(32)
+        process = self.launch(token)
+        port = self.read_port(process)
+        status, freshness = self.request(
+            port, "POST", "/day-recommendations/freshness", token, payload=proof
+        )
+        self.assertEqual((status, freshness["status"]), (200, "Current"))
+        self.assertFalse(freshness["applyable"] or freshness["publishable"])
+
     def test_daily_inputs_authenticated_slotless_and_default_write_gate_closed(self):
         token = secrets.token_hex(32)
         process = self.launch(token)
