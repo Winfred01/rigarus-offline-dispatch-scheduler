@@ -3,8 +3,8 @@
 [中文使用说明书](USER-GUIDE.zh-CN.md) · [Project README](../README.md)
 
 **Edition:** November25,2026 engineering preview. **Source baseline:** main
-`7ee8d9b`, human-merged PR114. The desktop interface is English. This guide
-describes that source baseline; confirm the commit of your installed build.
+`a3da29a` plus Issue117 read-only preview (awaiting human review). The desktop
+interface is English. Confirm the commit of your installed build.
 It is an operator reference, not customer acceptance or production authorization.
 
 ## Contents
@@ -45,7 +45,8 @@ or assume an AM/PM record proves a whole day.
 | Weekly boards, existing Drafts, actual worker selection, Locate | Desktop legacy compatibility available |
 | Working calendars and employee availability | Desktop half-day controls; independent daily backend also exists |
 | Full-day Drafts, daily date generation and resource checks | Backend engineering; production daily writes remain closed |
-| Visible full-day recommendations and complete daily editing | Awaiting desktop integration |
+| Full-day WorkItem Auto-Recommend | Read-only date alternatives, explanations and Current/Stale checks |
+| Complete daily editing and full-day weekly boards | Awaiting desktop integration |
 | Human Apply, locks, transaction revalidation, recoverable versions | Awaiting complete workflow |
 | Published schedules and company/Crew/employee PDF/Excel | Unavailable; export controls remain disabled |
 
@@ -266,10 +267,31 @@ not create daily assignments, infer WorkItems or reconcile real historic schedul
 <a id="recommendations"></a>
 ## 13. Daily recommendations and status meanings
 
-There is no operator-facing daily recommendation or weekend-consent editor yet.
-The backend can accumulate explicitly confirmed Remaining Days across allowed
-dates, compare earliest finish/start and inspect coherent resource evidence.
-It never derives Remaining Days from old half-days, estimates or scheduled visits.
+In **Project Management**, open a saved Project and choose **Auto-Recommend**
+beside its WorkItem. This reads the existing daily snapshot; it saves no assignment.
+
+1. Enter a positive whole number of **Remaining Days** and explicitly confirm it.
+   Nothing is prefilled from estimated half-days or deducted from saved visits.
+2. Select candidate Crews as alternatives, not simultaneous staffing. Select local
+   start/end dates (inclusive, at most366 dates) and1–10 alternatives (default3).
+3. Choose **Preview full-day dates**. **Earliest Finish** is the default;
+   **Earliest Start** rebuilds the same input with that sort order.
+4. Expand **Dates and missing checks** for accumulated/skipped dates, reasons and
+   missing-check counts. Incomplete candidates show Needs Review without a false
+   finish. A result limit omits additional complete alternatives, not their capacity.
+5. **Recheck inputs** distinguishes Current, Stale and Unavailable. Returning to the
+   window also rechecks. Current is true only at the last read, never a reservation.
+   Changed inputs require another preview. Editing inputs clears old output.
+6. **Close preview** or Escape cancels the read-only dialog and returns focus.
+   Reopening starts with blank, unconfirmed Remaining Days.
+
+All cards stay **Validation pending**. Actual workers and Rig are not selected;
+**Apply to Draft** and **Publish** remain disabled. Production daily writers and
+daily calendar/consent evidence editors remain closed or unimplemented. Old AM/PM
+calendar controls do not create full-day facts. Without explicit daily input,
+expect Unknown/Needs Review; ask the maintainer to use an isolated synthetic
+profile for engineering demonstrations. Do not edit a customer database manually.
+
 Weekend planning needs every relevant worker Confirmed; partial/Pending/refusal
 cannot shorten a plan through that weekend.
 

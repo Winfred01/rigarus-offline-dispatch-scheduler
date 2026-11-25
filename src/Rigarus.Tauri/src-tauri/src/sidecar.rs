@@ -141,6 +141,23 @@ impl Sidecar {
         self.search("/projects", term)
     }
 
+    pub fn day_recommendations(&self, action: &str, input: &Value) -> Result<Value, String> {
+        let path = match action {
+            "preview" => "/day-recommendations/preview",
+            "freshness" => "/day-recommendations/freshness",
+            _ => return Err("Choose preview or freshness recheck.".into()),
+        };
+        if input.to_string().len() > 16_384 {
+            return Err("The recommendation input exceeds the supported size.".into());
+        }
+        self.send(
+            self.client
+                .post(self.url(path))
+                .json(input)
+                .timeout(Duration::from_secs(60)),
+        )
+    }
+
     pub fn search_crews(&self, term: &str) -> Result<Value, String> {
         self.search("/crews", term)
     }

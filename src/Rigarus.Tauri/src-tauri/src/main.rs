@@ -55,6 +55,18 @@ async fn search_projects(app: tauri::AppHandle, term: String) -> Result<Value, S
 }
 
 #[tauri::command]
+async fn day_recommendations(
+    app: tauri::AppHandle,
+    action: String,
+    input: Value,
+) -> Result<Value, String> {
+    with_sidecar(app, move |service| {
+        service.day_recommendations(&action, &input)
+    })
+    .await
+}
+
+#[tauri::command]
 async fn read_availability(
     app: tauri::AppHandle,
     employee_id: i64,
@@ -307,6 +319,7 @@ fn main() {
             read_demo,
             save_demo_note,
             search_projects,
+            day_recommendations,
             list_assignments,
             read_availability,
             read_working_calendar,

@@ -2,7 +2,7 @@
 
 [English user guide](USER-GUIDE.en.md) · [中文项目概览](README.zh-CN.md)
 
-**文档版本：**2026-11-25 工程预览。**源码基线：**main `7ee8d9b`，已人工合并 PR114。
+**文档版本：**2026-11-25 工程预览。**源码基线：**main `a3da29a` 加 Issue117 只读预览，等待人工审核。
 软件界面为英文，本文保留实际英文按钮名称，方便对照。使用前核对所安装构建的提交；
 本说明书不是客户验收签收或生产派工许可。
 
@@ -42,7 +42,8 @@ Rigarus 面向一名本地调度员，运行于 Windows，无需软件账号或�
 | 周排班板、既有草稿、明确选人、Locate | 桌面旧数据兼容流程可用 |
 | 工作日历、员工可用性 | 桌面为半天控件；另有独立每日后端 |
 | 整天 Draft、每日日期生成及资源检查 | 后端工程能力；生产每日写入仍关闭 |
-| 可见整天推荐、完整每日编辑 | 等待桌面接入 |
+| 整天 WorkItem Auto-Recommend | 只读日期候选、解释及 Current/Stale 检查 |
+| 完整每日编辑、整天周排班板 | 等待桌面接入 |
 | 人工 Apply、锁定、事务复核、可恢复版本 | 等待完整操作流程 |
 | 正式排班及公司/Crew/员工 PDF、Excel | 尚不可用，导出按钮仍禁用 |
 
@@ -232,9 +233,25 @@ Bulk Add 不会创建每日排班、推断工作项或自动核对历史实际�
 <a id="recommendations"></a>
 ## 13. 整天推荐与状态解释
 
-目前没有面向操作员的每日推荐或周末同意编辑器。后端可以用明确确认的 Remaining Days
-逐日跨间隔累计、按最早完工/开工比较，并检查一致的资源证据。
-它不会从旧半天数、估算或既有访问推断 Remaining Days。
+在 **Project Management** 打开已保存 Project，选择其 WorkItem 旁的
+**Auto-Recommend**。它只读取每日快照，不保存排班。
+
+1. 输入正整数 **Remaining Days**，并明确勾选本次确认；不会预填半天估算或扣减旧访问。
+2. 选择候选 Crew；这些是替代方案，不是同时出勤人员。选择含首尾的本地日期范围
+   （最多366天）及1–10个候选（默认3）。
+3. 点击 **Preview full-day dates**；默认 **Earliest Finish**，切换
+   **Earliest Start** 会按相同输入重新生成并排序。
+4. 展开 **Dates and missing checks**，查看累计/跳过日期、原因及缺失检查次数。
+   不足容量会显示 Needs Review，不伪造完工日期；数量上限只隐藏额外完整日期候选。
+5. **Recheck inputs** 区分 Current、Stale、Unavailable；回到窗口也会重新检查。
+   Current 仅代表上次读取时相同，不预留资源。Stale 必须重建；修改输入会清空旧结果。
+6. **Close preview** 或 Escape 关闭并返回入口焦点；重开时工期为空且尚未确认。
+
+所有卡片保持 **Validation pending**，不选择实际人员或 Rig，**Apply to Draft**
+及 **Publish** 禁用。生产每日写入、每日日历及同意证据编辑仍关闭或尚未实现。
+旧 AM/PM 日历不会生成整天事实；没有明确每日资料时应得到 Unknown/Needs Review。
+工程演示请维护人员提供隔离合成资料，不要手工修改客户数据库。
+
 周末必须由所有相关员工 Confirmed；部分确认、Pending 或拒绝不能用该周末缩短工期。
 
 | 状态 | 含义与处理 |

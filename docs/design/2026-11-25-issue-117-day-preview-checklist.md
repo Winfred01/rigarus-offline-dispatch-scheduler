@@ -62,3 +62,28 @@ Preview/locks/transaction revalidation/Apply/audit/version recovery, publication
 and PDF/Excel remain later #99/#18/#29 slices. No critical original design is
 missing for this bounded read-only modal. Actual approval/Foreman/category/legal
 policies remain independent Open rules, never inferred from a positive subcheck.
+
+## Source versions and implementation outcome
+
+At baseline a3da29a: AGENTS revision d3b9bea; docs00/09/02/03/05 revision
+7604d2a; docs10 revision f966ad7. Existence/UTC mtimes and SHA256 are recorded in
+the local inventory. UI November24 SHA256
+`d8a7c0de16dcbbe3c0a4aafe62ab136b4ef4c58737c2fb6c6d818f7981cf743c`,
+local mtime 2026-11-24T23:15:38.711423Z. No original content copied into Git.
+Main was re-fetched during delivery and remained a3da29a.
+
+Implemented readonly HTTP projection, authenticated fixed-path Rust actions,
+Project WorkItem modal, pure form/request state, tests and bilingual guidance.
+No migration/schema18 change, dependency update or production writer opening.
+Native screenshot comparison confirms L13 dialog hierarchy, explicit inputs,
+dual sort and expandable reasons. FullDay/Pending and disabled Apply replace
+unapproved prototype half-day/feasible/active-action examples intentionally.
+Quantity-limited complete alternatives are omitted, not mislabeled incomplete.
+
+Actual native checks used an isolated synthetic profile on a connected developer
+Windows host, not a VM or installed package. Both sorts, skipped/resource reasons,
+Stale after deliberate synthetic input edit, Escape/focus return, reopen reset,
+invalid zero and final-build result limit passed. Narrow-screen/assistive-reader,
+induced late HTTP race and disconnected installer rollout remain NOT RUN. Epoch
+unit checks do not replace those interaction cases. See the detailed
+[engineering matrix](../acceptance/2026-11-25-issue-117-day-preview.md).
