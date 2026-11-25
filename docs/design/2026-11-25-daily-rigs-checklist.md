@@ -86,3 +86,19 @@ production daily gates closed. Follow #27 actual-worker consent, then daily UI,
 visible preview/manual Apply, version history and PDF/Excel. No automatic merge,
 Release, Issue closure, actual customer database or original-data upload. Customer
 Demo D/E/UAT and production acceptance remain separate and pending.
+
+Pre-test refinement: existing legacy Draft move errors must report a known Rig
+collision as409, rather than storage503; no route/write-gate shape changes. Readers
+validate independent period ranges and legacy confirmation flags before issuing
+a source fingerprint. Current means consumed logical-state equality, not a lock.
+Projected Rig observations explicitly identify Proposed evidence; persisted
+operational evidence requires a saved allocation revision. Planning assertions
+remain subject to transaction/operator/category validation, not saved assignment.
+
+## Engineering results
+
+Main CI45558589366 subsequently succeeded. Recorded/current WorkItem and parent
+identities are preserved separately after context moves. All actual local outcomes
+and limits,597 distinct regressions/39 focused Rig cases and prior-binary recovery
+are in [acceptance](../acceptance/2026-11-25-daily-rigs.md). Exact-head CI is recorded
+after push in the final Draft PR. No GUI/offline/customer acceptance is inferred.

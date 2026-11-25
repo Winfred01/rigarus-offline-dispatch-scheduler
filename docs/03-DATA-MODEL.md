@@ -1,5 +1,48 @@
 # SQLite data model
 
+## Dated Rig allocation and independent conditions (schema seventeen, #111)
+
+Necessary additive `20261125020000_AddDailyRigs` follows16. No previous table values,
+IDs, Slot, notes, employee/vehicle/default links, revisions/history or FKs change.
+
+| Table | Purpose |
+| --- | --- |
+| RigAllocations | Immutable identity, exactly one unique DayAssignmentId or LegacyAssignmentId with RESTRICT FKs |
+| RigAllocationChanges | Append-only positive owner revision, assignment revision/current-time WorkItem/Project/Crew/local date, original/actual Rig FKs, explicit company/full-day/operational flags, reviewed native condition revision, bounded reference and separate UTC event time |
+| RigConditionPeriods | Immutable Rig/kind identity; independent Maintenance/Inspection/OutOfService records can overlap |
+| RigConditionChanges | Append-only positive period revision, canonical inclusive dates, Active/Cancelled, explicit confirmation/reference and UTC event time |
+
+Four views expose current conditions, saved visit context, current allocation and
+conservative daily occupancy. Indexes support Rig condition/current allocation
+lookups. SQL context/original-identity/readiness/collision triggers protect event
+appends; Rig move triggers extend existing saved day/legacy updates/restores.
+Full-day readiness cannot be attached to a legacy half; positive assertions cannot
+override inactive/active-condition blocks or a changed native condition revision.
+Same Rig/date across Crews rejects under concurrent writes; same-Crew old halves
+can retain a vehicle. Cancelled releases capacity. Stale recorded/current claims
+retain both dates/Crews until explicit review; original/current WorkItem/Project
+context and all events stay visible. History/identity UPDATE/DELETE rejects.
+
+Internal stores use BEGIN IMMEDIATE, expected assignment/allocation/condition
+revisions, explicit original/actual/operational input and reference; event/identity
+creation rolls back together. Period cancellation is per identity, never a blanket
+clear of overlapping records. No-op is not a fresh readiness approval. Master
+Active/default link does not grant readiness/attendance/category qualification.
+No new allocation/condition HTTP writer or desktop write gate is enabled.
+
+Recognized16 startup receives an independent verified pre-DDL backup under the
+write reservation. DDL/views/triggers/history all roll back on failure, backup
+failure aborts before DDL, current17 reopens idempotently. Recovery uses verified16
+backup plus compatible prior binary; retain live17 separately for reconciliation
+of later edits. Never delete migration history or overwrite the newer profile
+to downgrade. [Evidence](acceptance/2026-11-25-daily-rigs.md) covers actual16→17
+sidecar upgrade, prior-binary rejection and independent backup reopening.
+
+Daily snapshot format v5 adds canonical Rig observations/nominees/native revisions
+to existing logical SHA256 in one query-only transaction; rebuild v4 proofs.
+Legacy reader refuses relevant new Rig observations. Snapshot reads never migrate16.
+Current schema is17; earlier sections retain historical slice identities.
+
 ## Daily policy and qualification provenance (schema sixteen, #109)
 
 Necessary additive `20261125010000_AddDailyCapabilities` follows15. Existing

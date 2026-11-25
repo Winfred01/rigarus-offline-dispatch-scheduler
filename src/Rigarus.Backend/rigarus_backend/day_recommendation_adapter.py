@@ -20,6 +20,8 @@ from .day_drafts import ConfirmedRemainingDays, positive_id
 from .driver_store import snapshot as driver_snapshot
 from .daily_driver_store import snapshot as daily_driver_snapshot
 from .daily_capability_store import snapshot as daily_capability_snapshot
+from .daily_rig_store import rig_sources
+from .daily_rig_validation import DailyRigValidation
 from .recommendation_generator import _range
 from .recommendation_comparison import SortOrder, validate_comparison_settings
 from .recommendation_adapter import (
@@ -53,7 +55,7 @@ from .day_recommendation_generator import (
     generate_days_and_compare,
 )
 
-FORMAT = "rigarus-day-recommendation-input-v4"
+FORMAT = "rigarus-day-recommendation-input-v5"
 MAX_READ_UNITS = 100_000
 MAX_READ_BYTES = 64 * 1024 * 1024
 READ_SECONDS = 30
@@ -80,8 +82,23 @@ class DayRecommendationQuery:
     order: SortOrder = "EarliestFinish"
     max_options: int = 3
     proposed_employee_ids: tuple[int, ...] = ()
+    proposed_rig_ids: tuple[int, ...] = ()
 
     def __post_init__(self):
+        if (
+            type(self.proposed_rig_ids) is not tuple
+            or len(self.proposed_rig_ids) > 1000
+        ):
+            raise ValueError(
+                "Supply at most1000 immutable Rig nominees for observation only."
+            )
+        for identity in self.proposed_rig_ids:
+            positive_id(identity)
+        if len(set(self.proposed_rig_ids)) != len(self.proposed_rig_ids):
+            raise ValueError("Duplicate Rig nominees require resolution.")
+        object.__setattr__(
+            self, "proposed_rig_ids", tuple(sorted(self.proposed_rig_ids))
+        )
         positive_id(self.work_item_id)
         if self.expected_project_id is not None:
             positive_id(self.expected_project_id)
@@ -246,6 +263,7 @@ class DayRecommendationSnapshot:
     employees: tuple[DayEmployeeSource, ...]
     legacy_capability_sources: CapabilitySources
     daily_capability_sources: tuple[DailyCapabilitySource, ...]
+    rig_source_json: str
     validation_status: Literal["Pending"] = field(default="Pending", init=False)
     applyable: Literal[False] = field(default=False, init=False)
     publishable: Literal[False] = field(default=False, init=False)
@@ -397,6 +415,18 @@ def _read_day_sources(c, query, source_id, migrations):
         ).fetchall()
         for (code,) in codes:
             read_capability("Employee", identity, code)
+    try:
+        rig_source = rig_sources(
+            c,
+            query.earliest_start_date,
+            query.horizon_end_date,
+            query.crew_ids,
+            query.proposed_rig_ids,
+        )
+    except LookupError:
+        raise SnapshotNotFound("A proposed or observed Rig was not found.") from None
+    rig_json = canonical(rig_source)
+    c.charge_bytes(len(rig_json.encode("utf-8")))
     return DayRecommendationSnapshot(
         source_id,
         query,
@@ -409,6 +439,7 @@ def _read_day_sources(c, query, source_id, migrations):
         tuple(employees),
         capability,
         tuple(daily_capabilities),
+        rig_json,
     )
 
 
@@ -504,6 +535,7 @@ class PersistedDayRecommendations:
     personnel_validation: DailyPersonnelValidation
     driver_validation: "DailyDriverValidation"
     capability_validation: "DailyCapabilityValidation"
+    rig_validation: DailyRigValidation
     pending_validators: tuple[str, ...] = field(default=PENDING_VALIDATORS, init=False)
     validation_status: Literal["Pending"] = field(default="Pending", init=False)
     applyable: Literal[False] = field(default=False, init=False)
@@ -513,6 +545,7 @@ class PersistedDayRecommendations:
 def generate_from_day_snapshot(snapshot: DayRecommendationSnapshot):
     from .daily_driver_validation import validate_day_snapshot_drivers
     from .daily_capability_validation import validate_day_snapshot_capabilities
+    from .daily_rig_validation import validate_day_snapshot_rigs
 
     requests = day_generation_requests(snapshot)
     q = snapshot.query
@@ -534,6 +567,7 @@ def generate_from_day_snapshot(snapshot: DayRecommendationSnapshot):
         validate_day_snapshot_personnel(snapshot),
         validate_day_snapshot_drivers(snapshot),
         validate_day_snapshot_capabilities(snapshot),
+        validate_day_snapshot_rigs(snapshot),
     )
 
 

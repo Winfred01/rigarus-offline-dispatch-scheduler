@@ -95,6 +95,7 @@ def remove_daily_driver_schema(connection):
 
 
 def remove_daily_capability_schema(connection):
+    remove_daily_rig_schema(connection)
     # Synthetic15 reconstruction only, never operational downgrade.
     from rigarus_backend.daily_capability_migration import DAILY_CAPABILITIES
 
@@ -102,4 +103,29 @@ def remove_daily_capability_schema(connection):
         connection.execute(f"DROP TABLE IF EXISTS {table}")
     connection.execute(
         "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?", (DAILY_CAPABILITIES,)
+    )
+
+
+def remove_daily_rig_schema(connection):
+    # Synthetic schema16 reconstruction only, never an operational downgrade.
+    from rigarus_backend.daily_rig_migration import DAILY_RIGS
+
+    for table in ("DayDraftAssignments", "DraftAssignments"):
+        connection.execute(f"DROP TRIGGER IF EXISTS {table}_RigMove")
+    for view in (
+        "RigDailyOccupancy",
+        "RigCurrentAllocations",
+        "RigAssignmentContexts",
+        "RigCurrentConditions",
+    ):
+        connection.execute(f"DROP VIEW IF EXISTS {view}")
+    for table in (
+        "RigAllocationChanges",
+        "RigAllocations",
+        "RigConditionChanges",
+        "RigConditionPeriods",
+    ):
+        connection.execute(f"DROP TABLE IF EXISTS {table}")
+    connection.execute(
+        "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?", (DAILY_RIGS,)
     )

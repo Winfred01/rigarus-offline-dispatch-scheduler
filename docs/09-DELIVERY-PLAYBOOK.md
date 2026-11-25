@@ -1,5 +1,14 @@
 # Delivery playbook for repository use
 
+Rig engineering preview: `python -m rigarus_backend.day_rig_example` in the locked
+backend environment. R1 repair blocks; proposed R2 already occupied by another
+Crew is Blocked. After cancelling that other visit, a detached R2 replacement
+satisfies Rig subchecks only, while database actual remains R1. Generated-date
+unstaffed planning remains Pending, then condition edit makes the proof Stale.
+All full validation/Apply/Publish remains Pending/false/false. See
+[actual checks](acceptance/2026-11-25-daily-rigs.md). No native/offline UI or customer
+dispatch approval follows from these checks; #27 then visible daily UI follows.
+
 Daily2C3 engineering preview: `python -m rigarus_backend.day_capability_example`
 in the locked backend environment. Synthetic source and target both retain
 eligible drivers, yet borrowing below the source's explicit member/Level minimum
