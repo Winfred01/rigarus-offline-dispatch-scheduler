@@ -1,5 +1,66 @@
 # Architecture
 
+## Daily explicit capability validation (#109,2C3)
+
+`daily_capability_store.py` records slotless WorkItem requirements or exact-code
+Employee qualifications using shared immutable capability owner identities and
+new daily-only history/cells. Explicit company/full-day confirmation/reference,
+expected revision/range review token and old-evidence acknowledgement are required.
+No threshold, Level hierarchy, certificate or company policy is seeded. Reuse
+CapabilityRequirements: positive member minimum, all three Level minima, explicit
+Exact/AtLeast and explicit qualification-code/count list. Counts may overlap
+independently; no disjoint-role allocation/legal equivalence is inferred. Explicit
+empty qualification list differs from missing policy; None/Unknown tombstones
+never resurrect old positives. This internal recorder adds no HTTP/UI writer.
+
+Old positive policies/qualifications, including both halves or a legacy FullDay
+event, never supply daily confirmation. Old NotVerified is conservative negative;
+only fresh reviewed daily Verified can supersede it without rewriting history.
+Legacy native revisions/per-date receipts expire positives after later edits,
+even out-of-range edits. Stale/missing daily policy returns no effective policy;
+known daily qualification negatives remain negative even if stale.
+
+`daily_capability_validation.py` is pure and indexes whole local dates. Actual
+explicit workers only: active, daily Available and complete collision-clear
+context supplies confirmed counts. Unknown metadata/availability/proofs supplies
+possible capacity only; inactive/Unavailable/colliding workers cannot count.
+For every member/Level/code minimum, a known possible upper bound below the
+requirement is Blocked, enough confirmed capacity satisfies that subcheck,
+otherwise Pending. Unconfigured roster has no known upper bound; configured
+empty roster is known zero. Legacy half-day attendance cannot prove a complete
+daily roster and its counts stay Pending. Level never proves qualification and
+qualification never changes Level. Known Crew inactivity/type mismatch blocks;
+Small/Other mapping remains Pending. Foreman policy remains separately Pending.
+
+Snapshot v4 captures every related source/target WorkItem policy, actual/proposed
+employee qualification owner/code/revision/current cells/raw legacy/receipts in
+the existing single pinned query-only transaction. Earlier half-day observations
+remain separate. Same-query SHA256/Current-Stale binds all consumed sources;
+new/old policy/proof, actual members, metadata and availability changes invalidate
+prior input. Existing100,000 units/deadline plus shared64MiB SQL/projected-text
+budget and per-owner250,000-character retained legacy source prevent payload
+amplification. Exceeded bounds fail without a partial fingerprint. Rebuild v3.
+
+`day_capability_proposal.py` calls PR108's exact-plan/explicit source override
+checker and uses precisely those detached before/after rosters. It adds saved,
+target and borrowed source capability counts, keeps stable record/WorkItem/
+Project IDs/revisions, and propagates CrewType/MinimumStaffing/Skills/Qualifications
+from both source and target to PR91 day comparison. Driver pass cannot mask a
+source shortfall. Unrelated saved failures remain visible separately from the
+candidate-related state. Missing evidence Pending; known blocker excludes before
+limit; date sorting remains stable. Proposal SHA binds the driver's normalized
+input/member/override proof and a new capability contract identity. Freshness is
+source equality then, not a lock/Apply authorization.
+
+Root results always Validation Pending / Apply=false / Publish=false. Entire
+roster availability, Foreman, actual Rig, weekend consent and operator review
+remain separate; no inferred attendance, source removal, staffing write, legal
+certification, production write-gate opening or UI/API/export change. Technical
+evidence/evaluation bounds100,000 and at most32 qualification codes keep indexed
+counting bounded; no employee-pair comparisons. See [design](design/2026-11-25-daily-capabilities-checklist.md)
+and [checks](acceptance/2026-11-25-daily-capabilities.md). Older sections below
+retain their historical slice contracts, superseded for new daily scheduling.
+
 ## Full-date company-approved drivers (#107,2C2)
 
 `daily_driver_store.py` records independent slotless, explicitly company/full-day

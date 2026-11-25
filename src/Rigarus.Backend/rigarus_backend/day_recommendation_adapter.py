@@ -19,6 +19,7 @@ from .day_draft_store import read_day
 from .day_drafts import ConfirmedRemainingDays, positive_id
 from .driver_store import snapshot as driver_snapshot
 from .daily_driver_store import snapshot as daily_driver_snapshot
+from .daily_capability_store import snapshot as daily_capability_snapshot
 from .recommendation_generator import _range
 from .recommendation_comparison import SortOrder, validate_comparison_settings
 from .recommendation_adapter import (
@@ -42,6 +43,7 @@ from .daily_personnel_conflicts import (
     validate_daily_employee_conflicts,
 )
 from .daily_driver_validation import DailyDriverValidation
+from .daily_capability_validation import DailyCapabilityValidation
 from .day_recommendation_generator import (
     DayCalendar,
     DayCalendarCell,
@@ -51,8 +53,9 @@ from .day_recommendation_generator import (
     generate_days_and_compare,
 )
 
-FORMAT = "rigarus-day-recommendation-input-v3"
+FORMAT = "rigarus-day-recommendation-input-v4"
 MAX_READ_UNITS = 100_000
+MAX_READ_BYTES = 64 * 1024 * 1024
 READ_SECONDS = 30
 
 
@@ -120,6 +123,7 @@ class ReadBudget:
     def __init__(self, connection):
         self.connection = connection
         self.remaining = MAX_READ_UNITS
+        self.remaining_bytes = MAX_READ_BYTES
 
     def charge(self, amount):
         self.remaining -= amount
@@ -129,6 +133,25 @@ class ReadBudget:
     def execute(self, sql, parameters=()):
         return BudgetCursor(self.connection.execute(sql, parameters), self)
 
+    def charge_bytes(self, amount):
+        self.remaining_bytes -= amount
+        if self.remaining_bytes < 0:
+            raise SnapshotReadError("READ_LIMIT_EXCEEDED")
+
+    def charge_rows(self, rows):
+        self.charge(len(rows))
+        self.charge_bytes(
+            sum(
+                len(value.encode("utf-8"))
+                if isinstance(value, str)
+                else len(value)
+                if isinstance(value, bytes)
+                else 0
+                for row in rows
+                for value in row
+            )
+        )
+
 
 class BudgetCursor:
     def __init__(self, cursor, budget):
@@ -136,12 +159,13 @@ class BudgetCursor:
 
     def fetchone(self):
         row = self.cursor.fetchone()
-        self.budget.charge(int(row is not None))
+        if row is not None:
+            self.budget.charge_rows((row,))
         return row
 
     def fetchmany(self, size):
         rows = self.cursor.fetchmany(min(size, self.budget.remaining + 1))
-        self.budget.charge(len(rows))
+        self.budget.charge_rows(rows)
         return rows
 
     def fetchall(self):
@@ -202,6 +226,14 @@ class DayEmployeeSource:
 
 
 @dataclass(frozen=True)
+class DailyCapabilitySource:
+    scope: str
+    subject_id: int
+    code: str
+    payload_json: str
+
+
+@dataclass(frozen=True)
 class DayRecommendationSnapshot:
     source_id: str
     query: DayRecommendationQuery
@@ -213,6 +245,7 @@ class DayRecommendationSnapshot:
     legacy_assignments: tuple[AssignmentSource, ...]
     employees: tuple[DayEmployeeSource, ...]
     legacy_capability_sources: CapabilitySources
+    daily_capability_sources: tuple[DailyCapabilitySource, ...]
     validation_status: Literal["Pending"] = field(default="Pending", init=False)
     applyable: Literal[False] = field(default=False, init=False)
     publishable: Literal[False] = field(default=False, init=False)
@@ -310,6 +343,7 @@ def _read_day_sources(c, query, source_id, migrations):
             c, scope, identity, query.earliest_start_date, query.horizon_end_date
         )
         c.charge(len(raw["entries"]))
+        c.charge_bytes(len(canonical(raw).encode("utf-8")))
         daily.append(DailySource(scope, identity, canonical(raw)))
 
     read_daily("Project", work.project_id)
@@ -333,12 +367,36 @@ def _read_day_sources(c, query, source_id, migrations):
             c, identity, query.earliest_start_date, query.horizon_end_date
         )
         c.charge(len(daily_driver["entries"]))
+        c.charge_bytes(len(canonical(daily_driver).encode("utf-8")))
         employees.append(
             DayEmployeeSource(
                 identity, metadata, canonical(driver), canonical(daily_driver)
             )
         )
     capability = _capability_sources(c, query, (*legacy, *days), employee_ids, 0)
+    daily_capabilities = []
+
+    def read_capability(scope, subject, code):
+        raw = daily_capability_snapshot(
+            c, scope, subject, code, query.earliest_start_date, query.horizon_end_date
+        )
+        c.charge(len(raw["entries"]))
+        c.charge_bytes(len(canonical(raw).encode("utf-8")))
+        daily_capabilities.append(
+            DailyCapabilitySource(scope, subject, code, canonical(raw))
+        )
+
+    for identity in sorted(
+        {work.work_item_id, *(i.work_item_id for i in capability.work_items)}
+    ):
+        read_capability("WorkItem", identity, "")
+    for identity in sorted(employee_ids):
+        codes = c.execute(
+            "SELECT Code FROM CapabilityEvidenceOwners WHERE EmployeeId=? ORDER BY Code",
+            (identity,),
+        ).fetchall()
+        for (code,) in codes:
+            read_capability("Employee", identity, code)
     return DayRecommendationSnapshot(
         source_id,
         query,
@@ -350,6 +408,7 @@ def _read_day_sources(c, query, source_id, migrations):
         legacy,
         tuple(employees),
         capability,
+        tuple(daily_capabilities),
     )
 
 
@@ -444,6 +503,7 @@ class PersistedDayRecommendations:
     crew_reviews: tuple[CrewReview, ...]
     personnel_validation: DailyPersonnelValidation
     driver_validation: "DailyDriverValidation"
+    capability_validation: "DailyCapabilityValidation"
     pending_validators: tuple[str, ...] = field(default=PENDING_VALIDATORS, init=False)
     validation_status: Literal["Pending"] = field(default="Pending", init=False)
     applyable: Literal[False] = field(default=False, init=False)
@@ -452,6 +512,7 @@ class PersistedDayRecommendations:
 
 def generate_from_day_snapshot(snapshot: DayRecommendationSnapshot):
     from .daily_driver_validation import validate_day_snapshot_drivers
+    from .daily_capability_validation import validate_day_snapshot_capabilities
 
     requests = day_generation_requests(snapshot)
     q = snapshot.query
@@ -472,6 +533,7 @@ def generate_from_day_snapshot(snapshot: DayRecommendationSnapshot):
         ),
         validate_day_snapshot_personnel(snapshot),
         validate_day_snapshot_drivers(snapshot),
+        validate_day_snapshot_capabilities(snapshot),
     )
 
 

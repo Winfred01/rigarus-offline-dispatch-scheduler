@@ -1,5 +1,13 @@
 # Project plan for repository use
 
+Daily2C3 (#109/#25), following human-merged PR108, adds explicit daily
+minimum members/Level policy/separate qualifications and both-Crew borrowing
+rechecks. Independent schema16 evidence and snapshot v4 never promote legacy
+half-day proof. See [design](design/2026-11-25-daily-capabilities-checklist.md)
+and [evidence](acceptance/2026-11-25-daily-capabilities.md). All overall results
+Pending/false flags, production daily writes closed. Actual #24 Rig/#27 consent,
+then visible daily UI/manual Apply remain next; no customer acceptance implied.
+
 Daily2C2 (#107/#23) adds independent full-date company-driver assertions and
 actual-worker checks, coherent schema15/v3 snapshots, and explicit read-only
 borrowing previews that recheck source and destination. Old half-day approval
