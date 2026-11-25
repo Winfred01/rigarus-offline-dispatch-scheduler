@@ -56,6 +56,14 @@ def assignment_router(database_path: Path) -> APIRouter:
         except ValueError as error:
             raise HTTPException(422, str(error)) from error
         except sqlite3.Error as error:
+            if (
+                isinstance(error, sqlite3.IntegrityError)
+                and str(error) == "Rig already occupies this date for another Crew."
+            ):
+                raise HTTPException(
+                    409,
+                    "Rig conflict on the target date. Reload actual vehicle allocations before moving this visit.",
+                ) from error
             raise HTTPException(
                 503,
                 "Could not access draft assignments. Check disk access, then reload before retrying.",

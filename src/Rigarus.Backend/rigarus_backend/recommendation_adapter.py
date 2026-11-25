@@ -82,6 +82,7 @@ CURRENT_HISTORY = (
     storage.DAILY_CALENDARS,
     storage.DAILY_DRIVERS,
     storage.DAILY_CAPABILITIES,
+    storage.DAILY_RIGS,
 )
 CURRENT_TABLES = storage.CREW_TABLES | {
     "Employees",
@@ -99,6 +100,7 @@ CURRENT_TABLES = storage.CREW_TABLES | {
     *storage.DAILY_TABLES,
     *storage.DAILY_DRIVER_TABLES,
     *storage.DAILY_CAPABILITY_TABLES,
+    *storage.DAILY_RIG_TABLES,
 }
 
 
@@ -431,6 +433,24 @@ def _capability_sources(connection, query, assignments, employee_ids, observed_c
 
 
 def _read_sources(connection, query, source_id, migrations):
+    if (
+        connection.execute(
+            "SELECT 1 FROM RigCurrentAllocations WHERE LocalDate BETWEEN ? AND ? OR RecordedDate BETWEEN ? AND ? LIMIT 1",
+            (
+                query.earliest_start_date,
+                query.horizon_end_date,
+                query.earliest_start_date,
+                query.horizon_end_date,
+            ),
+        ).fetchone()
+        or connection.execute(
+            "SELECT 1 FROM RigCurrentConditions WHERE StartDate<=? AND EndDate>=? LIMIT 1",
+            (query.horizon_end_date, query.earliest_start_date),
+        ).fetchone()
+    ):
+        raise SnapshotContextError(
+            "DAILY_RIG_ADAPTER_REQUIRED: actual daily Rig data cannot be ignored by the half-day generator."
+        )
     if connection.execute(
         "SELECT 1 FROM DailyCapabilityCells WHERE LocalDate BETWEEN ? AND ? LIMIT 1",
         (query.earliest_start_date, query.horizon_end_date),
@@ -809,7 +829,9 @@ def check_snapshot_freshness(
             "Stale",
             snapshot.input_fingerprint,
             None,
-            "DAILY_CAPABILITY_ADAPTER_REQUIRED"
+            "DAILY_RIG_ADAPTER_REQUIRED"
+            if str(error).startswith("DAILY_RIG_ADAPTER_REQUIRED:")
+            else "DAILY_CAPABILITY_ADAPTER_REQUIRED"
             if str(error).startswith("DAILY_CAPABILITY_ADAPTER_REQUIRED:")
             else "DAILY_DRIVER_ADAPTER_REQUIRED"
             if str(error).startswith("DAILY_DRIVER_ADAPTER_REQUIRED:")

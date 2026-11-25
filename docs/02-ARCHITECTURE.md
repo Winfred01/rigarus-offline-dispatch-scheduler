@@ -1,5 +1,75 @@
 # Architecture
 
+## Actual daily Rig evidence and proposal-only replacement (#111/#24)
+
+`daily_rig_store.py` records explicit actual vehicle facts per stable saved day or
+legacy visit, distinct original/actual Rig IDs and immutable assignment context/
+revision/reference. No default Rig is inferred. Legacy allocation is partial
+occupancy, never full-day operational proof. New day operational assertions require
+explicit company/full-date confirmation and a caller-reviewed native condition
+revision under BEGIN IMMEDIATE. No-op preserves history; original known Rig ID
+is retained. This is internal recording, no resource HTTP/UI writer or authority
+authentication. Master active/default/type/notes remain unchanged inventory data.
+
+Independent condition identities/events represent Maintenance, Inspection and
+OutOfService inclusive local-date periods. Overlapping records remain independent;
+cancelling one cannot clear another. Active conditions/master inactive always
+block even with an operational assertion. Later condition changes invalidate
+prior positive readiness, conservatively even outside horizon; after cancelling
+all blocks the old assertion stays Pending until explicitly reconfirmed. No legal
+inspection due-date/category/license equivalence is invented.
+
+SQL current views plus triggers protect cross-Crew Rig/date occupancy on allocation
+append and saved day/legacy move or restoration. Old AM/PM consumes the whole date
+for daily safety; same-Crew old halves may retain the same vehicle. Cancelled
+visits release capacity without history deletion. Changed assignment context
+keeps both recorded/current date/Crew claims conservatively until reviewed and
+cannot supply readiness. Recorded WorkItem/Project IDs remain distinct from current
+IDs in diagnostics; even a recorded in-horizon claim whose visit moved outside
+the horizon is read. Existing Crew/date/legacy overlap guards remain intact.
+Known Rig collision on an existing legacy HTTP move returns409 with reload/review
+feedback instead of a storage503; no route or production-gate shape changes.
+
+`daily_rig_validation.py` is pure: indexed whole-date claims and bounded condition
+projection. Known duplicate actual Rig/different Crew Blocked; missing actual or
+unknown other-Crew allocation Pending. Active alone/default association/original
+Rig never supply actual capacity. Operational positive needs full-date explicit
+proof, complete context/scope and matching condition revision; missing/stale/legacy
+proof Pending. Reasons retain periods, identities, original/actual/default IDs,
+context and driver-category Pending. Input/condition projection/assessment bounds
+100,000 prevent quadratic/unbounded work; grouping uses indexes and sets, not
+pairwise Crew comparisons. Every root result Validation Pending/false flags.
+
+Daily snapshot v5 includes explicit Rig nominees, all relevant saved allocation
+and stale recorded context, referenced/nominee/default masters, condition periods
+and native revisions in the same pinned query-only transaction with existing
+row/byte/deadline limits. SHA256/Current-Stale binds those observations and existing
+actual personnel/driver/capability/calendar data. Nomination is observation only;
+missing explicit Rig lookup fails. Rebuild v4 proofs. Source errors never mean
+Current/safe empty scope; Current remains logical equality, not a future lock.
+Legacy adapter recognizes17 but refuses in-range Rig evidence with a specific
+stale/context reason. Recommendation reads never initialize/migrate a profile.
+
+`day_rig_proposal.py` reuses the exact capability/driver/personnel plan and explicit
+source worker overrides. Per-date Rig choices require explicit operational planning
+evidence/reference, never a default fallback. Rig states from target and affected
+borrowed sources enter PR91 RigAvailability/RigConflicts; an unsafe source blocks
+even when the target Rig/people pass. Known blockers exclude before limiting,
+stable date sorting preserved. Missing dates/uncaptured Rig context remain Pending.
+Saved-visit replacement previews bind exact assignment/allocation revisions and
+keep before/after/original vehicle; stale or partial legacy sources require review.
+Saved versus Proposed evidence is explicit, so projected actual R2 never claims
+that SQLite actual R1 changed. Proof SHA binds input, normalized choices/reference
+and prior staffing proof; freshness re-reads exactly the original query.
+
+No automatic allocation, source Rig transfer, Apply/Publish/export, new UI or
+production write-gate opening. Vehicle-category driver eligibility remains Pending
+independently of generic approved-driver status; no Rig.Type inference. Saved Rig
+checks never certify unstaffed/unselected generated dates. Actual-worker weekend
+consent #27, day UI/visible previews and #18/#29 transactional human Apply/audit
+follow. See [design](design/2026-11-25-daily-rigs-checklist.md) and
+[evidence](acceptance/2026-11-25-daily-rigs.md); historical slice sections follow.
+
 ## Daily explicit capability validation (#109,2C3)
 
 `daily_capability_store.py` records slotless WorkItem requirements or exact-code

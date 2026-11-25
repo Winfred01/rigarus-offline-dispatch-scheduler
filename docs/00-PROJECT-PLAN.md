@@ -1,5 +1,14 @@
 # Project plan for repository use
 
+Daily Rig safety (#111/#24) adds explicit dated original/actual vehicle evidence,
+independent maintenance/inspection/out-of-service periods, whole-date SQL guards
+and coherent snapshot v5. Defaults are suggestions, not actual occupancy. Swaps
+and date-candidate vehicle choices remain detached proposals with false Apply/
+Publish flags. See [design](design/2026-11-25-daily-rigs-checklist.md) and
+[checks](acceptance/2026-11-25-daily-rigs.md). Next #27 actual-worker consent,
+then day desktop UI/visible recommendation preview/manual Apply, version history
+and PDF/Excel export. Category/legal policy and customer acceptance remain open.
+
 Daily2C3 (#109/#25), following human-merged PR108, adds explicit daily
 minimum members/Level policy/separate qualifications and both-Crew borrowing
 rechecks. Independent schema16 evidence and snapshot v4 never promote legacy

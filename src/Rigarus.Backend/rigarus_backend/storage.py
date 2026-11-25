@@ -4,6 +4,7 @@ from pathlib import Path
 
 from .domain import DemoProject, validate_note
 from .day_migration import DAY_DRAFTS, DAY_TABLES, CREATE_DAY_DRAFTS
+from .daily_rig_migration import DAILY_RIGS, DAILY_RIG_TABLES, CREATE_DAILY_RIGS
 from .daily_capability_migration import (
     DAILY_CAPABILITIES,
     DAILY_CAPABILITY_TABLES,
@@ -292,6 +293,7 @@ def initialize_database(path: Path) -> None:
                 DAY_DRAFTS,
                 DAILY_CALENDARS,
                 DAILY_DRIVERS,
+                DAILY_CAPABILITIES,
             )
             if (
                 existing
@@ -466,8 +468,18 @@ def initialize_database(path: Path) -> None:
                 record_migration(
                     connection, DAILY_CAPABILITIES, product_version="Rigarus 0.1.0"
                 )
-            elif history != (*driver_day_history, DAILY_CAPABILITIES) or tables != (
-                driver_day_tables | DAILY_CAPABILITY_TABLES
+                history = (*driver_day_history, DAILY_CAPABILITIES)
+                tables = driver_day_tables | DAILY_CAPABILITY_TABLES
+            capability_day_history = (*driver_day_history, DAILY_CAPABILITIES)
+            capability_day_tables = driver_day_tables | DAILY_CAPABILITY_TABLES
+            if history == capability_day_history and tables == capability_day_tables:
+                for statement in CREATE_DAILY_RIGS:
+                    connection.execute(statement)
+                record_migration(
+                    connection, DAILY_RIGS, product_version="Rigarus 0.1.0"
+                )
+            elif history != (*capability_day_history, DAILY_RIGS) or tables != (
+                capability_day_tables | DAILY_RIG_TABLES
             ):
                 raise UnsupportedDatabaseError(
                     "This Rigarus database has an unsupported schema. Open it with a compatible version."

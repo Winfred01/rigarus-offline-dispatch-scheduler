@@ -1,5 +1,25 @@
 # M0 acceptance walkthrough
 
+## Actual Rig safety engineering (#111/#24)
+
+See [design](design/2026-11-25-daily-rigs-checklist.md),
+[actual evidence](acceptance/2026-11-25-daily-rigs.md) and
+[synthetic reproduction](../samples/synthetic-only/daily-rigs.md).
+Validate explicit actual versus default/original/proposed Rig, full-date capacity,
+concurrent allocation/move/restore guards, old half occupancy and cancellation.
+Maintenance/Inspection/OutOfService and inactive master block; independent period
+cancellation never clears another record. Condition edits expire operational
+evidence; missing/stale/legacy readiness and unknown other-Crew allocation Pending.
+Check original/current project context when a visit moves, even outside horizon.
+Preview busy/available replacement without database writes, retain original and
+actual-before identity, explicitly label Proposed after state and category Pending.
+Propagate source Rig blockers after borrowing, preserve prior people/capability
+checks and stable comparison sorting, verify query/proposal SHA and coherent
+concurrent reads/Stale/bounds. Run17 migration backup/preservation/fault rollback/
+retry and actual prior16 sidecar independent recovery. No automatic Apply/Publish,
+resource API/UI write or customer Demo D/production acceptance is implied.
+Then actual-worker #27 consent and day desktop UI/visible preview/manual Apply.
+
 ## Daily capability engineering (#109,2C3)
 
 See [design](design/2026-11-25-daily-capabilities-checklist.md),
