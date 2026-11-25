@@ -1,6 +1,41 @@
 # SQLite data model
 
+## Daily assertions (schema fourteen, #101)
+
+`20261124040000_AddDailyCalendars` follows13 additively. No old Assignment,
+staffing, calendar/availability, driver/capability or history row/ID/Slot/note/
+revision/sequence/relation is converted, rounded, merged or removed.
+
+| Table | Contract |
+| --- | --- |
+| DailyCalendarOwners | Immutable identity: exactly one unique CrewId, ProjectId or EmployeeId; RESTRICT FKs; no WorkItem override |
+| DailyCalendarChanges | Append-only owner revision, local date range, scoped state, OperatorConfirmed, LegacyReviewed, native LegacyRevision, retained LegacySnapshot JSON, notes, UTC event timestamp |
+| DailyCalendarCells | Unique owner/date, no Slot; explicit Unknown retained; composite owner/state/change FK, event-range trigger, per-date legacy receipt SHA256 |
+
+SQL enforces owner XOR, scope/state, canonical dates, positive integer revision
+and immutable owners/history. Store ranges are bounded to366 dates. A write
+reservation protects expected revision/review token and all range upserts; failure
+rolls back the whole event/range. Identical current assertions are no-ops; source
+change requires a new review event. Receipts bind raw old states/change IDs and
+native legacy owner revision, so later legacy edits invalidate positive capacity.
+They are concurrency observations, not authentication or signed approval.
+
+Explicit Unknown retains a current tombstone/history. Unreviewed legacy positives
+never supply daily capacity; known negatives block. Reviewed daily assertions may
+supersede old values for new daily use while keeping raw legacy evidence visible.
+Production daily writes stay closed. Old recommendation readers reject daily cells.
+
+Existing recognized schema13 startup now takes the same verified pre-DDL backup
+described below. DDL/history append roll back together; backup failure aborts
+before DDL; already14 is idempotent. Recovery means independent verified backup
+plus its compatible previous binary, never deleting migration history. Synthetic
+fixture helpers that construct old schemas are test-only. Actual13 packaged
+rejection of14 and independent backup reopening are tested; see
+[recovery evidence](acceptance/2026-11-24-daily-calendars.md).
+
 ## Full-day Draft compatibility (schema thirteen)
+
+This section records the PR100 schema13 baseline; current schema14 extends it above.
 
 `20261124030000_AddDayDraftCompatibility` is additive after schema12. Original
 DraftAssignments, WorkItems.EstimatedHalfDays, staffing, availability/calendars,

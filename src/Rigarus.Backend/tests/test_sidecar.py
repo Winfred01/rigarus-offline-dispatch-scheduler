@@ -18,6 +18,45 @@ from rigarus_backend.storage import DRAFT_ASSIGNMENTS, initialize_database
 
 
 class SidecarTests(unittest.TestCase):
+    def test_daily_inputs_authenticated_slotless_and_default_write_gate_closed(self):
+        token = secrets.token_hex(32)
+        process = self.launch(token)
+        port = self.read_port(process)
+        status, crew = self.request(
+            port,
+            "POST",
+            "/crews",
+            token,
+            payload=dict(name="Synthetic daily Crew", type="Civil"),
+        )
+        self.assertEqual(status, 201)
+        route = f"/daily-calendars/Crew/{crew['id']}"
+        query = "?start_date=2026-12-31&end_date=2026-12-31"
+        self.assertEqual(self.request(port, "GET", route + query)[0], 401)
+        status, observed = self.request(port, "GET", route + query, token)
+        self.assertEqual(status, 200)
+        self.assertEqual(observed["entries"][0]["state"], "Unknown")
+        body = dict(
+            start_date="2026-12-31",
+            end_date="2026-12-31",
+            state="Working",
+            confirmed_by_operator=True,
+            expected_revision=0,
+            expected_review_token=observed["review_token"],
+        )
+        self.assertEqual(self.request(port, "PUT", route, payload=body)[0], 401)
+        self.assertEqual(self.request(port, "PUT", route, token, payload=body)[0], 409)
+        self.assertEqual(
+            self.request(port, "PUT", route, token, payload=body | dict(slot="AM"))[0],
+            422,
+        )
+        self.assertEqual(
+            self.request(port, "GET", route + "/history", token), (200, [])
+        )
+        self.assertEqual(self.request(port, "GET", route + query, token)[1], observed)
+        process.stdin.close()
+        self.assertEqual(process.wait(timeout=10), 0)
+
     def test_day_contract_is_authenticated_and_default_writes_are_closed(self):
         token = secrets.token_hex(32)
         process = self.launch(token)
@@ -447,7 +486,7 @@ class SidecarTests(unittest.TestCase):
                 connection.execute(
                     "SELECT count(*) FROM __EFMigrationsHistory"
                 ).fetchone(),
-                (13,),
+                (14,),
             )
             self.assertEqual(
                 connection.execute("PRAGMA integrity_check").fetchone(), ("ok",)
