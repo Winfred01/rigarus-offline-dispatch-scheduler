@@ -158,6 +158,36 @@ impl Sidecar {
         )
     }
 
+    pub fn schedule_workbench(&self, action: &str, input: &Value) -> Result<Value, String> {
+        if input.to_string().len() > 512 {
+            return Err("Weekly input is too large.".into());
+        }
+        let request = match action {
+            "week" => {
+                let start = input["start_date"].as_str().ok_or("Choose a start date.")?;
+                let end = input["end_date"].as_str().ok_or("Choose an end date.")?;
+                self.client.get(local_query_url(
+                    &self.url("/schedule-workbench/week"),
+                    &[("start_date", start), ("end_date", end)],
+                )?)
+            }
+            "locate" => {
+                let kind = input["kind"].as_str().ok_or("Choose a record kind.")?;
+                if !matches!(kind, "FullDayDraft" | "LegacyHalfDay") {
+                    return Err("Choose a saved record kind.".into());
+                }
+                let id = input["id"]
+                    .as_i64()
+                    .filter(|n| *n > 0 && *n <= 9_007_199_254_740_991)
+                    .ok_or("Choose a saved record ID.")?;
+                self.client
+                    .get(self.url(&format!("/schedule-workbench/locate/{kind}/{id}")))
+            }
+            _ => return Err("Choose week or typed Locate.".into()),
+        };
+        self.send(request.timeout(Duration::from_secs(60)))
+    }
+
     pub fn search_crews(&self, term: &str) -> Result<Value, String> {
         self.search("/crews", term)
     }

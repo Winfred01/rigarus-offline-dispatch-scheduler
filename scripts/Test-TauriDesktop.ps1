@@ -197,6 +197,13 @@ function Invoke-Button($Window, [string]$Label) {
         $pattern.Toggle()
     }
     else { throw 'Synthetic button has no supported action pattern.' }
+    if ($Label -eq 'Job Schedule') {
+        # Existing scenarios verify raw half-day lifecycle, not the new read-only board.
+        # Keep every original assertion; enter compatibility only when exposed.
+        $compatibility = $Window.FindFirst([Windows.Automation.TreeScope]::Descendants,
+            [Windows.Automation.PropertyCondition]::new($name, 'Legacy compatibility'))
+        if ($null -ne $compatibility) { Invoke-Button $Window 'Legacy compatibility' }
+    }
 }
 
 function Set-Field($Window, [string]$Id, [string]$Value) {

@@ -1,5 +1,36 @@
 # Architecture
 
+## Full-day weekly workbench (#119)
+
+`schedule_workbench.py` reads schema18 through one pinned mode=ro/query-only
+transaction. Weekly metadata and both saved ID namespaces share the existing
+100k-unit/64MiB/30second read budget. Reuse daily snapshot sources and existing
+saved personnel/driver/capability/Rig/consent validators, plus exact daily calendar
+assessment; no duplicated safety algorithms or inferred members/vehicles. Weekly
+ranges are at most7 local dates, technical Crew scope at most100; exceeded bounds
+and source failures fail explicitly without a partial board. The result digest
+describes the visible loaded view, not a complete source freshness/Apply proof.
+
+Fixed authenticated GET week/typed Locate paths return whitelisted saved facts.
+Locate reads kind+ID/current status and target week in the same transaction;
+cancelled/missing records do not fall back to another namespace. Legacy raw slots,
+notes and IDs remain Needs Review. Unknown subchecks stay Pending and every root
+Apply/Publish false. No migration, production writer or safety-policy change.
+
+Job Schedule/Crew Board default to the shared read-only daily workbench. Detail/
+review/typed Locator reveal exact cards across week/filter boundaries, center and
+focus internally with the existing2second/reduced-motion cue. Request epochs
+prevent stale week/Locate results; navigation cancels pending cues. Existing
+legacy editing remains distinctly labeled compatibility functionality, including
+the unchanged Project Assign handoff; it is not new Full Day entry. Current global
+Schedule search still indexes legacy rows and explicitly passes LegacyHalfDay;
+daily records use the typed Locator. Employee Week/calendar editing remain legacy.
+
+Merged118 Auto-Recommend is reused from WorkItems/details, with no saved overlay
+or automatic reservation. Independent daily editor120 and human Apply/versions/
+exports remain later slices. See [design](design/2026-11-25-issue-119-workbench-checklist.md)
+and [actual checks](acceptance/2026-11-25-issue-119-workbench.md).
+
 ## Read-only full-day WorkItem preview (#117/#28)
 
 `day_recommendation_api.py` exposes strict POST `/day-recommendations/preview`

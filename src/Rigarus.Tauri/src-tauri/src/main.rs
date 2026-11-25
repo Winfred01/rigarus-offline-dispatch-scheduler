@@ -67,6 +67,18 @@ async fn day_recommendations(
 }
 
 #[tauri::command]
+async fn schedule_workbench(
+    app: tauri::AppHandle,
+    action: String,
+    input: Value,
+) -> Result<Value, String> {
+    with_sidecar(app, move |service| {
+        service.schedule_workbench(&action, &input)
+    })
+    .await
+}
+
+#[tauri::command]
 async fn read_availability(
     app: tauri::AppHandle,
     employee_id: i64,
@@ -320,6 +332,7 @@ fn main() {
             save_demo_note,
             search_projects,
             day_recommendations,
+            schedule_workbench,
             list_assignments,
             read_availability,
             read_working_calendar,

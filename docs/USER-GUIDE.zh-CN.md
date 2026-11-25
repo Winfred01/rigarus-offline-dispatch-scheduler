@@ -2,7 +2,7 @@
 
 [English user guide](USER-GUIDE.en.md) · [中文项目概览](README.zh-CN.md)
 
-**文档版本：**2026-11-25 工程预览。**源码基线：**main `a3da29a` 加 Issue117 只读预览，等待人工审核。
+**文档版本：**2026-11-25 工程预览。**源码基线：**main `6d93916` 加 Issue119 只读工作台，等待人工审核。
 软件界面为英文，本文保留实际英文按钮名称，方便对照。使用前核对所安装构建的提交；
 本说明书不是客户验收签收或生产派工许可。
 
@@ -43,12 +43,30 @@ Rigarus 面向一名本地调度员，运行于 Windows，无需软件账号或�
 | 工作日历、员工可用性 | 桌面为半天控件；另有独立每日后端 |
 | 整天 Draft、每日日期生成及资源检查 | 后端工程能力；生产每日写入仍关闭 |
 | 整天 WorkItem Auto-Recommend | 只读日期候选、解释及 Current/Stale 检查 |
-| 完整每日编辑、整天周排班板 | 等待桌面接入 |
+| 整天周排班板 | 只读新旧记录工作台、类型化 Locate 及已保存资源检查 |
+| 独立每日编辑 | 下一条 #120；生产每日写入仍关闭 |
 | 人工 Apply、锁定、事务复核、可恢复版本 | 等待完整操作流程 |
 | 正式排班及公司/Crew/员工 PDF、Excel | 尚不可用，导出按钮仍禁用 |
 
 所有 Draft 和候选保持 **Validation Pending（待验证）**，不能当作已确认员工日程
 对外分发。某一项资源检查通过，不等于整项派工已批准。
+
+默认 **Job Schedule / Crew Board** 是只读 Full Day 工作台，两张表使用同一周快照。
+蓝色整天卡保留无 Slot 的日期，黄色 Legacy AM/PM 保留原 ID/时段并标记 Needs Review。
+打开卡片查看实际人员、原备注、记录的 Rig ID 和独立资源检查；Home roster 只是参考。
+筛选不会从 **Review saved checks** 中移除记录。检查仅代表加载时观察，资料变化后点击
+**Reload week**。
+
+展开 **Locate & Auto-Recommend**，选择 **FullDayDraft** 或 **LegacyHalfDay** 和
+准确的 Saved ID；整数相同也属于不同记录。Locate 重新读取当前状态，显示对应周、
+处理不兼容筛选并聚焦准确卡片。记录删除、取消或读取失败时不会跳到另一类型。
+详情和检查列表使用相同类型化 Locate；按 Enter 可以打开已聚焦卡片。
+选择 WorkItem 或详情的 **Auto-Recommend** 可打开原有只读 Remaining Days 推荐。
+推荐和 Locate 都不会保存排班。
+
+独立每日编辑器尚未提供。**Legacy compatibility** 单独保留旧半天流程，使用
+**Open Full Day workbench** 返回。全局 Schedule 搜索目前仅索引旧访问，整天 ID
+使用类型化 Locator；Employee Week 和日历录入仍为旧兼容控件。
 
 <a id="startup"></a>
 ## 2. 安装与启动
@@ -119,6 +137,8 @@ Home Crew；Level 也不等于专业证书。Rig 的 Active 或默认 Crew 关�
 
 <a id="drafts"></a>
 ## 6. 旧半天 Draft 生命周期
+
+先点击 **Legacy compatibility**；下列旧编辑器不是新每日周表的保存入口。
 
 **仅限兼容检查与合成练习：**当前编辑器使用 AM/PM，本基线没有生产整天编辑器。
 

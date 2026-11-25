@@ -1,5 +1,12 @@
 # Delivery playbook for repository use
 
+Current UI delivery order follows the November25 owner direction: #119 read-only
+full-day/legacy weekly workbench and typed Locate; #120 independent daily editor
+with safe save/cancel/recovery; #18/#29/#20 explicit human Apply and recoverable
+versions; then validated company/Crew/employee PDF/Excel. Full-day writer rollout
+requires the editor's own native/offline evidence and human review. This read-only
+slice cannot accept customer UAT, authorize publication or complete the upgrade.
+
 Weekend engineering preview: `python -m rigarus_backend.day_weekend_example`
 in the locked backend environment. Two confirmed days start Friday: missing,
 partial and Declined consent retain Monday finish; both explicit Saturday workers

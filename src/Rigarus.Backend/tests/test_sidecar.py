@@ -18,6 +18,63 @@ from rigarus_backend.storage import DRAFT_ASSIGNMENTS, initialize_database
 
 
 class SidecarTests(unittest.TestCase):
+    def test_weekly_workbench_authenticated_namespaces_and_restart(self):
+        from rigarus_backend.project_store import ProjectStore
+        from rigarus_backend.projects import ProjectDraft, WorkItemDraft, WorkType
+        from rigarus_backend.roster_store import CrewStore
+        from rigarus_backend.roster import CrewDraft
+        from rigarus_backend.day_draft_store import DayDraftStore
+        from rigarus_backend.day_drafts import DayDraft
+        from rigarus_backend.assignment_store import AssignmentStore
+        from rigarus_backend.assignments import AssignmentDraft
+
+        initialize_database(self.database)
+        c = CrewStore(self.database).save(CrewDraft("Synthetic week Crew", "Civil"))
+        p = ProjectStore(self.database).save(
+            ProjectDraft(
+                "SYN-WEEK-119",
+                "0119",
+                "Synthetic week",
+                [WorkItemDraft(None, WorkType.CIVIL, 1, 99)],
+            )
+        )
+        day = DayDraftStore(self.database).save(
+            DayDraft(p.work_items[0].id, c.id, "2026-11-23", "Synthetic full note")
+        )
+        old = AssignmentStore(self.database).save(
+            AssignmentDraft(
+                p.work_items[0].id, c.id, "2026-11-24", "PM", "Synthetic half note"
+            )
+        )
+        self.assertEqual(day["id"], old.id)
+        token = secrets.token_hex(32)
+        process = self.launch(token)
+        port = self.read_port(process)
+        route = "/schedule-workbench/week?start_date=2026-11-22&end_date=2026-11-28"
+        self.assertEqual(self.request(port, "GET", route)[0], 401)
+        status, week = self.request(port, "GET", route, token)
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            {r["record_kind"] for r in week["records"]},
+            {"FullDayDraft", "LegacyHalfDay"},
+        )
+        self.assertFalse(week["applyable"] or week["publishable"])
+        for kind in ("FullDayDraft", "LegacyHalfDay"):
+            status, result = self.request(
+                port, "GET", f"/schedule-workbench/locate/{kind}/{old.id}", token
+            )
+            self.assertEqual(status, 200)
+            self.assertEqual(result["target"]["record_kind"], kind)
+        process.stdin.close()
+        self.assertEqual(process.wait(timeout=10), 0)
+        restarted = self.launch(token)
+        port = self.read_port(restarted)
+        self.assertEqual(
+            self.request(port, "GET", route, token)[1]["records"], week["records"]
+        )
+        restarted.stdin.close()
+        self.assertEqual(restarted.wait(timeout=10), 0)
+
     def test_day_recommendation_preview_authenticated_read_only_and_restart(self):
         token = secrets.token_hex(32)
         process = self.launch(token)

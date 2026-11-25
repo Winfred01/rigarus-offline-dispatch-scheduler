@@ -4,7 +4,7 @@
 
 Rigarus 是一款面向**单名办公室调度员**的 Windows 离线桌面排班软件，**无需注册或登录账号**即可使用。技术栈为 **Tauri/Rust + React/TypeScript + 随应用打包的 Python FastAPI + 本地 SQLite**。运行时不需要 Google Calendar、云同步或外部排班服务，软件界面为英文。
 
-> **工程预览版 · 2026-11-25，基线 main a3da29a 加 Issue117 只读预览。** 本分支等待人工审核。GitHub 代码已合并不代表客户正式验收。Demo A–F、完整派工安全检查、正式分发及 UAT 仍未完成。开发、演示和 CI 应使用合成数据；Draft 不等于正式施工派工。
+> **工程预览版 · 2026-11-25，基线 main 6d93916 加 Issue119 工作台。** 本分支等待人工审核。GitHub 代码已合并不代表客户正式验收。Demo A–F、完整派工安全检查、正式分发及 UAT 仍未完成。开发、演示和 CI 应使用合成数据；Draft 不等于正式施工派工。
 
 所有者已于2026-11-24确认新排班使用 **Full Day**。下述桌面 AM/PM 控件仅为旧数据兼容路径，整天界面尚未完成，生产每日写入仍关闭。不得擅自合并、四舍五入或转换历史记录。[使用说明书](USER-GUIDE.zh-CN.md#scope)区分现有界面与后端能力。
 
@@ -12,7 +12,7 @@ Rigarus 是一款面向**单名办公室调度员**的 Windows 离线桌面排�
 
 | 模块 | 当前工程预览能力 |
 | --- | --- |
-| **Schedule → Job Schedule / Crew Board** | 基于同一份已保存 Draft 的周日—周六排班表；按本地日期、暂定 AM/PM 半天时段新增、编辑、明确取消并重开排班。同一 Crew/时段的已知占用冲突会拒绝保存；连续安排可呈现跨日条带。支持本地搜索和切换周次。 |
+| **Schedule → Job Schedule / Crew Board** | 默认打开只读 Full Day 工作台，同一快照显示整天 Draft、原始 Legacy AM/PM、资源子检查、详情、筛选及类型化 Locate；可打开只读推荐。旧半天新增/编辑/取消/条带仍在明确标记的 **Legacy compatibility** 中；独立每日编辑是下一条切片。 |
 | **Project Management** | 新增、编辑、搜索、排序 Projects 和 Small/Civil/Tower/Other WorkItems。Bulk Add 支持粘贴 CSV、Excel TAB 分隔文本或上传本地 `.xlsx`；先只读预览重复/错误，再由调度员明确确认事务式新增。 |
 | **People → Employees / Crews** | 管理员工、Civil/Tower 班组、Home Crew、技能等级、Foreman 任命和历史；能够为具体 Draft 安排显式选择员工，临时加入其他 Crew **不会修改 Home Crew**。 |
 | **People → Availability** | 按含首尾日期范围记录 Available、Unavailable、Not recorded，支持全天、AM、PM 及变更历史。这只是计划参考，不代表通过派工资格审核。 |
@@ -58,7 +58,7 @@ uv run --locked python -m rigarus_backend.day_weekend_example
 
 ## 尚未具备的正式业务功能
 
-- 整天桌面周排班板和每日证据编辑。WorkItem 推荐对话框仅只读，不选择实际人员或 Rig。全体人员可用性、Foreman、车辆类别/法律政策、审批及记录权限仍须独立完善。
+- 独立整天 Draft 编辑及每日证据编辑。每日/旧半天周表及推荐仅只读，不选择实际人员或 Rig，不开放生产每日写入。全体人员可用性、Foreman、车辆类别/法律政策、审批及记录权限仍须独立完善。
 - 带锁定、事务内重新验证/审计的人工 Apply、多方案审查、延期/提前完工处理及可恢复 Published 版本（#18/#29）。
 - 公司、Crew 或员工的**正式 PDF/XLSX 派工导出**。`Reports → Weekly Export` 会列出尚未满足的检查，相关按钮未开放；Employee Week 的草稿预览不能当作已确认的员工日程文件。
 - 完整历史 Excel 核对导入、应用级跨机备份恢复、不同版本号升级和企业托管设备分发验收。Windows CI 或单个虚拟机离线测试通过，**不等于**客户 UAT 或投产批准。
@@ -79,7 +79,7 @@ uv run --locked python -m rigarus_backend.day_weekend_example
 1. 打开 **Project Management**，新增虚构 Project 及 Civil/Tower WorkItem（或使用 **Bulk Add Projects**）。
 2. 在 **People** 中创建 Crew、员工；按需设置 Foreman 并记录员工可用性。
 3. 在 **Schedule → Working calendars** 中明确录入 Crew 和 Project 的 AM/PM 工作日期。
-4. 在 **Schedule → Job Schedule** 中点击 **Assign Work Item**，选择 Crew/日期/时段，保存为 **Draft**；前往 **Crew Board** 检查，并试验编辑、明确取消和重启保存。
+4. 仅用于旧半天练习时，先进入 **Legacy compatibility** 再点击 **Assign Work Item**。独立整天保存尚未提供；默认工作台只读查看已保存的新旧记录。
 5. 如有需要，为 Draft 明确指定实际员工并查看 **Employee Week**。它只展示有显式人员关联的任务，并标注 **DRAFT – NOT CONFIRMED**，**不能当作正式派工分发**。
 
 详细步骤见[桌面验收说明](05-DEMO-ACCEPTANCE.md)和[批量输入映射](11-IMPORT-MAPPING.md)。
