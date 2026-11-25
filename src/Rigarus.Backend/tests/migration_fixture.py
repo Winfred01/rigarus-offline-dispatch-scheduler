@@ -71,6 +71,7 @@ def remove_day_schema(connection):
 
 
 def remove_daily_calendar_schema(connection):
+    remove_daily_driver_schema(connection)
     # Synthetic schema13 fixture only, never an operational down migration.
     from rigarus_backend.daily_calendar_migration import DAILY_CALENDARS
 
@@ -78,4 +79,15 @@ def remove_daily_calendar_schema(connection):
         connection.execute(f"DROP TABLE IF EXISTS {table}")
     connection.execute(
         "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?", (DAILY_CALENDARS,)
+    )
+
+
+def remove_daily_driver_schema(connection):
+    # Synthetic schema14 only; never an operational downgrade.
+    from rigarus_backend.daily_driver_migration import DAILY_DRIVERS
+
+    for table in ("DailyDriverApprovalCells", "DailyDriverApprovalChanges"):
+        connection.execute(f"DROP TABLE IF EXISTS {table}")
+    connection.execute(
+        "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?", (DAILY_DRIVERS,)
     )

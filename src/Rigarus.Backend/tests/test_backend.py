@@ -3,6 +3,7 @@ from rigarus_backend.driver_migration import DRIVER_APPROVALS
 from rigarus_backend.capability_migration import CAPABILITY_EVIDENCE
 from rigarus_backend.day_migration import DAY_DRAFTS
 from rigarus_backend.daily_calendar_migration import DAILY_CALENDARS
+from rigarus_backend.daily_driver_migration import DAILY_DRIVERS
 import sqlite3
 import tempfile
 import unittest
@@ -97,6 +98,7 @@ class BackendTests(unittest.TestCase):
                     CAPABILITY_EVIDENCE,
                     DAY_DRAFTS,
                     DAILY_CALENDARS,
+                    DAILY_DRIVERS,
                 ],
             )
             self.assertEqual(
@@ -146,6 +148,7 @@ class BackendTests(unittest.TestCase):
                     CAPABILITY_EVIDENCE,
                     DAY_DRAFTS,
                     DAILY_CALENDARS,
+                    DAILY_DRIVERS,
                 ],
             )
             connection.execute("PRAGMA foreign_keys = ON")
@@ -192,6 +195,7 @@ class BackendTests(unittest.TestCase):
                     CAPABILITY_EVIDENCE,
                     DAY_DRAFTS,
                     DAILY_CALENDARS,
+                    DAILY_DRIVERS,
                 ],
             )
             self.assertEqual(
@@ -247,6 +251,7 @@ class BackendTests(unittest.TestCase):
                     CAPABILITY_EVIDENCE,
                     DAY_DRAFTS,
                     DAILY_CALENDARS,
+                    DAILY_DRIVERS,
                 ],
             )
 

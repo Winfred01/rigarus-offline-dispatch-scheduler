@@ -1,5 +1,12 @@
 # Delivery playbook for repository use
 
+Daily2C2 preview: run `python -m rigarus_backend.day_driver_example` in the locked
+backend environment. Synthetic no-removal borrowing is Blocked by collision;
+explicit sole-driver removal leaves source Blocked; an explicit eligible source
+replacement satisfies only personnel/company-driver subchecks. Editing approval
+then makes the proof Stale. Full validation stays Pending, flags false and
+production writes closed. See [actual checks](acceptance/2026-11-24-daily-drivers.md).
+
 Daily2C1 personnel preview uses the same synthetic day_recommendation_example:
 unstaffed Pending; explicit worker still in another Crew's old PM assignment
 Blocked/excluded, with source resource rechecks Pending; a separate explicit

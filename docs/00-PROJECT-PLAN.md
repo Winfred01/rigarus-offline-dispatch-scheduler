@@ -1,5 +1,13 @@
 # Project plan for repository use
 
+Daily2C2 (#107/#23) adds independent full-date company-driver assertions and
+actual-worker checks, coherent schema15/v3 snapshots, and explicit read-only
+borrowing previews that recheck source and destination. Old half-day approval
+never certifies a day. See [design](design/2026-11-24-daily-drivers-checklist.md)
+and [checks](acceptance/2026-11-24-daily-drivers.md). #25 staffing/skills/separate
+qualifications follows, then actual #24 Rig/#27 consent. All root results remain
+Pending / Apply=false / Publish=false; production daily writes stay closed.
+
 Resource slice2C1 (#105/#15) adds whole-date actual-member conflicts and explicit
 read-only candidate checks on the daily snapshot. No automatic attendance/source
 removal; missing context Pending, known daily conflict Blocked; full dispatch

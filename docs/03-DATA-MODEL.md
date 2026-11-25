@@ -1,5 +1,41 @@
 # SQLite data model
 
+## Independent daily company-driver assertions (schema fifteen, #107)
+
+Necessary additive `20261124050000_AddDailyDriverApprovals` follows14. Reusing old
+Slot evidence would incorrectly promote half-day approval; separate storage gives
+explicit full-date provenance while preserving all original values/IDs/history/
+revisions/notes/relations/sequence. No old table or migration is rewritten.
+
+| New table | Contract |
+| --- | --- |
+| DailyDriverApprovalChanges | Immutable Employee FK/positive per-employee revision, canonical local inclusive dates, Unverified/Active/Suspended/Expired, CompanyConfirmed=1 and FullDayConfirmed=1, explicit reference/notes, legacy acknowledgement/native revision/raw snapshot and separate UTC RecordedAt |
+| DailyDriverApprovalCells | Unique Employee/local date, no Slot; explicit Unverified retained; composite employee/state/history FK and dated-context triggers; per-date legacy receipt SHA256 |
+
+The internal store reserves BEGIN IMMEDIATE before comparing revision/range token;
+history/cells commit atomically. Same current state/reference/notes is a no-op;
+changed legacy source requires new review. History UPDATE/DELETE and invalid
+cell/date/context fail. Raw old negatives survive unknown/stale daily assertions;
+fresh explicitly reviewed daily Active may supersede a negative for new daily
+planning while preserving the raw evidence. This is recorded company assertion,
+not authenticated authority, legal license/category or actual-Rig certification.
+
+Existing recognized14 startup now takes verified pre-DDL backup under the same
+write reservation and independent pinned backup connection. All DDL/history roll
+back on failure; backup failure prevents migration; current15 reopen is idempotent.
+Recovery uses the independent verified14 backup with its compatible prior binary,
+never migration-history deletion or unsafe downgrade of live15. Actual packaged
+14→15/rejection/independent recovery is covered in [evidence](acceptance/2026-11-24-daily-drivers.md).
+
+Daily recommendation source format v3 includes raw/effective daily-driver entries,
+change IDs/references/native revisions/legacy receipts in the same query-only
+transaction and logical SHA256. Older snapshot proofs must rebuild. Legacy
+recommendation reads recognize15 but reject any in-horizon daily-driver cell,
+even Unverified, with DAILY_DRIVER_ADAPTER_REQUIRED; freshness reports Stale.
+Schema14 itself is not silently upgraded by recommendation reads. Daily production
+HTTP writes remain closed, and no driver-evidence HTTP writer is added. Historical
+sections below retain their original slice identities; current schema is15.
+
 ## Daily actual/proposed personnel observations (#105, no migration)
 
 Schema14 stays unchanged. One pinned daily recommendation transaction already

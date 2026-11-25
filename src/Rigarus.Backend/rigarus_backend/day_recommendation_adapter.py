@@ -18,6 +18,7 @@ from .daily_calendar_store import (
 from .day_draft_store import read_day
 from .day_drafts import ConfirmedRemainingDays, positive_id
 from .driver_store import snapshot as driver_snapshot
+from .daily_driver_store import snapshot as daily_driver_snapshot
 from .recommendation_generator import _range
 from .recommendation_comparison import SortOrder, validate_comparison_settings
 from .recommendation_adapter import (
@@ -40,6 +41,7 @@ from .daily_personnel_conflicts import (
     DailyPersonnelValidation,
     validate_daily_employee_conflicts,
 )
+from .daily_driver_validation import DailyDriverValidation
 from .day_recommendation_generator import (
     DayCalendar,
     DayCalendarCell,
@@ -49,7 +51,7 @@ from .day_recommendation_generator import (
     generate_days_and_compare,
 )
 
-FORMAT = "rigarus-day-recommendation-input-v2"
+FORMAT = "rigarus-day-recommendation-input-v3"
 MAX_READ_UNITS = 100_000
 READ_SECONDS = 30
 
@@ -196,6 +198,7 @@ class DayEmployeeSource:
     employee_id: int
     metadata: tuple
     legacy_driver_json: str  # Observation only, never whole-day approval.
+    daily_driver_json: str  # Independent slotless assertion, receipts and raw legacy.
 
 
 @dataclass(frozen=True)
@@ -326,7 +329,15 @@ def _read_day_sources(c, query, source_id, migrations):
         driver = driver_snapshot(
             c, identity, query.earliest_start_date, query.horizon_end_date
         )
-        employees.append(DayEmployeeSource(identity, metadata, canonical(driver)))
+        daily_driver = daily_driver_snapshot(
+            c, identity, query.earliest_start_date, query.horizon_end_date
+        )
+        c.charge(len(daily_driver["entries"]))
+        employees.append(
+            DayEmployeeSource(
+                identity, metadata, canonical(driver), canonical(daily_driver)
+            )
+        )
     capability = _capability_sources(c, query, (*legacy, *days), employee_ids, 0)
     return DayRecommendationSnapshot(
         source_id,
@@ -432,6 +443,7 @@ class PersistedDayRecommendations:
     generated: DayGenerationComparison
     crew_reviews: tuple[CrewReview, ...]
     personnel_validation: DailyPersonnelValidation
+    driver_validation: "DailyDriverValidation"
     pending_validators: tuple[str, ...] = field(default=PENDING_VALIDATORS, init=False)
     validation_status: Literal["Pending"] = field(default="Pending", init=False)
     applyable: Literal[False] = field(default=False, init=False)
@@ -439,6 +451,8 @@ class PersistedDayRecommendations:
 
 
 def generate_from_day_snapshot(snapshot: DayRecommendationSnapshot):
+    from .daily_driver_validation import validate_day_snapshot_drivers
+
     requests = day_generation_requests(snapshot)
     q = snapshot.query
     generated = generate_days_and_compare(
@@ -457,6 +471,7 @@ def generate_from_day_snapshot(snapshot: DayRecommendationSnapshot):
             if c.review_reasons
         ),
         validate_day_snapshot_personnel(snapshot),
+        validate_day_snapshot_drivers(snapshot),
     )
 
 
