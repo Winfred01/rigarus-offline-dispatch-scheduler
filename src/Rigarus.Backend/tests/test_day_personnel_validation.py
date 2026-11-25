@@ -284,7 +284,7 @@ class DayPersonnelIntegrationTests(unittest.TestCase):
         self.assertNotEqual(
             snapshot.input_fingerprint, self.snapshot().input_fingerprint
         )
-        self.assertEqual(adapter.FORMAT, "rigarus-day-recommendation-input-v2")
+        self.assertEqual(adapter.FORMAT, "rigarus-day-recommendation-input-v3")
         candidate = self.candidate(snapshot)
         result = validate_day_candidate_personnel(
             snapshot, candidate, self.members(first)

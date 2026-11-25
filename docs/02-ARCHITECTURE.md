@@ -1,5 +1,62 @@
 # Architecture
 
+## Full-date company-approved drivers (#107,2C2)
+
+`daily_driver_store.py` records independent slotless, explicitly company/full-day
+confirmed assertions with exact bounded dates/reference, expected revision and
+range review token. Old DriverApprovalCells, including two Active halves or one
+old FullDay history event, are retained observations and never positive daily
+proof. Legacy Suspended/Expired is known blocking until a fresh explicitly
+reviewed positive daily assertion. Unverified never resurrects old positives or
+clears known old negatives. Native legacy revision plus per-date receipt expires
+daily positives after later old edits, even conservative out-of-range edits.
+The internal recorder has no HTTP/UI/authentication/production rollout path.
+
+`daily_driver_validation.py` is pure. Only explicitly configured actual members
+can count. An eligible full-date company driver needs current Active daily proof,
+both confirmations, active Employee, daily Available and collision-clear complete
+personnel scope. Missing/Unverified/stale/partial-day facts remain Pending;
+Suspended/Expired/inactive/Unavailable/double-booked members cannot count. One
+eligible member satisfies only ApprovedDriver; all known ineligible is Blocked,
+an unknown alternative keeps Pending. Missing roster is Pending; explicitly
+configured zero workers is known zero drivers/Blocked. Old half-day attendance
+still needs review even with new daily approval; it is never silently merged.
+Cancelled releases capacity. No Home Crew, Foreman, Rig or attendance inference.
+
+The same pinned query-only daily transaction now captures independent daily/raw
+legacy driver sources/revisions/receipts for every observed worker. Shared SQL/
+projection/deadline limits apply. Snapshot SHA256 format v3 replaces v2; rebuild
+older proofs. Same-query Current/Stale covers daily and old approval, availability,
+actual memberships and all other consumed sources. Current is not Apply authority.
+`PersistedDayRecommendations.driver_validation` explains saved visits only;
+unstaffed generated candidates still have ApprovedDriver Pending.
+
+`day_driver_proposal.py` checks one exact generated alternative and explicit
+ProposedDayMembers. Optional SourceDayMembers is a full replacement roster for a
+namespaced active saved source with matching revision/date and actual borrowed
+member context. It changes detached data only. Without it, source members remain
+and collisions block. Reports retain before/after, target and every known borrowed
+source check. Source driver failure **or source personnel collision** blocks the
+candidate, including a replacement's collision with a third Crew. Missing source
+evidence stays Pending; no automatic replacement/driver selection. An explicit
+empty source also conservatively leaves target personnel scope Pending under2C1,
+while its known driverless source makes the candidate Blocked.
+
+Daily PersonnelConflicts and ApprovedDriver evidence enters the existing PR91 day
+comparator; known blockers exclude before limiting, stable date sorting remains.
+Proposal SHA256 binds input, exact option, normalized date members/source overrides.
+All-scope failures remain visible separately from candidate-related state. Other
+resources, source minimum/skills/qualifications, actual Rig/category, weekend
+consent and review remain independent Pending. Root reports are always Pending /
+Apply=false / Publish=false. No API/UI, transfer Apply or write-gate opening.
+
+Grouping/indexing is O(V+M+E), deterministic sorting O((V+M+E) log(V+M+E));
+bounded100,000 visits/memberships/facts and source replacement memberships, at
+most366 dates. Conflict member lookup uses sets, source checks group by date,
+avoiding worker-pair/source-date rescans. See [design](design/2026-11-24-daily-drivers-checklist.md)
+and [evidence](acceptance/2026-11-24-daily-drivers.md). Historical sections below
+describe earlier slices and are superseded by the current daily contract here.
+
 ## Daily personnel safety foundation (#105,2C1)
 
 `daily_personnel_conflicts.py` checks explicit Employee IDs by whole local date.

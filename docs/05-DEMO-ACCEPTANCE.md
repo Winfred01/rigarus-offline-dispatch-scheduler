@@ -1,5 +1,23 @@
 # M0 acceptance walkthrough
 
+## Daily driver engineering checks (#107,2C2)
+
+Follow [design](design/2026-11-24-daily-drivers-checklist.md),
+[actual results](acceptance/2026-11-24-daily-drivers.md) and
+[synthetic example](../samples/synthetic-only/daily-drivers.md).
+Check current independent full-date company proof + actual membership + active
+Employee + full-date availability + collision scope. Two old Active halves do
+not pass. Missing/stale/partial proof Pending; known negatives Blocked. Preserve
+raw history, explicit Unverified, revisions, exact date boundaries and no-op save.
+Check no implicit borrowing removal, sole-driver source loss, explicit eligible
+replacement and replacement collisions with third Crews. Validate both sides,
+before/after/source revision context, stable proposal/input SHA256 and Stale.
+Saved checks never certify an unstaffed generated proposal. Run schema14→15
+preservation/backup/failure rollback/retry/reopen, old binary rejection/backup
+recovery, coherent concurrent reads, pure no-I/O/bounds and closed-gate regressions.
+No customer Demo D/E, full staffing/qualification/Rig/consent certification,
+native day UI, offline upgrade or production approval is implied by green tests.
+
 ## Daily actual/candidate personnel checks (#105,2C1)
 
 See [design](design/2026-11-24-daily-personnel-checklist.md),

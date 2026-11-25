@@ -14,7 +14,7 @@ time off and rig replacement). #25 follows, then #24/#27; none are closed here.
 
 | Re-read source | Declared identity / last-changing revision | Checkout modified UTC | Affected sections |
 | --- | --- | --- | --- |
-| AGENTS.md / DEV-DESIGN-CHECKLIST.md | Mandatory Design-First, current baseline | November25 checkout | All instructions/template |
+| AGENTS.md / DEV-DESIGN-CHECKLIST.md | Mandatory Design-First /d3b9bea | November25 checkout | All instructions/template |
 | 00-PROJECT-PLAN.md | November2026 repository summary /1787a8d | 04:44:08 | Current daily rule, priority2, M4, Option C |
 | 09-DELIVERY-PLAYBOOK.md | November2026 repository summary /1787a8d | 04:44:08 |2C1/2B previews, engineering/Demo/production gates |
 | 02-ARCHITECTURE.md | Current architecture /1787a8d | 04:44:08 | Daily personnel, coherent inputs, company-driver foundation |
@@ -22,7 +22,7 @@ time off and rig replacement). #25 follows, then #24/#27; none are closed here.
 | 05-DEMO-ACCEPTANCE.md | Living acceptance /1787a8d | 04:44:08 | Daily personnel, daily recommendation, driver follow-up |
 | 10-CLIENT-DECISIONS.md | Decision register /2437a81 | 04:44:08 | Day rule,2C priority, driver/qualification authority |
 | acceptance/2026-11-24-daily-personnel.md |2C1 engineering /1787a8d | Current checkout | Delivered behavior,479 distinct regressions, limitations |
-| acceptance/2026-11-24-issue-23-drivers.md | Legacy #23 engineering | Current checkout | Internal evidence, dated actual workers, Pending boundaries |
+| acceptance/2026-11-24-issue-23-drivers.md | Legacy #23 engineering /a9967a6 | Current checkout | Internal evidence, dated actual workers, Pending boundaries |
 | Local Rigarus_UI_Design_Updated_2026-11-24.docx | SHA256 d8a7c0de16dcbbe3c0a4aafe62ab136b4ef4c58737c2fb6c6d818f7981cf743c | November24 23:15:38.7114232 | L14, L17–L20, Demo D–E text extracted |
 
 All sources exist/readable; metadata is observation, not decision authority.
@@ -84,3 +84,13 @@ false promotion/stale approval; independent daily assertions and conservative
 legacy receipts address it. Approval authority/category/expiry policy remains
 Open; tests establish engineering evidence only. Initial tests **NOT RUN**.
 One Draft PR for107, link23/99 and prior106, human review; no merge/Release/closure.
+
+## Implemented evidence
+
+No scope expansion beyond this plan. Source replacement personnel conflicts are
+also propagated to the candidate; a driver's presence cannot mask another unsafe
+source member. All-roster EmployeeAvailability remains independently Pending.
+Main CI45548330939 subsequently completed success. Actual commands/results,
+44 focused cases, migration recovery/limitations and523 distinct regressions are
+recorded in [acceptance](../acceptance/2026-11-24-daily-drivers.md). Exact-head CI
+is reported after push in the final Draft PR; no native/offline/UAT pass inferred.
