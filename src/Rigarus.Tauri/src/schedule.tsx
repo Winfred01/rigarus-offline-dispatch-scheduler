@@ -19,6 +19,8 @@ import { Dialog } from "./dialog";
 import { weekCells } from "./week-cells";
 import { StaffingPanel, staffingLabel } from "./staffing";
 import { EmployeeWeek } from "./employee-week";
+import { DayWorkbench } from "./day-workbench";
+import type { SavedTarget } from "./workbench-state";
 import {
   WorkingCalendar,
   CalendarFeedback,
@@ -65,7 +67,59 @@ export const publishBlockers = [
   "No validated immutable Published snapshot exists (#17/#32). Formal export is unavailable.",
 ];
 
-export function Schedule({
+type ScheduleProps = Omit<Parameters<typeof LegacySchedule>[0], "target"> & {
+  target?: SavedTarget;
+};
+export function Schedule(props: ScheduleProps) {
+  const [legacy, setLegacy] = useState(false);
+  const [ignoredSeed, setIgnoredSeed] = useState<AssignmentSeed>();
+  useEffect(() => {
+    if (props.target) setLegacy(false);
+  }, [props.target]);
+  if (
+    !legacy &&
+    (!props.seed || props.seed === ignoredSeed) &&
+    (props.view === "Job Schedule" || props.view === "Crew Board")
+  )
+    return (
+      <DayWorkbench
+        view={props.view}
+        onView={props.onView}
+        day={props.day}
+        onDay={props.onDay}
+        target={props.target}
+        onLegacy={() => setLegacy(true)}
+      />
+    );
+  return (
+    <>
+      <div className="legacy-mode-banner">
+        <strong>Legacy AM/PM compatibility</strong> — retained historical
+        workflow, not new Full Day scheduling.{" "}
+        <button
+          onClick={() => {
+            setIgnoredSeed(props.seed);
+            setLegacy(false);
+            props.onView("Job Schedule");
+          }}
+        >
+          Open Full Day workbench
+        </button>
+      </div>
+      <LegacySchedule
+        {...props}
+        seed={props.seed === ignoredSeed ? undefined : props.seed}
+        target={
+          props.target && props.target.record_kind !== "FullDayDraft"
+            ? { id: props.target.id, date: props.target.date ?? props.day }
+            : undefined
+        }
+      />
+    </>
+  );
+}
+
+function LegacySchedule({
   seed,
   target,
   view,

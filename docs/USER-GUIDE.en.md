@@ -3,7 +3,7 @@
 [中文使用说明书](USER-GUIDE.zh-CN.md) · [Project README](../README.md)
 
 **Edition:** November25,2026 engineering preview. **Source baseline:** main
-`a3da29a` plus Issue117 read-only preview (awaiting human review). The desktop
+`6d93916` plus Issue119 read-only workbench (awaiting human review). The desktop
 interface is English. Confirm the commit of your installed build.
 It is an operator reference, not customer acceptance or production authorization.
 
@@ -46,12 +46,33 @@ or assume an AM/PM record proves a whole day.
 | Working calendars and employee availability | Desktop half-day controls; independent daily backend also exists |
 | Full-day Drafts, daily date generation and resource checks | Backend engineering; production daily writes remain closed |
 | Full-day WorkItem Auto-Recommend | Read-only date alternatives, explanations and Current/Stale checks |
-| Complete daily editing and full-day weekly boards | Awaiting desktop integration |
+| Full-day weekly boards | Read-only daily/legacy workbench, typed Locate and saved resource checks |
+| Independent daily editing | Next slice #120; production daily writes remain closed |
 | Human Apply, locks, transaction revalidation, recoverable versions | Awaiting complete workflow |
 | Published schedules and company/Crew/employee PDF/Excel | Unavailable; export controls remain disabled |
 
 Every Draft/proposal remains **Validation Pending**. Do not distribute it as a
 confirmed employee schedule. A resource subcheck passing does not approve dispatch.
+
+The default **Job Schedule / Crew Board** is a read-only Full Day workbench.
+Both views use the same weekly snapshot. Blue daily cards retain slotless dates;
+amber Legacy AM/PM cards retain original identities and Needs Review. Open a card
+for actual workers, raw notes, recorded Rig ID and independent saved checks.
+Home roster is reference only. Filters do not remove records from **Review saved
+checks**. Check results describe the last load; **Reload week** after changes.
+
+Expand **Locate & Auto-Recommend** to choose **FullDayDraft** or **LegacyHalfDay**
+and the exact Saved ID. Equal numeric IDs are different records. Locate re-reads
+current state, reveals the target week/compatible filters and focuses its exact
+card. Removed/cancelled/read-error targets do not fall back to another kind.
+Details and review use the same typed Locate; Enter opens the focused card.
+Choose a WorkItem or its detail **Auto-Recommend** for the existing read-only
+Remaining Days preview. Neither the preview nor Locate saves an assignment.
+
+The independent daily editor is not available yet. **Legacy compatibility** keeps
+the old half-day workflow separately labeled; **Open Full Day workbench** returns.
+Global Schedule search currently indexes legacy visits; use the typed Locator
+for daily IDs. Employee Week and calendar entry still use legacy controls.
 
 <a id="startup"></a>
 ## 2. Install and start
@@ -136,6 +157,7 @@ eligibility. Daily evidence editors are not available here yet.
 
 **Compatibility/synthetic use only:** the following existing editor is AM/PM.
 There is no production full-day editor at this baseline.
+Choose **Legacy compatibility** first; these are not controls in the new daily board.
 
 1. Open **Schedule → Job Schedule**, choose the week and select **Assign Work Item**.
 2. Select the Project, WorkItem and Crew; enter the local date and displayed

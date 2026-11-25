@@ -68,3 +68,13 @@ not become safe empty data. Actual native/offline/customer checks stay separate.
 5. Observe actual native synthetic desktop states and original design comparison;
    record connectivity/package/hash and coverage limitations honestly. One Draft
    PR, human review, no Issue closure/merge/Release/customer DB.
+
+Legacy acceptance continuation must explicitly enter the compatibility view when
+the new default board is present; retain every original card/date/save/reopen
+assertion. A narrowly optional navigation hook in the existing verifier is part
+of preserving that tool, not evidence that the full native legacy suite passed.
+
+Final source review found that Today / same-week Go invalidates the active read
+without changing its effect key. Navigation must always request a new bounded
+read, including unchanged week ranges, so a cancelled request cannot leave the
+board permanently loading. Rebuild and check the same-week native interaction.

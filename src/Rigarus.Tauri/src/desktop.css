@@ -633,6 +633,27 @@ kbd {
 .preserve-lines {
   white-space: pre-wrap;
 }
+.day-workbench {
+  height: calc(100dvh - 93px);
+  display: flex;
+  flex-direction: column;
+}
+.day-workbench > :not(.week-scroll) {
+  flex-shrink: 0;
+}
+.day-workbench > .week-scroll {
+  flex: 1;
+  min-height: 170px;
+  max-height: none;
+}
+.workbench-tools {
+  padding: 8px 0;
+}
+.workbench-tools summary {
+  cursor: pointer;
+  color: #244883;
+  font-weight: 600;
+}
 .device-status {
   margin: 12px 24px;
   color: #506581;
@@ -1014,4 +1035,20 @@ kbd {
   .day-preview-crews {
     grid-template-columns: 1fr;
   }
+}
+.legacy-mode-banner {
+  padding: 12px 24px;
+  background: #fff4d9;
+  border-bottom: 1px solid #c7923e;
+}
+.legacy-mode-banner button {
+  margin-left: 12px;
+}
+.workbench-legacy {
+  border-left-color: #a4742a;
+  background: #fff8e8;
+}
+.preserve-lines {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }

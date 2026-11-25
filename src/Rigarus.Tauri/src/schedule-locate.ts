@@ -77,8 +77,8 @@ export function locateScroll(
   };
 }
 
-export function createLocateCue(
-  publish: (id: number | undefined) => void,
+export function createLocateCue<T = number>(
+  publish: (id: T | undefined) => void,
   clock: {
     schedule: (run: () => void, ms: number) => number;
     cancel: (id: number) => void;
@@ -97,7 +97,7 @@ export function createLocateCue(
       dispose();
       publish(undefined);
     },
-    start(id: number) {
+    start(id: T) {
       dispose();
       const current = epoch;
       publish(id);

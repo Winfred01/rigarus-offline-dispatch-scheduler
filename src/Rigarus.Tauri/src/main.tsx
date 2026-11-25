@@ -187,7 +187,11 @@ function App() {
   const [employeeId, setEmployeeId] = useState(0);
   const [panel, setPanel] = useState("Employees");
   const [assignmentSeed, setAssignmentSeed] = useState<AssignmentSeed>();
-  const [target, setTarget] = useState<{ id: number; date: string }>();
+  const [target, setTarget] = useState<{
+    id: number;
+    date: string;
+    record_kind: "LegacyHalfDay";
+  }>();
   const [tool, setTool] = useState<"settings" | "help">();
   const [status, setStatus] = useState("");
   const [record, setRecord] = useState<SearchRecord>();
@@ -257,7 +261,11 @@ function App() {
       setModule("Schedule");
       setView("Job Schedule");
       setAssignmentSeed(undefined);
-      setTarget({ id: value.id, date: value.date });
+      setTarget({
+        id: value.id,
+        date: value.date,
+        record_kind: "LegacyHalfDay",
+      });
       return;
     }
     setModule(

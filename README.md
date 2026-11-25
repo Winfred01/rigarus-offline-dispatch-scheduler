@@ -4,7 +4,7 @@
 
 Rigarus is a **Windows-first, fully offline dispatch-planning desktop application** for a single local operator. It opens without a user account or sign-in. The application uses **Tauri/Rust + React/TypeScript**, a bundled **Python FastAPI** sidecar, and **local SQLite**. No Google Calendar account, cloud sync, or hosted scheduling service is required.
 
-> **Engineering preview — 25 November 2026. Baseline main a3da29a plus Issue117 read-only preview.** This branch awaits human review. Code merged into `main` is not the same as a customer-approved release. Demo A–F sign-off, full dispatch-safety validation, production distribution, and UAT remain pending. Use fictional data for demonstrations and CI; do not treat a Draft as a confirmed crew dispatch.
+> **Engineering preview — 25 November 2026. Baseline main 6d93916 plus Issue119 workbench.** This branch awaits human review. Code merged into `main` is not the same as a customer-approved release. Demo A–F sign-off, full dispatch-safety validation, production distribution, and UAT remain pending. Use fictional data for demonstrations and CI; do not treat a Draft as a confirmed crew dispatch.
 
 The owner confirmed **Full Day** for new scheduling on November24. The desktop
 AM/PM controls below remain legacy compatibility, not a completed full-day
@@ -15,7 +15,7 @@ records. The [user guides](docs/USER-GUIDE.en.md#scope) explain the transition.
 
 | Area | Available engineering-preview behavior |
 | --- | --- |
-| **Schedule → Job Schedule / Crew Board** | Shared Sunday–Saturday boards built from saved Draft visits; local date and provisional AM/PM slots; assign, edit, explicitly cancel and reopen visits. Existing Crew/slot collisions are rejected. Consecutive visits can appear as multi-day spans. Search and week navigation are local. |
+| **Schedule → Job Schedule / Crew Board** | Default read-only Full Day workbench shows saved daily Drafts and unchanged Legacy AM/PM records, actual-resource subchecks, details, filters and typed Locate. Recommendation preview is available without saving. Existing half-day create/edit/cancel/strips remain under explicit **Legacy compatibility**; new daily editing is the next slice. |
 | **Project Management** | Create, edit, search and sort Projects and their Small/Civil/Tower/Other WorkItems. Bulk Add accepts pasted CSV, Excel-style TAB-separated text, or local `.xlsx`, with read-only preview, duplicate/error diagnostics and explicit transactional confirmation. |
 | **People → Employees / Crews** | Employee and Civil/Tower Crew rosters; Home Crew, skill level, current Foreman assignment and retained appointment history. Explicitly select workers for a dated Draft visit; a temporary assignment to another Crew does **not** change Home Crew. |
 | **People → Availability** | Record an employee as Available, Unavailable or Not recorded, for a full day, AM or PM, over inclusive dates; review the calendar and change history. These statuses are advisory, not dispatch clearance. |
@@ -68,7 +68,7 @@ and [Issue117 evidence](docs/acceptance/2026-11-25-issue-117-day-preview.md).
 
 ## Not yet available for operational dispatch
 
-- Full-day desktop weekly boards and daily evidence editors. The WorkItem recommendation dialog is read-only and does not select actual workers/Rigs. Whole-roster availability, Foreman, vehicle-category/legal policy and approval/recording authority remain independent follow-up.
+- Independent full-day Draft editing and daily evidence editors. Weekly daily/legacy boards and recommendation dialogs are read-only; they do not select actual workers/Rigs or open production daily writers. Whole-roster availability, Foreman, vehicle-category/legal policy and approval/recording authority remain independent follow-up.
 - Safe multi-option review/Apply with locks, transaction-time revalidation/audit, delay/early-finish propagation and recoverable Published versions (#18/#29).
 - Company, Crew or employee **PDF/XLSX dispatch exports**. `Reports → Weekly Export` shows the unmet checks; export actions remain disabled. The Employee Week preview is not a sendable confirmed schedule.
 - Complete historical workbook reconciliation, cross-machine application-level backup/restore, different-version upgrade and enterprise-policy distribution acceptance. A successful Windows CI build or isolated offline VM test is **not** customer UAT or production authorization.
@@ -90,7 +90,7 @@ as a new full-day dispatch procedure. Full instructions: [English](docs/USER-GUI
 1. In **Project Management**, create a fictional Project and Civil/Tower WorkItem (or use **Bulk Add Projects**).
 2. In **People**, create a Crew and employee; optionally appoint a Foreman and record the employee's availability.
 3. In **Schedule → Working calendars**, explicitly set Crew and Project AM/PM work dates.
-4. In **Schedule → Job Schedule**, select **Assign Work Item**, choose a Crew/date/slot and save a **Draft**. Inspect the matching **Crew Board**. Edit or explicitly cancel it; reopen to verify persistence.
+4. For old half-day practice only, open **Legacy compatibility** before **Assign Work Item**. Choose a Crew/date/slot and save a **Draft**. New full-day Draft entry remains unavailable; inspect saved daily/legacy rows in the default read-only workbench.
 5. Optionally select actual Draft workers and open **Employee Week**. It will show only explicitly assigned visits, labeled **DRAFT – NOT CONFIRMED**. **Do not distribute it as a validated schedule.**
 
 See the [desktop walkthrough](docs/05-DEMO-ACCEPTANCE.md) and the [bulk-input mapping](docs/11-IMPORT-MAPPING.md).
