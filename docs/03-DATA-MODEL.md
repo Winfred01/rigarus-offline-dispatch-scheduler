@@ -1,6 +1,31 @@
 # SQLite data model
 
+## Daily actual/proposed personnel observations (#105, no migration)
+
+Schema14 stays unchanged. One pinned daily recommendation transaction already
+contains all Crews' day/legacy visits, current actual members/revisions and related
+evidence. The new saved-personnel report converts these detached observations;
+no conflict table/history/worker edit is persisted. Raw old slots remain locators,
+while new daily collision capacity groups whole local dates and keeps ID namespaces.
+Cancelled releases capacity; latest staff replaces history. Existing Crew/date
+and cross-model SQL guards are unchanged.
+
+Optional query proposed_employee_ids extends related observations without adding
+attendance. Their metadata/daily availability/raw old resources share the same
+transaction and read budget. Daily snapshot SHA256 format becomes v2; rebuild v1.
+An explicit candidate-membership proof also hashes normalized member choices and
+the exact input/option. Current/Stale is scoped source equality; no global version,
+DB/WAL byte hash or Apply authority. Unknown membership/context Pending; known
+cross-Crew daily conflict Blocked. Legacy evidence is never full-day eligibility.
+
+No schema migration, operational conversion, source-worker removal or saved-Draft
+mutation. Actual transfer/audit and original-Crew resource revalidation remain
+#23/#25/#18/#29 work. Backup/recovery design remains unchanged; run all existing
+migration/preservation tests. See [acceptance](acceptance/2026-11-24-daily-personnel.md).
+
 ## Daily recommendation observations (#103, no migration)
+
+The following is the merged2B baseline; current v2 personnel observations extend it above.
 
 Slice2B reads current schema14, including schema13 DayDraft tables, using one
 pinned query-only transaction. It adds no table, column, revision counter or

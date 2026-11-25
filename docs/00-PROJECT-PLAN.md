@@ -1,5 +1,12 @@
 # Project plan for repository use
 
+Resource slice2C1 (#105/#15) adds whole-date actual-member conflicts and explicit
+read-only candidate checks on the daily snapshot. No automatic attendance/source
+removal; missing context Pending, known daily conflict Blocked; full dispatch
+remains Pending/false flags. See [design](design/2026-11-24-daily-personnel-checklist.md)
+and [evidence](acceptance/2026-11-24-daily-personnel.md). Whole-day #23/#25, then
+actual #24/#27, day UI and #18/#29 follow; production daily writes stay closed.
+
 Slice2B (#103) connects explicitly confirmed Remaining Days to pure full-date
 allocation and coherent schema14 recommendation snapshots. Legacy half-day
 contracts remain compatibility-only; new generation uses independent day inputs.

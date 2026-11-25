@@ -35,6 +35,11 @@ from .recommendation_adapter import (
     _capability_sources,
 )
 from .capability_validation import CapabilitySources
+from .daily_personnel_conflicts import (
+    DailyStaffedVisit,
+    DailyPersonnelValidation,
+    validate_daily_employee_conflicts,
+)
 from .day_recommendation_generator import (
     DayCalendar,
     DayCalendarCell,
@@ -44,7 +49,7 @@ from .day_recommendation_generator import (
     generate_days_and_compare,
 )
 
-FORMAT = "rigarus-day-recommendation-input-v1"
+FORMAT = "rigarus-day-recommendation-input-v2"
 MAX_READ_UNITS = 100_000
 READ_SECONDS = 30
 
@@ -69,6 +74,7 @@ class DayRecommendationQuery:
     expected_project_id: int | None = None
     order: SortOrder = "EarliestFinish"
     max_options: int = 3
+    proposed_employee_ids: tuple[int, ...] = ()
 
     def __post_init__(self):
         positive_id(self.work_item_id)
@@ -81,6 +87,20 @@ class DayRecommendationQuery:
         if len(set(self.crew_ids)) != len(self.crew_ids):
             raise ValueError("Duplicate Crew IDs require resolution.")
         object.__setattr__(self, "crew_ids", tuple(sorted(self.crew_ids)))
+        if (
+            type(self.proposed_employee_ids) is not tuple
+            or len(self.proposed_employee_ids) > 1000
+        ):
+            raise ValueError(
+                "Supply at most 1000 immutable proposed Employee IDs for observation only."
+            )
+        for identity in self.proposed_employee_ids:
+            positive_id(identity)
+        if len(set(self.proposed_employee_ids)) != len(self.proposed_employee_ids):
+            raise ValueError("Duplicate proposed Employee IDs require resolution.")
+        object.__setattr__(
+            self, "proposed_employee_ids", tuple(sorted(self.proposed_employee_ids))
+        )
         if (
             self.remaining is not None
             and type(self.remaining) is not ConfirmedRemainingDays
@@ -274,6 +294,7 @@ def _read_day_sources(c, query, source_id, migrations):
         )
     }
     employee_ids.update(e for a in (*legacy, *days) for e in a.actual_employee_ids)
+    employee_ids.update(query.proposed_employee_ids)
     employee_ids.update(
         crew.foreman[1]
         for crew in crews
@@ -298,6 +319,8 @@ def _read_day_sources(c, query, source_id, migrations):
             (identity,),
         ).fetchone()
         if metadata is None:
+            if identity in query.proposed_employee_ids:
+                raise SnapshotNotFound("An explicitly proposed Employee was not found.")
             raise SnapshotReadError("DATABASE_INVALID")
         read_daily("Employee", identity)
         driver = driver_snapshot(
@@ -408,6 +431,7 @@ class PersistedDayRecommendations:
     snapshot: DayRecommendationSnapshot
     generated: DayGenerationComparison
     crew_reviews: tuple[CrewReview, ...]
+    personnel_validation: DailyPersonnelValidation
     pending_validators: tuple[str, ...] = field(default=PENDING_VALIDATORS, init=False)
     validation_status: Literal["Pending"] = field(default="Pending", init=False)
     applyable: Literal[False] = field(default=False, init=False)
@@ -432,6 +456,54 @@ def generate_from_day_snapshot(snapshot: DayRecommendationSnapshot):
             for c in snapshot.crews
             if c.review_reasons
         ),
+        validate_day_snapshot_personnel(snapshot),
+    )
+
+
+def day_staffed_visits(snapshot: DayRecommendationSnapshot):
+    """Detached current members only, never Home Crew attendance/history union."""
+    if not isinstance(snapshot, DayRecommendationSnapshot):
+        raise ValueError("Supply a daily recommendation snapshot.")
+    days = tuple(
+        DailyStaffedVisit(
+            "FullDayDraft",
+            a.assignment_id,
+            a.work_item_id,
+            a.project_id,
+            a.crew_id,
+            a.local_date,
+            a.revision,
+            a.status,
+            json.loads(a.payload_json)["current"]["staffing_configured"],
+            a.actual_employee_ids,
+        )
+        for a in snapshot.day_assignments
+    )
+    legacy = tuple(
+        DailyStaffedVisit(
+            "LegacyHalfDay",
+            a.assignment_id,
+            a.work_item_id,
+            a.project_id,
+            a.crew_id,
+            a.local_date,
+            a.revision,
+            a.status,
+            a.staffing_configured,
+            a.actual_employee_ids,
+            a.slot,
+        )
+        for a in snapshot.legacy_assignments
+    )
+    return (*days, *legacy)
+
+
+def validate_day_snapshot_personnel(snapshot: DayRecommendationSnapshot):
+    return validate_daily_employee_conflicts(
+        day_staffed_visits(snapshot),
+        start_date=snapshot.query.earliest_start_date,
+        end_date=snapshot.query.horizon_end_date,
+        scope_complete=True,
     )
 
 
