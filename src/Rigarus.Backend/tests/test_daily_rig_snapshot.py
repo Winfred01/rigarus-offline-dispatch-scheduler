@@ -624,7 +624,7 @@ class DailyRigIntegrationTests(unittest.TestCase):
         row = self.day()
         self.allocate(row, r)
         before = self.snapshot(proposed_rig_ids=(r.id,))
-        self.assertEqual(adapter.FORMAT, "rigarus-day-recommendation-input-v5")
+        self.assertEqual(adapter.FORMAT, "rigarus-day-recommendation-input-v6")
         self.assertEqual(before, self.snapshot(proposed_rig_ids=(r.id,)))
         with self.assertRaises(adapter.SnapshotNotFound):
             self.snapshot(proposed_rig_ids=(999999,))
@@ -743,7 +743,7 @@ class DailyRigMigrationTests(unittest.TestCase):
                 storage.initialize_database(self.database)
         self.assertEqual(self.digest(), before)
         storage.initialize_database(self.database)
-        self.assertEqual(len(self.snapshot().migrations), 17)
+        self.assertEqual(len(self.snapshot().migrations), 18)
 
     def test_readonly16_rejects_without_migration(self):
         self.old16()

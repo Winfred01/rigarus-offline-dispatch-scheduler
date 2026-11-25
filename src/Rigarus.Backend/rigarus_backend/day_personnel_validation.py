@@ -133,6 +133,21 @@ def validate_day_candidate_personnel(
         supplied.get(day, ProposedDayMembers(day, None))
         for day in candidate.allocated_working_dates
     )
+    weekend_rosters = {
+        (m.crew_id, m.local_date): m.employee_ids
+        for m in snapshot.query.weekend_members
+    }
+    from datetime import date
+
+    for m in proposed:
+        if date.fromisoformat(
+            m.local_date
+        ).weekday() >= 5 and m.employee_ids != weekend_rosters.get(
+            (candidate.crew_id, m.local_date)
+        ):
+            raise ValueError(
+                "Weekend actual workers changed; rebuild roster-bound consent and candidate."
+            )
     observed = {e.employee_id for e in snapshot.employees}
     missing = tuple(
         sorted({e for m in proposed for e in m.employee_ids or ()} - observed)

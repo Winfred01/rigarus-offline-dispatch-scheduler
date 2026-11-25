@@ -1,5 +1,14 @@
 # Delivery playbook for repository use
 
+Weekend engineering preview: `python -m rigarus_backend.day_weekend_example`
+in the locked backend environment. Two confirmed days start Friday: missing,
+partial and Declined consent retain Monday finish; both explicit Saturday workers
+confirmed rescales finish to Saturday. No Sunday consent is inferred. Every result
+remains Validation Pending/Apply=false/Publish=false. Decision edit makes the old
+input Stale. See [checks](acceptance/2026-11-25-daily-weekend.md). This console
+demonstration is not L09 desktop/customer Demo E acceptance. Next delivery should
+make daily schedules/consent reasons and recommendations visible in React/Tauri.
+
 Rig engineering preview: `python -m rigarus_backend.day_rig_example` in the locked
 backend environment. R1 repair blocks; proposed R2 already occupied by another
 Crew is Blocked. After cancelling that other visit, a detached R2 replacement

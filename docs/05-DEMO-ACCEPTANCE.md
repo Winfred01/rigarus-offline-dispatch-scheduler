@@ -1,5 +1,27 @@
 # M0 acceptance walkthrough
 
+## Full-day actual-worker weekend consent (#113/#27)
+
+See [design](design/2026-11-25-daily-weekend-checklist.md),
+[actual checks](acceptance/2026-11-25-daily-weekend.md) and
+[synthetic T06 reproduction](../samples/synthetic-only/daily-weekend.md).
+Confirm Friday+Monday remains the two-day plan when Saturday consent is missing,
+partial or Declined; all explicit Saturday workers confirmed permits Friday+
+Saturday. No other weekend/employee/Crew/job consent is inferred. Check raw
+Pending/Confirmed/Declined history, exact roster and saved revision invalidation,
+changed/returned workers, legacy AM/PM review, unconfigured/empty rosters, cancelled
+capacity, source/destination after borrowing, source refusal exclusion and all
+other independent resource checks. All root results Pending/false flags.
+
+Verify coherent pinned consent/staff/calendar/resource reads, SHA/Current-Stale,
+conservative outside-range edits, budgets, frozen deterministic no-I/O core and
+logical no-writes. Test17→18 full record/FK/history preservation, verified backup,
+fault rollback/retry/reopen, actual17 binary rejection and independent backup
+recovery. Closed production daily writers and no consent HTTP/UI writer remain.
+Native L09 approval controls/day UI, actual employee-decision recording authority,
+disconnected install/reboot/customer Demo E/UAT/production approval need separate
+acceptance. Next slice prioritizes real daily desktop/visible recommendation UI.
+
 ## Actual Rig safety engineering (#111/#24)
 
 See [design](design/2026-11-25-daily-rigs-checklist.md),
