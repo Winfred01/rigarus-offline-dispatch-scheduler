@@ -6,11 +6,18 @@ from tempfile import TemporaryDirectory
 from .storage import initialize_database
 from .projects import ProjectDraft, WorkItemDraft, WorkType
 from .project_store import ProjectStore
-from .roster import CrewDraft
-from .roster_store import CrewStore
+from .roster import CrewDraft, EmployeeDraft
+from .roster_store import CrewStore, EmployeeStore
 from .daily_calendars import DailyInput
 from .daily_calendar_store import DailyCalendarStore
 from .day_drafts import ConfirmedRemainingDays
+from .assignments import AssignmentDraft
+from .assignment_store import AssignmentStore
+from .staffing_store import StaffingStore
+from .day_personnel_validation import (
+    ProposedDayMembers,
+    validate_day_candidate_personnel,
+)
 from .day_recommendation_adapter import (
     DayRecommendationQuery,
     build_day_recommendation_snapshot,
@@ -123,6 +130,64 @@ def main():
             "finished",
             result.proposed_finish_date,
         )
+
+        # Explicit synthetic memberships; old PM occupancy cannot be ignored.
+        busy = EmployeeStore(path).save(
+            EmployeeDraft("Synthetic assigned worker", crews[1].id, 2, False)
+        )
+        free = EmployeeStore(path).save(
+            EmployeeDraft("Synthetic separate worker", crews[1].id, 2, False)
+        )
+        source = AssignmentStore(path).save(
+            AssignmentDraft(
+                project.work_items[0].id,
+                crews[1].id,
+                "2026-11-23",
+                "PM",
+                "Synthetic legacy source",
+            )
+        )
+        StaffingStore(path).save(source.id, (busy.id,), source.revision)
+        query = DayRecommendationQuery(
+            project.work_items[0].id,
+            (crews[0].id,),
+            ConfirmedRemainingDays(4, True),
+            "2026-11-23",
+            "2026-11-27",
+            project.id,
+            proposed_employee_ids=(busy.id, free.id),
+        )
+        snapshot = build_day_recommendation_snapshot(path, query)
+        candidate = generate_from_day_snapshot(snapshot).generated.candidates[0]
+        for label, identity in (
+            ("Unstaffed", None),
+            ("Still assigned in source Crew", busy.id),
+            ("Separate explicit worker", free.id),
+        ):
+            members = tuple(
+                ProposedDayMembers(day, None if identity is None else (identity,))
+                for day in candidate.allocated_working_dates
+            )
+            checked = validate_day_candidate_personnel(snapshot, candidate, members)
+            print(
+                label,
+                checked.state,
+                "ranked",
+                len(checked.comparison.options),
+                "validation",
+                checked.validation_status,
+                "Apply",
+                checked.applyable,
+                "Publish",
+                checked.publishable,
+            )
+            print(
+                "Source Crew rechecks",
+                [
+                    (s.crew_id, s.local_date, s.pending_checks)
+                    for s in checked.source_crew_revalidation
+                ],
+            )
 
 
 if __name__ == "__main__":

@@ -1,6 +1,81 @@
 # Architecture
 
+## Daily personnel safety foundation (#105,2C1)
+
+`daily_personnel_conflicts.py` checks explicit Employee IDs by whole local date.
+Frozen DailyStaffedVisit preserves record kind (FullDayDraft/LegacyHalfDay/Proposal),
+ID/revision/WorkItem/Project/Crew/date, actual configuration/members and raw legacy
+AM/PM locator. Day/proposal identity never uses a half. Distinct namespaces allow
+equal old/day/proposal integer IDs without collision. Current saved identities
+must be unique; existing Crew day/legacy-slot occupancy invariants remain checked.
+Cancelled identities remain in diagnostics while releasing capacity.
+
+Index active membership by (date,employee); two distinct Crews produce
+EMPLOYEE_DOUBLE_BOOKED_DAY with all affected references. Legacy AM or PM both
+participate; opposite old halves in different Crews are also conflicts under the
+new daily rule. No historical record is converted or rewritten, and the old
+half-day validator retains its historical semantics. Missing/empty staffing,
+partial scope or unknown other-Crew membership on that date is Pending; known
+conflicts stay Blocked. No active records means Pending. Satisfied concerns only
+this collision subcheck, never availability, approved driver or full dispatch.
+Every root report stays Validation Pending / Apply=false / Publish=false.
+
+At most100,000 visits/memberships; deterministic sorting takes
+O((visits+memberships) log(visits+memberships)), materialization is linear.
+Unknown-Crew lookups use set size/membership without copying a large set per
+visit. Compact references are reused instead of copying complete rosters.
+Pure validation makes no file/network/SQL/system-time calls.
+
+The daily snapshot adapter now exposes day_staffed_visits and
+validate_day_snapshot_personnel; PersistedDayRecommendations.personnel_validation
+reports saved day/old visits' current actual membership from the existing pinned
+view. Latest member revision replaces history; no historical member union or
+Home Crew/Foreman/Available attendance inference. Unstaffed generated candidates
+still have PersonnelConflicts Pending; saved reports never certify new workers.
+
+DayRecommendationQuery.proposed_employee_ids is an optional sorted unique tuple
+(technical max1000). It captures explicitly nominated candidate employees, even
+from unselected Home Crews, in the same read-only transaction: metadata, daily/raw
+availability and old resource sources/revisions. It records observation only,
+not attendance or membership. Missing explicit employee fails lookup. Existing
+read/projection/deadline budgets apply. Format is now
+`rigarus-day-recommendation-input-v2`; rebuild v1 proofs. Added observation IDs and
+data enter SHA256; staff/visit/employee/availability/resource changes make prior
+snapshots Stale. Source failure never means Current or an empty safe scope.
+
+`day_personnel_validation.py` accepts one actual generated complete candidate and
+explicit ProposedDayMembers for its dates. It regenerates that candidate from the
+supplied snapshot to check exact date/context values; duplicate/out-of-plan dates
+reject. Missing membership or uncaptured employee context remains Pending. One
+alternative is combined with all saved visits; alternatives are not simultaneous
+reservations. Per-date PersonnelConflicts evidence enters PR91 day comparison:
+Blocked excludes before limit, clear subcheck Satisfied still leaves all other
+resources Pending. The all-saved-scope report stays visible separately from
+candidate-related state/conflicts; an unrelated employee's conflict is not proof
+that the candidate's workers conflict.
+
+Borrowing never silently removes source members. If still saved in another Crew,
+the employee conflicts; known source references carry mandatory Pending driver,
+minimum, skills, qualifications and availability rechecks. These markers cover
+known current overlaps, not an exhaustive transfer/approval workflow. After any
+real membership change, #23/#25 must re-evaluate all affected source/destination
+actual Crews; #18/#29 must retain before/after transfer context and revalidate in
+the write transaction. No source revision or employee Home Crew is changed here.
+
+Candidate report binds snapshot/input SHA256 and a separate deterministic
+`rigarus-day-personnel-proposal-v1` SHA256 of that input, exact option and normalized
+date/member choices. Changing choices produces a new proof. Freshness re-reads
+the original query; Current means source equality then, not a lock/authentication
+or Apply permission. Missing/changed sources Stale; read/schema errors propagate.
+No migration/UI/Rust/HTTP/writes or production-gate change. Daily #23/#25 eligibility,
+actual #24 Rig/#27 consent and full manual review remain later slices. See
+[design](design/2026-11-24-daily-personnel-checklist.md) and
+[evidence](acceptance/2026-11-24-daily-personnel.md).
+
 ## Daily recommendation engine and coherent inputs (#103, slice2B)
+
+This records the merged2B baseline; personnel-aware v2 query/snapshot additions
+are documented above. Earlier v1 proofs must rebuild.
 
 New planning uses independent `ConfirmedRemainingDays(days, confirmed_by_operator)`
 from `day_drafts.py`; positive integer only, strict explicit confirmation. Missing

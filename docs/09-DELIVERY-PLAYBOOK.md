@@ -1,5 +1,12 @@
 # Delivery playbook for repository use
 
+Daily2C1 personnel preview uses the same synthetic day_recommendation_example:
+unstaffed Pending; explicit worker still in another Crew's old PM assignment
+Blocked/excluded, with source resource rechecks Pending; a separate explicit
+worker clears only the collision check while full Validation/Apply/Publish stay
+Pending/false/false. See [checks](acceptance/2026-11-24-daily-personnel.md).
+No production write-gate opening, transfer Apply or customer dispatch approval.
+
 Daily2B engineering preview: run `python -m rigarus_backend.day_recommendation_example`
 in the locked backend environment. It seeds only a temporary synthetic schema14
 profile, demonstrates both sorts, confirmed4-day accumulation across a closed day

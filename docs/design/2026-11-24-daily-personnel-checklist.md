@@ -117,3 +117,13 @@ Open/Pending; do not guess. No new business default is introduced.
 All new execution checks NOT RUN at this pre-code commit. Existing schema/history/
 Drafts/worker selections unchanged; prior recovery design remains independent
 verified backup plus compatible binary. No operational down migration.
+
+## Implementation and actual checks
+
+Pre-code plan commit2437a81; main CI45541369845 subsequently completed success.
+Scope unchanged. Pure dated membership, saved/candidate adapters, explicit extra
+employee observations/v2 SHA256 and source recheck markers are implemented;
+actual30 focused tests/full394 and other checks/limits are recorded in
+[evidence](../acceptance/2026-11-24-daily-personnel.md). Code review replaced
+per-visit unknown-Crew set copies with constant-time membership/size checks.
+No migration, gate opening, full eligibility or UI was added.

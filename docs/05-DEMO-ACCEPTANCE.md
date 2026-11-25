@@ -1,5 +1,27 @@
 # M0 acceptance walkthrough
 
+## Daily actual/candidate personnel checks (#105,2C1)
+
+See [design](design/2026-11-24-daily-personnel-checklist.md),
+[actual evidence](acceptance/2026-11-24-daily-personnel.md) and
+[synthetic reproduction](../samples/synthetic-only/daily-personnel.md).
+Verify same employee/date in different Crews is Blocked across day/day, day/old
+AM or PM, and old opposite halves under the new daily rule. Keep raw slots/stable
+namespaced IDs/revisions; no old record rewrite. Check cancellation/current member
+replacement, no historical union, same-Crew old halves, independent days/workers,
+multi-way references, strict invalid input and bounded deterministic pure grouping.
+
+Missing/empty/partial context and unknown other-Crew staffing on the same date
+remain Pending; known conflicts stay Blocked. A generated candidate without
+explicit actual members never inherits a saved personnel pass. Read-only explicit
+candidate checks bind exact dates/input, capture proposed employees in one pinned
+view, reject wrong context, exclude known conflicts with PR91 and retain source-
+Crew mandatory resource rechecks Pending. No transfer or Home Crew inference.
+Validate v2 source/proposal SHA256, revision/availability/employee changes Stale,
+coherent concurrent reads, logical no-writes, read limits/errors and closed gates.
+No driver/minimum/qualification/availability certification, actual Rig/consent,
+native day UI/offline installation or customer acceptance is supplied by this suite.
+
 ## Day recommendation engineering check (#103, slice2B)
 
 Read [design](design/2026-11-24-day-recommendations-checklist.md) and
