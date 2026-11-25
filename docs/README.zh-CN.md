@@ -1,10 +1,12 @@
 # Rigarus 离线调度排班工具
 
-[English](../README.md) · **简体中文**
+[English](../README.md) · **简体中文** · [中文使用说明书](USER-GUIDE.zh-CN.md) · [English user guide](USER-GUIDE.en.md)
 
 Rigarus 是一款面向**单名办公室调度员**的 Windows 离线桌面排班软件，**无需注册或登录账号**即可使用。技术栈为 **Tauri/Rust + React/TypeScript + 随应用打包的 Python FastAPI + 本地 SQLite**。运行时不需要 Google Calendar、云同步或外部排班服务，软件界面为英文。
 
-> **工程预览版 · 2026-11-24。** GitHub 代码已合并不代表客户正式验收。Demo A–F、完整派工安全检查、正式分发及 UAT 仍未完成。开发、演示和 CI 应使用合成数据；Draft 不等于正式施工派工。
+> **工程预览版 · 2026-11-25，基线 main 7ee8d9b（人工合并 PR114）。** GitHub 代码已合并不代表客户正式验收。Demo A–F、完整派工安全检查、正式分发及 UAT 仍未完成。开发、演示和 CI 应使用合成数据；Draft 不等于正式施工派工。
+
+所有者已于2026-11-24确认新排班使用 **Full Day**。下述桌面 AM/PM 控件仅为旧数据兼容路径，整天界面尚未完成，生产每日写入仍关闭。不得擅自合并、四舍五入或转换历史记录。[使用说明书](USER-GUIDE.zh-CN.md#scope)区分现有界面与后端能力。
 
 ## 当前已实现的功能
 
@@ -18,20 +20,41 @@ Rigarus 是一款面向**单名办公室调度员**的 Windows 离线桌面排�
 | **Schedule → Working calendars** | 分别维护 Crew 与 Project 的 Working、NotWorking、Unknown AM/PM 日期；WorkItem 继承其父 Project 日历。冲突/未知在 Draft 中提示，不会默认周一至周五、周末或节假日可以工作。 |
 | **Items / Data / 本机工具** | Rig 主数据及可选默认 Crew（不等于当天实际用车）；Excel 只读导入预览；独立演示备注；全局搜索（`Ctrl+K`）、外观设置和 Help。 |
 
-### 自动排班：目前只完成内部计算核心
+### 整天推荐与资源后端
 
-已经合并的 [#28 第一阶段 PR #91](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/pull/91) 和 [第二阶段 PR #92](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/pull/92) 是**纯 Python 算法模块**，**尚不是桌面软件里可直接点击的 Auto Schedule 功能**。现阶段支持：
+合并的 [PR114](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/pull/114)
+及前置切片扩展了 PR91 比较器。这些是**后端工程能力**，尚不是桌面 Auto Schedule 流程：
 
-- 对**单个 WorkItem、单支 Crew**，使用**操作员明确确认的剩余半天数**及提供的 Crew/父 Project 日历、占用快照生成日期。
-- 跨不可工作间隔累计 AM/PM，说明跳过时段原因；若工期或可用容量不足，返回 **Needs Review**，不伪造完工日期。
-- 根据**最早完工**（默认）或**最早开工**排序候选，排除已有明确硬阻断，缺少安全证据时继续 Pending。
+- 单个 WorkItem、单支 Crew；仅使用明确确认的正整数 **Remaining Days**。
+  不将旧半天数或估算自动转换，不从已排记录推断完成量。
+- 按完整工作日期跨间隔累计，保留跳过日期/原因与缺口；缺确认、多 Crew 或容量不足时
+  返回 Needs Review，不伪造完工日期。
+- 最早完工（默认）/最早开工稳定排序。
+- 同一只读事务内的 schema18 一致性 SQLite 快照，保留每日及旧半天证据，
+  SHA-256 与 Current/Stale 检查；Current 不是 Apply 锁。
+- 每日实际人员冲突、公司认可司机、明确人数/Level/独立资质、实际 Rig 占用/维修检查、
+  实际员工周末同意；借调复核原 Crew 和目标 Crew。缺证据 Pending，已知阻断 Blocked。
 
-算法**尚未接入可信的数据库排班快照、API 或桌面 UI**。人员双占用、司机/资质、最低人数、实际 Rig、周末同意等校验尚不完整。所有候选均为 **Validation pending；Apply = false；Publish = false**。详见[日期生成器工程验收记录](acceptance/2026-11-24-issue-28-generator.md)。
+生成器**已经接入一致的真实存储快照**；推荐 API/桌面操作、人工 Apply 及生产每日写入
+仍未开放或尚未实现。仅所有相关员工 Confirmed 才可提供已同意的周末规划容量。
+Home Crew、Available、Calendar matched 和默认 Rig 都不代表实际出勤或批准。
+所有总体结果保持 **Validation Pending / Apply=false / Publish=false**。
+参阅[每日推荐验收](acceptance/2026-11-24-day-recommendations.md)和
+[最新资源验收](acceptance/2026-11-25-daily-weekend.md)。
+
+完成后端锁定还原后，在 `src/Rigarus.Backend` 运行临时合成示例：
+
+```powershell
+uv run --locked python -m rigarus_backend.day_recommendation_example
+uv run --locked python -m rigarus_backend.day_weekend_example
+```
+
+这些控制台示例不代表桌面已有推荐按钮。
 
 ## 尚未具备的正式业务功能
 
-- 完整人员/Rig 同时段占用、认可司机、技能资质、最低人数、Rig 维修换车和实际出勤人员的周末同意等安全门槛（[#15](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/issues/15)、[#23–#27](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/issues)）。
-- 可信推荐数据适配、可安全 Apply 的多方案审查、延期/提前完工连锁调整、锁定及不可变 **Published** 排班版本（[#18–#29](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/issues)）。
+- 整天桌面排班、每日证据编辑、可见推荐与资源解释。全体人员可用性、Foreman、车辆类别/法律政策、审批及记录权限仍须独立完善。
+- 带锁定、事务内重新验证/审计的人工 Apply、多方案审查、延期/提前完工处理及可恢复 Published 版本（#18/#29）。
 - 公司、Crew 或员工的**正式 PDF/XLSX 派工导出**。`Reports → Weekly Export` 会列出尚未满足的检查，相关按钮未开放；Employee Week 的草稿预览不能当作已确认的员工日程文件。
 - 完整历史 Excel 核对导入、应用级跨机备份恢复、不同版本号升级和企业托管设备分发验收。Windows CI 或单个虚拟机离线测试通过，**不等于**客户 UAT 或投产批准。
 
@@ -44,6 +67,9 @@ Rigarus 是一款面向**单名办公室调度员**的 Windows 离线桌面排�
 最终用户无需另装 Python、Node.js、Rust 或 .NET 开发环境。特定 Win11 VM 中的无网安装、缺 WebView2 安装及同版本不同构建覆盖升级已有工程通过记录；但代码签名、企业设备策略、不同版本号升级和客户签收仍为独立验收门。详见[安装与验收手册](08-RELEASE-HANDBOOK.md)。
 
 ### 合成数据操作示例
+
+以下是隔离合成资料中的旧半天兼容演示，不是新的整天正式派工流程。完整操作见
+[中文说明书](USER-GUIDE.zh-CN.md)及[英文说明书](USER-GUIDE.en.md)。
 
 1. 打开 **Project Management**，新增虚构 Project 及 Civil/Tower WorkItem（或使用 **Bulk Add Projects**）。
 2. 在 **People** 中创建 Crew、员工；按需设置 Foreman 并记录员工可用性。

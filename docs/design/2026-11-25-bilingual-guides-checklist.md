@@ -29,9 +29,12 @@ available. Existing handbook private-repository wording/old M0 instructions are
 historical; repository is currently Public and current desktop is Tauri.
 No original customer/design document is uploaded.
 
+Additional source revisions: README/CN README7957153, securityb4c33a1,
+release handbookad996ad. Current main CI45582406268 subsequently passed.
+
 | Requirement | Authority / existing state | Change / acceptance |
 | --- | --- | --- |
-| README update | Explicit owner request; current README still M0/WPF | Current stack/status and working Windows build steps, no false release claim |
+| README update | Explicit owner request; root copy M0/WPF, latest main already bilingual Tauri but recommendation details stale | Preserve current main overview/build/navigation and update daily backend status, no false release claim |
 | Two manuals | Explicit owner Chinese + English request | Separate equivalent operator guides with language links/contents |
 | Actual UI instructions | Existing legacy React controls | Verify labels/routes/save/cancel/reload/Locate in owning sources |
 | Full-day transition honesty | Confirmed owner Full Day / existing closed daily writers | Explain visible AM/PM as compatibility, not recommended new day workflow |
@@ -57,3 +60,25 @@ No original customer/design document is uploaded.
    do not claim a new product test or customer acceptance.
 6. One Draft PR for115, sync Issue, retain human review. No merge/Release/Issue
    closure or customer-profile modification. Initial checks NOT RUN.
+
+Source correction before deliverables: latest tracked README/CN README revision
+7957153 already documents Tauri and operator features. The old M0 copy is an
+unrelated root-worktree change, not the baseline. Update the current summaries
+and retain their existing topics; do not overwrite root changes.
+
+## Actual documentation verification
+
+- PASS: five affected Markdown files, UTF-8/no replacement/NUL, balanced fences,
+  relative files and local anchors;16 corresponding bilingual sections and shared
+  English control labels/safety statuses; README daily/schema18 status.
+- PASS: manual source review against React routes/forms, Tauri local data path/
+  package configuration and existing backend acceptance boundaries. Bulk Add
+  confirmation versus read-only Data preview is explicitly distinguished.
+- PASS staged privacy/diff:353 indexed paths, clean diff; only intended Markdown.
+- Local product restore/build/test: N/A, only Markdown changed. No lockfile,
+  runtime/API/UI/schema/behavior change. Main's completed CI is reference only.
+- Exact-head PR Windows CI: NOT RUN before push; final Draft PR records observed
+  run/head/jobs. Native/offline GUI/new installation and customer UAT NOT RUN.
+- Delivered files: README.md, docs/README.zh-CN.md, USER-GUIDE.en.md,
+  USER-GUIDE.zh-CN.md and this source/plan/check record. Originals and root edits
+  remain untouched. No customer data, merge, Release or Issue closure.
