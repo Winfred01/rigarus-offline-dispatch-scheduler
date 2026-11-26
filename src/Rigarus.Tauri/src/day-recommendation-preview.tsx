@@ -1,6 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import { Dialog } from "./dialog";
+import { ImpactFreshness, sameImpactScope } from "./impact-state";
+import {
+  ImpactComparison,
+  ImpactScope,
+  type Impact,
+  type ImpactCandidate,
+  type Replacement,
+  type SavedImpactRecord,
+} from "./impact-preview";
 import { shiftDay } from "./week";
 import {
   pendingFlags,
@@ -13,7 +22,7 @@ import {
 } from "./day-preview-state";
 
 type Crew = { id: number; name: string; type: string; active: boolean };
-type Candidate = {
+type Candidate = ImpactCandidate & {
   crew_id: number;
   crew_name: string;
   status: string;
@@ -27,7 +36,7 @@ type Candidate = {
   missing_evidence: { check: string; source: string; count: number }[];
   missing_evidence_count: number;
 };
-type Result = {
+type Result = Partial<Impact> & {
   job_number: string;
   work_type: string;
   unit: "FullDay";
@@ -76,7 +85,16 @@ export function DayRecommendationPreview({
     [catalogError, setCatalogError] = useState(false),
     [attempt, setAttempt] = useState(0);
   const [order, setOrder] = useState<PreviewOrder>("EarliestFinish");
-  const [result, setResult] = useState<{ data: Result; query: PreviewQuery }>();
+  const [impactMode, setImpactMode] = useState(false);
+  const [scope, setScope] = useState<SavedImpactRecord[]>([]);
+  const [replacements, setReplacements] = useState<Replacement[]>([]);
+  const [selectedCrew, setSelectedCrew] = useState<number>();
+  const [result, setResult] = useState<{
+    data: Result;
+    query: PreviewQuery & {
+      replacements?: Replacement[];
+    };
+  }>();
   const [freshness, setFreshness] = useState<Freshness>("Not checked");
   const [error, setError] = useState(""),
     [invalid, setInvalid] = useState("");
@@ -84,6 +102,7 @@ export function DayRecommendationPreview({
   const alive = useRef(true),
     epoch = useRef(new PreviewEpoch());
   const freshEpoch = useRef(new PreviewEpoch());
+  const stale = useRef(new ImpactFreshness());
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -123,8 +142,14 @@ export function DayRecommendationPreview({
       ...next,
       ...("days" in next ? { confirmed: false } : {}),
     }));
+    setScope([]);
+    setReplacements([]);
   }
-  async function preview(nextOrder: PreviewOrder = order) {
+  async function preview(
+    nextOrder: PreviewOrder = order,
+    useImpact = impactMode,
+    replacementScope = replacements,
+  ) {
     const parsed = previewQuery(workItemId, projectId, fields, nextOrder);
     if (parsed.error) {
       setError(parsed.error.message);
@@ -138,12 +163,17 @@ export function DayRecommendationPreview({
     setError("");
     setInvalid("");
     setResult(undefined);
+    stale.current.recompute();
+    setImpactMode(useImpact);
     setOrder(nextOrder);
     setFreshness("Not checked");
     try {
+      const query = useImpact
+        ? { ...parsed.query, replacements: replacementScope }
+        : parsed.query;
       const data = await invoke<Result>("day_recommendations", {
-        action: "preview",
-        input: parsed.query,
+        action: useImpact ? "impact_preview" : "preview",
+        input: query,
       });
       if (!alive.current || !epoch.current.current(ticket)) return;
       if (
@@ -153,13 +183,24 @@ export function DayRecommendationPreview({
         !/^[a-f0-9]{64}$/.test(data.input_fingerprint)
       )
         throw new Error("Unexpected preview context");
-      setResult({ data, query: parsed.query });
+      if (
+        useImpact &&
+        (!data.before ||
+          !Array.isArray(data.before.records) ||
+          !Array.isArray(data.protected_records) ||
+          !sameImpactScope(data.replacement_scope ?? [], replacementScope) ||
+          !/^[a-f0-9]{64}$/.test(data.proposal_fingerprint ?? ""))
+      )
+        throw new Error("Unexpected impact context");
+      setResult({ data, query });
+      if (useImpact) setScope(data.before!.records);
+      setSelectedCrew(data.ranked_crew_ids[0] ?? data.candidates[0]?.crew_id);
       setFreshness("Current");
     } catch {
       if (alive.current && epoch.current.current(ticket)) {
         setResult(undefined);
         setError(
-          "Unable to read this preview. Reload project data or retry; no alternative is certified.",
+          "Unable to read this preview. If saved visits changed, reload saved visits and reselect current revisions; otherwise reload project data or retry. No alternative is certified.",
         );
       }
     } finally {
@@ -167,7 +208,7 @@ export function DayRecommendationPreview({
     }
   }
   async function recheck() {
-    if (!result || busy) return;
+    if (!result || busy || stale.current.stale) return;
     const ticket = freshEpoch.current.next();
     setFreshness("Checking");
     setError("");
@@ -179,7 +220,7 @@ export function DayRecommendationPreview({
         publishable: boolean;
         status: string;
       }>("day_recommendations", {
-        action: "freshness",
+        action: impactMode ? "impact_freshness" : "freshness",
         input: {
           query: result.query,
           input_fingerprint: result.data.input_fingerprint,
@@ -188,7 +229,7 @@ export function DayRecommendationPreview({
       if (!alive.current || !freshEpoch.current.current(ticket)) return;
       if (!pendingFlags(data) || !["Current", "Stale"].includes(data.status))
         throw new Error("Unexpected freshness");
-      setFreshness(data.status as Freshness);
+      setFreshness(stale.current.observe(data.status));
     } catch {
       if (alive.current && freshEpoch.current.current(ticket)) {
         setFreshness("Unavailable");
@@ -205,7 +246,7 @@ export function DayRecommendationPreview({
     };
     const blur = () => {
       freshEpoch.current.next();
-      setFreshness("Not checked");
+      if (!stale.current.stale) setFreshness("Not checked");
     };
     window.addEventListener("focus", focus);
     window.addEventListener("blur", blur);
@@ -213,7 +254,7 @@ export function DayRecommendationPreview({
       window.removeEventListener("focus", focus);
       window.removeEventListener("blur", blur);
     };
-  }, [result, busy]);
+  }, [result, busy, impactMode]);
   const ranked =
     result?.data.ranked_crew_ids
       .map((id) => result.data.candidates.find((c) => c.crew_id === id))
@@ -348,17 +389,50 @@ export function DayRecommendationPreview({
               id="day-preview-run"
               disabled={loading || catalogError || busy}
             >
-              {busy ? "Reading current calendars…" : "Preview full-day dates"}
+              {busy
+                ? "Reading current sources…"
+                : impactMode
+                  ? "Recompute impact"
+                  : "Preview full-day dates"}
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={loading || catalogError || busy}
+              onClick={() => void preview(order, true)}
+            >
+              Preview Impact
             </button>
             <button
               type="button"
               className="secondary-button"
               onClick={onClose}
             >
-              Close preview
+              Cancel / close preview
             </button>
           </div>
         </form>
+        {impactMode && scope.length > 0 && (
+          <ImpactScope
+            records={scope}
+            replacements={replacements}
+            busy={busy}
+            onReload={() => {
+              setReplacements([]);
+              void preview(order, true, []);
+            }}
+            onChange={(rows) => {
+              epoch.current.next();
+              freshEpoch.current.next();
+              stale.current.invalidate();
+              setFreshness("Stale");
+              setBusy(false);
+              setResult(undefined);
+              setReplacements(rows);
+              setError("Replacement scope changed. Recompute Preview Impact.");
+            }}
+          />
+        )}
         {result && (
           <section aria-label="Full-day preview results">
             <div className="day-preview-toolbar">
@@ -394,9 +468,37 @@ export function DayRecommendationPreview({
                   ? "Stale — inputs changed. Preview again."
                   : `${freshness} — preview must be rechecked.`}
             </p>
+            {impactMode && result.data.before && (
+              <>
+                <label>
+                  Compare Proposed Crew
+                  <select
+                    aria-label="Compare Proposed Crew"
+                    value={selectedCrew ?? ""}
+                    onChange={(e) => {
+                      setSelectedCrew(Number(e.target.value));
+                      void recheck();
+                    }}
+                  >
+                    {result.data.candidates.map((c) => (
+                      <option key={c.crew_id} value={c.crew_id}>
+                        {c.crew_name} · {c.resource_state ?? c.status}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <ImpactComparison
+                  impact={result.data as Result & Impact}
+                  candidate={result.data.candidates.find(
+                    (c) => c.crew_id === selectedCrew,
+                  )}
+                  days={result.query.remaining_days}
+                />
+              </>
+            )}
             {!ranked.length && (
               <p>
-                No complete date alternative in this horizon. Review the
+                No complete unblocked alternative in this horizon. Review the
                 diagnostics below.
               </p>
             )}
@@ -439,6 +541,16 @@ export function DayRecommendationPreview({
                 </details>
               </article>
             ))}
+            {impactMode &&
+              result.data.candidates
+                .filter((c) => c.resource_state === "Blocked")
+                .map((c) => (
+                  <p role="status" key={c.crew_id}>
+                    {c.crew_name} · Blocked. Select this Crew in the comparison
+                    to review exact resource reasons; dates do not establish
+                    eligibility.
+                  </p>
+                ))}
             {result.data.crew_reviews.map((c) => (
               <p key={c.crew_id}>
                 {c.crew_name} · Needs Review:{" "}

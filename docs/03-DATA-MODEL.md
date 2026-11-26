@@ -1,5 +1,19 @@
 # SQLite data model
 
+## Read-only impact proposals (#18, no migration)
+
+Schema19 remains unchanged. One pinned query-only read combines its lineage UUID,
+active target index/notes, exact FullDayDraft IDs/revisions and existing coherent
+daily/legacy/resource sources. A detached scenario releases only selected day
+capacity; it never cancels saved records or writes receipts, confirmation, locks,
+members, Rig choices or proposal/audit/version rows. Canonical source/proposal
+SHA256 and exact typed revision vectors are read observations, not a global
+database version or authorization. Saved Remaining Days is Not recorded because
+no confirmed-day field exists. Original slots/IDs/history remain untouched.
+Future Apply/audit/recoverable-version persistence needs a separate reviewed
+contract/migration; the current editor receipt is not schedule undo. See
+[impact evidence](acceptance/2026-11-26-issue-18-impact.md).
+
 ## Manual Draft recovery (schema nineteen, #120)
 
 `20261125040000_AddDayEditorReceipts` is additive after18; original tables,

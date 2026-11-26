@@ -567,3 +567,21 @@ th[aria-sort] .sort-indicator {
 .project-editor [role="status"]:empty {
   display: none;
 }
+/* Added comparison follows the existing desktop table/control system. */
+.impact-comparison {
+  width: 100%;
+  table-layout: fixed;
+  overflow-wrap: anywhere;
+}
+.impact-comparison th,
+.impact-comparison td {
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+.impact-comparison th:first-child {
+  width: 23%;
+}
+.impact-fingerprint {
+  overflow-wrap: anywhere;
+}

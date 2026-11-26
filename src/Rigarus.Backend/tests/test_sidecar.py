@@ -202,6 +202,66 @@ class SidecarTests(unittest.TestCase):
         )  # No explicit daily calendars: never assume capacity.
         self.assertFalse(preview["applyable"] or preview["publishable"])
         proof = dict(query=body, input_fingerprint=preview["input_fingerprint"])
+        with closing(sqlite3.connect(self.database)) as c:
+            before_impact = list(c.iterdump())
+        impact_route = "/day-impact/preview"
+        self.assertEqual(self.request(port, "POST", impact_route, payload=body)[0], 401)
+        self.assertEqual(
+            self.request(
+                port,
+                "POST",
+                impact_route,
+                token,
+                headers={"Host": "other.invalid"},
+                payload=body,
+            )[0],
+            401,
+        )
+        status, impact = self.request(port, "POST", impact_route, token, payload=body)
+        self.assertEqual(status, 200, impact)
+        self.assertTrue(impact["readonly"])
+        self.assertFalse(impact["applyable"] or impact["publishable"])
+        self.assertEqual(impact["ranked_crew_ids"], [])
+        self.assertEqual(impact["before"]["remaining_status"], "Not recorded")
+        impact_proof = dict(query=body, input_fingerprint=impact["input_fingerprint"])
+        with closing(sqlite3.connect(self.database)) as c:
+            self.assertEqual(list(c.iterdump()), before_impact)
+        # Explicit synthetic fixture setup; production HTTP writers stay closed.
+        # Exercise a COMPLETE real packaged plan, not only the no-calendar branch.
+        from rigarus_backend.daily_calendar_store import DailyCalendarStore
+        from rigarus_backend.daily_calendars import DailyInput
+
+        calendars = DailyCalendarStore(self.database)
+        for scope, identity in (("Project", project["id"]), ("Crew", crew["id"])):
+            old = calendars.read(scope, identity, "2026-11-23", "2026-11-27")
+            calendars.save(
+                scope,
+                identity,
+                DailyInput(
+                    "2026-11-23",
+                    "2026-11-27",
+                    "Working",
+                    True,
+                    True,
+                    "Synthetic packaged impact capacity",
+                ),
+                old["revision"],
+                old["review_token"],
+            )
+        with closing(sqlite3.connect(self.database)) as c:
+            complete_before = list(c.iterdump())
+        status, complete = self.request(port, "POST", impact_route, token, payload=body)
+        self.assertEqual(status, 200, complete)
+        self.assertEqual(complete["ranked_crew_ids"], [crew["id"]])
+        self.assertEqual(
+            complete["candidates"][0]["proposed_finish_date"], "2026-11-24"
+        )
+        self.assertEqual(complete["candidates"][0]["resource_state"], "Pending")
+        impact_proof = dict(query=body, input_fingerprint=complete["input_fingerprint"])
+        _, refreshed = self.request(port, "POST", route, token, payload=body)
+        proof = dict(query=body, input_fingerprint=refreshed["input_fingerprint"])
+        with closing(sqlite3.connect(self.database)) as c:
+            self.assertEqual(list(c.iterdump()), complete_before)
         process.stdin.close()
         self.assertEqual(process.wait(timeout=10), 0)
         token = secrets.token_hex(32)
@@ -212,6 +272,11 @@ class SidecarTests(unittest.TestCase):
         )
         self.assertEqual((status, freshness["status"]), (200, "Current"))
         self.assertFalse(freshness["applyable"] or freshness["publishable"])
+        status, current_impact = self.request(
+            port, "POST", "/day-impact/freshness", token, payload=impact_proof
+        )
+        self.assertEqual((status, current_impact["status"]), (200, "Current"))
+        self.assertFalse(current_impact["applyable"] or current_impact["publishable"])
 
     def test_daily_inputs_authenticated_slotless_and_default_write_gate_closed(self):
         token = secrets.token_hex(32)

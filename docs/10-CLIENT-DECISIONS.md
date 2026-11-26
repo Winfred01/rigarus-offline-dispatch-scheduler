@@ -1,5 +1,15 @@
 # Decision register
 
+Current owner continuation November25/26: **read-only Before/After → separately
+safe human Apply → recoverable schedule versions → delay-chain replanning →
+formal PDF/Excel**. Human-merged122 and healthy main8f6e547 satisfy the earlier
+implementation dependency; its historical review rows below retain their dates.
+The current bounded #18 preview is read-only, exact-scope and always overall
+Pending/Apply=false/Publish=false. Missing persisted remaining confirmation,
+locks/dependencies and resource evidence are not guessed. This is owner-approved
+development scope, not customer Demo/UAT/production acceptance. See
+[checks](acceptance/2026-11-26-issue-18-impact.md).
+
 Source for this draft is the November 2026 project plan and delivery playbook. Confirmed items below reflect the recorded baseline. Proposed and open items await the designated decision-maker for the indicated gate.
 
 | State | Decision or question | Gate or source |

@@ -2,8 +2,8 @@
 
 [中文使用说明书](USER-GUIDE.zh-CN.md) · [Project README](../README.md)
 
-**Edition:** November25,2026 engineering preview. **Source baseline:** main
-`9d40765` plus Issue120 editor (awaiting human review). The desktop
+**Edition:** November26,2026 engineering preview. **Source baseline:** main
+`8f6e547` (merged122) plus the Issue18 read-only impact slice (awaiting review). The desktop
 interface is English. Confirm the commit of your installed build.
 It is an operator reference, not customer acceptance or production authorization.
 
@@ -353,6 +353,31 @@ cannot shorten a plan through that weekend.
 All proposals remain **Apply=false / Publish=false**. Reports cannot export
 validated company/Crew/employee files yet. Human Before/After, locks, transactional
 Apply, audit and recoverable versions must precede formal dispatch/export.
+
+<a id="impact-preview"></a>
+### Preview Impact (read-only engineering slice)
+
+From a WorkItem's Auto-Recommend dialog, enter positive whole Remaining Days,
+explicitly confirm them, choose candidate Crews and local dates, then click
+**Preview Impact**. The loaded scope lists saved visits in the chosen horizon.
+Check the exact FullDayDraft IDs/revisions to replace in memory, then **Recompute
+impact**. An empty selection leaves all saved occupation protected. Legacy halves
+are visible for review and cannot be selected for automatic conversion.
+
+Compare **Before · Saved** and **After · Proposed**, including dates, actual saved
+workers/Rig, pending proposed resources, skipped dates and detailed resource checks.
+Before Remaining Days is **Not recorded** unless a real saved confirmation source
+exists; five saved dates never prove five remaining days. Protected other work is
+not moved. Unsupported locks/dependencies mean **Needs Review**, not no impact.
+
+**Recheck inputs** observes Current/Stale. Stale requires recomputation; a read
+error certifies nothing. When a selected saved revision changed, use **Reload
+saved visits — clear selection**, review the new revisions and explicitly select
+the replacement visits again; old intent is never silently rebound.
+**Cancel / close preview** or Escape discards the view
+without changing SQLite and returns focus to its trigger. No Apply or Publish is
+enabled; production daily writes remain closed. This is not formal dispatch.
+See [synthetic example](../samples/synthetic-only/impact-preview.md).
 
 <a id="data"></a>
 ## 14. Local data, upgrades and recovery

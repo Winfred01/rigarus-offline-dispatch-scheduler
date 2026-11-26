@@ -1,5 +1,12 @@
 # Delivery playbook for repository use
 
+Current #18 engineering slice: read-only exact-scope Before/After in the existing
+WorkItem Auto-Recommend workflow. Follow [actual checks](acceptance/2026-11-26-issue-18-impact.md).
+Then independently deliver safe human Apply, recoverable versions, delay-chain
+replanning and formal exports. Unsupported downstream/locks stay Needs Review;
+production daily writers/Apply/Publish remain closed. An expired Evaluation VM
+still blocks disconnected install/upgrade/reboot; CI/native host are not substitutes.
+
 Current UI delivery order follows the November25 owner direction: #119 read-only
 full-day/legacy weekly workbench and typed Locate; #120 independent daily editor
 with safe save/cancel/recovery; #18/#29/#20 explicit human Apply and recoverable

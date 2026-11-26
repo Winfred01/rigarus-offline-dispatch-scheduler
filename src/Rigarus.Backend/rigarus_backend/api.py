@@ -9,6 +9,7 @@ from .domain import DemoProject
 from .day_draft_api import day_draft_router
 from .day_editor_api import day_editor_router
 from .day_recommendation_api import day_recommendation_router
+from .impact_preview_api import impact_router
 from .schedule_workbench import workbench_router
 from .daily_calendar_api import daily_calendar_router
 from .assignment_api import assignment_router
@@ -47,6 +48,7 @@ def create_app(
     app.include_router(project_router(database_path))
     app.include_router(assignment_router(database_path))
     app.include_router(day_recommendation_router(database_path))
+    app.include_router(impact_router(database_path))
     app.include_router(workbench_router(database_path))
     app.include_router(
         day_editor_router(
