@@ -66,3 +66,18 @@ this choice record, and what actually committed? Signature is typed saved/propos
 date rows, explicit warning acknowledgement and immutable version receipt; no
 charts, fake totals, rebranding or web assets. Style app sheet keeps palette/type;
 table scrolls within its frame; important identity/status stays legible.
+
+Native first candidate (November26): exact5→8 preparation and Escape cancellation
+were observed. Original-image comparison found Before rows following checkbox
+selection order rather than date order and long repeated missing-roster text.
+Before further UI work, sort cloned display rows by date/Crew/ID only (never
+reorder the submitted proof), keep full warning evidence in a labeled scroll
+region, and compact repeated row descriptions. Rebuild and repeat native checks.
+
+Native final-candidate stale injection retained its original request and made no
+business changes, but the existing API returned uncoded409 text for a changed
+exact scope, conservatively leaving the desktop Unknown. Before fixing, add a
+regression that requires an explicit stale code. Normalize only known snapshot/
+missing saved-context conflicts to STALE_OR_CHANGED_EXACT_PLAN; unknown storage,
+identity and idempotency mismatches remain unresolved. Reuse the retained native
+key after rebuilding; never delete it to manufacture a successful retry.

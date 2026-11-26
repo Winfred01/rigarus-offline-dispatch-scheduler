@@ -1,5 +1,14 @@
 # Delivery playbook for repository use
 
+Issue126 desktop confirmation/recovery must be verified with the exact candidate:
+Cancel before submit/no business writes; complete date/personnel/cancellation and
+warning acknowledgement; stale/block refusal; retained original key after Unknown
+or restart; verified receipt acknowledgement; committed versus failed refresh;
+exact version/inverse Current-Stale and disabled Restore. Native recovery files,
+archives and database must stay local; never delete an unresolved journal to force
+a new key. Synthetic test opt-in does not authorize production or customer UAT.
+Offline install/upgrade/reboot remains BLOCKED until a qualified VM is available.
+
 Issue124 backend transaction follows human-merged123: explicitly acknowledge exact
 Pending warnings to record an unconfirmed Draft, never override a known blocker.
 Synthetic-only opt-in validates atomic write/audit/receipt and recovery preview;

@@ -1,5 +1,11 @@
 # Project plan for repository use
 
+Issue126 connects human-merged125's exact unconfirmed-Draft transaction to desktop
+confirmation, native request reconciliation and read-only version comparison.
+Production writers, dispatch Apply/Publish and actual restore stay closed. Next
+independently reviewed work: actual audited Draft restore, qualified native/offline
+rollout, locks/dependency-aware delay propagation, then formal PDF/Excel.
+
 Issue124 follows merged123 with backend-only exact human-confirmed proposal→
 unconfirmed Draft transaction/audit/version receipt and read-only inverse preview.
 Owner November26 allows explicitly acknowledged Pending for this recording step;

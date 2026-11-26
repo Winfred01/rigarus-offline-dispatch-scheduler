@@ -4,6 +4,8 @@ import type { ScheduleView } from "./schedule";
 import { Dialog } from "./dialog";
 import { DayRecommendationPreview } from "./day-recommendation-preview";
 import { DayEditor } from "./day-editor";
+import { DraftConfirmation } from "./draft-confirmation";
+import type { DraftReceipt } from "./draft-confirmation-state";
 import type { DraftRecord } from "./day-editor-state";
 import { PreviewEpoch, reasonLabel } from "./day-preview-state";
 import { localToday, validLocalDate } from "./assignment-fields";
@@ -90,6 +92,7 @@ export function DayWorkbench({
     [kind, setKind] = useState<SavedKind>("FullDayDraft"),
     [identity, setIdentity] = useState("");
   const [editor, setEditor] = useState<{ id?: number }>();
+  const [transaction, setTransaction] = useState(false);
   const [focusKey, setFocusKey] = useState<string>(),
     [highlight, setHighlight] = useState<string>();
   const epoch = useRef(new PreviewEpoch()),
@@ -207,6 +210,11 @@ export function DayWorkbench({
       if (alive.current && epoch.current.current(ticket)) setBusy(false);
     }
   }
+  async function refreshTransaction(receipt: DraftReceipt): Promise<boolean> {
+    const row =
+      receipt.after?.find((r) => r.status === "Draft") ?? receipt.after?.[0];
+    return row ? refreshSaved(row) : false;
+  }
   async function refreshSaved(row: DraftRecord): Promise<boolean> {
     if (row.status === "Draft") return locate("FullDayDraft", row.id);
     const ticket = epoch.current.next();
@@ -249,7 +257,8 @@ export function DayWorkbench({
     }
   }, [target]);
   useEffect(() => {
-    if (!focusKey || busy || !data || editor) return;
+    if (!focusKey || busy || !data || editor || recommend || transaction)
+      return;
     const card = document.getElementById(`saved-${focusKey}`),
       scroll = card?.closest<HTMLElement>(".week-scroll");
     if (!card || !scroll) {
@@ -278,7 +287,7 @@ export function DayWorkbench({
     card.focus({ preventScroll: true });
     cue.start(focusKey);
     setFocusKey(undefined);
-  }, [focusKey, busy, data, view, editor]);
+  }, [focusKey, busy, data, view, editor, recommend, transaction]);
   const shown =
     data?.start_date === range.start && data.end_date === range.end
       ? data
@@ -346,10 +355,21 @@ export function DayWorkbench({
         <strong>Full Day workbench · Draft / Validation pending</strong> —
         saved-record views. Legacy AM/PM is retained for review. The independent
         daily editor is gated for synthetic testing; production daily writes,
-        human Apply, locks and version recovery remain unavailable. No dispatch
-        or publication approval.
+        dispatch Apply, locks and actual version restore remain unavailable.
+        Exact plan recording/reconciliation is synthetic-only. No dispatch or
+        publication approval.
       </p>
       <div className="week-toolbar">
+        <button
+          id="recover-draft-plan"
+          disabled={busy}
+          onClick={() => {
+            setDetail(undefined);
+            setTransaction(true);
+          }}
+        >
+          Draft plan recovery / Versions
+        </button>
         <button
           disabled={busy}
           id="open-day-editor"
@@ -747,6 +767,13 @@ export function DayWorkbench({
           jobNumber={recommend.job_number}
           workType={recommend.type}
           onClose={() => setRecommend(undefined)}
+          onSaved={refreshTransaction}
+        />
+      )}
+      {transaction && (
+        <DraftConfirmation
+          onClose={() => setTransaction(false)}
+          onSaved={refreshTransaction}
         />
       )}
       {editor && (

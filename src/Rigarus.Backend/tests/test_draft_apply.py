@@ -77,6 +77,16 @@ class TransactionTests(unittest.TestCase):
         )
         self.assertEqual(original, self.digest())
 
+    def test_desktop_status_reports_separate_gate_and_lineage_without_writes(self):
+        before = self.digest()
+        closed = self.client.get("/draft-transactions/status").json()
+        opened = self.writer.get("/draft-transactions/status").json()
+        self.assertFalse(closed["test_writes_enabled"])
+        self.assertTrue(opened["test_writes_enabled"])
+        self.assertFalse(opened["production_writes_enabled"])
+        self.assertEqual(closed["database_identity"], opened["database_identity"])
+        self.assertEqual(before, self.digest())
+
     def test_extension_retains_ids_notes_histories_and_reopens(self):
         body = self.request()
         r = self.post(body)
@@ -163,7 +173,9 @@ class TransactionTests(unittest.TestCase):
             1,
         )
         original = self.digest()
-        self.assertEqual(self.post(body).status_code, 409)
+        response = self.post(body)
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["detail"], "STALE_OR_CHANGED_EXACT_PLAN")
         self.assertEqual(original, self.digest())
 
     def test_change_outside_selected_scope_stales(self):

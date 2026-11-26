@@ -132,6 +132,18 @@ def prepare(path, request):
         return prepare_in(c, path, request, deadline)
 
 
+def read_status(path, test_writes=False):
+    with closing(storage.connect(path, read_only=True)) as c, c:
+        c.execute("BEGIN")
+        _read_schema(ReadBudget(c))
+        return dict(
+            database_identity=profile(c),
+            test_writes_enabled=test_writes is True,
+            production_writes_enabled=False,
+            **flags(),
+        )
+
+
 def receipt_in(c, request_id):
     return c.execute(
         "SELECT PayloadSha,ResultJson FROM DraftVersions WHERE RequestId=?",

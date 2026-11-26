@@ -4,7 +4,7 @@
 
 Rigarus is a **Windows-first, fully offline dispatch-planning desktop application** for a single local operator. It opens without a user account or sign-in. The application uses **Tauri/Rust + React/TypeScript**, a bundled **Python FastAPI** sidecar, and **local SQLite**. No Google Calendar account, cloud sync, or hosted scheduling service is required.
 
-> **Engineering preview — 25 November 2026. Baseline main 9d40765 plus Issue120 editor.** This branch awaits human review. Production daily writes remain closed. Code merged into `main` is not a customer-approved release. Demo A–F sign-off, full dispatch safety, production distribution and UAT remain pending. Use fictional data; a Draft is not confirmed dispatch.
+> **Engineering preview — 26 November 2026. Baseline main 0f12822 plus Issue126 desktop confirmation/recovery.** Exact plan review, native request reconciliation and read-only Draft version comparison are synthetic engineering features. Production daily writes, dispatch Apply, actual Restore and Publish remain closed. This branch awaits human review; merged code is not a customer-approved release. Demo/UAT and qualified offline deployment remain pending. Use fictional data; an unconfirmed Draft is not dispatch approval.
 
 The owner confirmed **Full Day** for new scheduling on November24. The desktop
 AM/PM controls below remain legacy compatibility, not a completed full-day
