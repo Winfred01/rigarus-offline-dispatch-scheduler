@@ -1,5 +1,15 @@
 # M0 acceptance walkthrough
 
+## Confirmed Draft transaction foundation (#124)
+
+Follow [synthetic sequence](../samples/synthetic-only/draft-transactions.md) and
+[actual checks](acceptance/2026-11-26-issue-124-draft-transactions.md). Prepare5→8
+or5→2, inspect exact typed before/proposed/cancellations and Pending reasons;
+confirm exact fingerprint+warning acknowledgement only in the isolated synthetic
+backend. Verify IDs/history, one atomic audit/receipt, stale/block rollback,
+same-key replay/restart and no-write inverse/subsequent-edit Stale. No desktop
+Apply/actual restore/production/Publish or customer Demo acceptance is supplied.
+
 ## Read-only full-day impact (#18)
 
 Follow [synthetic reproduction](../samples/synthetic-only/impact-preview.md) and

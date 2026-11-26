@@ -1,5 +1,20 @@
 # SQLite data model
 
+## Confirmed Draft changeset versions (schema twenty, #124)
+
+`20261126010000_AddDraftVersions` adds only immutable DraftVersions: monotonic
+version ID, unique namespaced request UUID/payload SHA, retained lineage UUID FK,
+exact plan SHA, result JSON (review proof, before/after, confirmation, observations)
+and UTC time. It is both atomic batch audit/version and committed request receipt;
+the independent manual editor namespace is unchanged. Old IDs/Slot/notes/members/
+history/FKs are not converted. Existing rows retain matching Crew/date IDs;
+removed dates cancel with new history; new dates receive new IDs. Schema19 gets
+verified consistent pre-DDL backup; DDL/history failures roll back and retry/reopen
+is safe. Older binaries reject20; no in-place downgrade or history removal.
+Versions cover exact touched Draft records, not entire database recovery or
+publication. Inverse preview never rewinds revisions or writes. See
+[evidence](acceptance/2026-11-26-issue-124-draft-transactions.md).
+
 ## Read-only impact proposals (#18, no migration)
 
 Schema19 remains unchanged. One pinned query-only read combines its lineage UUID,

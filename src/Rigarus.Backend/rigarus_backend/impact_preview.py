@@ -435,82 +435,12 @@ def read_impact(path: Path, request, fingerprint=None):
     def expired():
         return int(monotonic() >= deadline)
 
-    query = _query(request)
+    _query(request)  # Validate before opening a connection.
     try:
         with closing(storage.connect(path, read_only=True)) as connection, connection:
             connection.set_progress_handler(expired, 1000)
             connection.execute("BEGIN")
-            c = ReadBudget(connection)
-            migrations = _read_schema(c)
-            profile = c.execute(
-                "SELECT ProfileId FROM DayEditorWorkspace WHERE Id=1"
-            ).fetchone()
-            if profile is None or str(UUID(profile[0])) != profile[0]:
-                raise SnapshotReadError("DATABASE_IDENTITY_INVALID")
-            target_index = tuple(
-                c.execute(
-                    "SELECT 'FullDayDraft',Id,LocalDate,Revision,CrewId,Notes FROM DayDraftAssignments WHERE WorkItemId=? AND Status='Draft' "
-                    "UNION ALL SELECT 'LegacyHalfDay',Id,LocalDate,Revision,CrewId,Notes FROM DraftAssignments WHERE WorkItemId=? AND Status='Draft' ORDER BY 1,2",
-                    (query.work_item_id, query.work_item_id),
-                ).fetchall()
-            )
-            crews = sorted(
-                set(query.crew_ids)
-                | {
-                    r[4]
-                    for r in target_index
-                    if query.earliest_start_date <= r[2] <= query.horizon_end_date
-                }
-            )
-            snapshot = _read_day_sources(
-                c,
-                _query(request, crews),
-                _digest(os.path.normcase(str(path.resolve()))),
-                migrations,
-            )
-            base = dict(
-                database_identity=profile[0],
-                input_fingerprint=_digest(
-                    (
-                        FORMAT,
-                        profile[0],
-                        snapshot.input_fingerprint,
-                        request,
-                        target_index,
-                    )
-                ),
-            )
-            # Bound repeated detached validation before materializing alternatives.
-            # SQL/bytes already share the reader budget; computation is charged too.
-            if fingerprint is None:
-                c.charge(
-                    (len(snapshot.day_assignments) + len(snapshot.legacy_assignments))
-                    * (len(query.crew_ids) + 2)
-                    * 8
-                    + min(request["remaining_days"], 366)
-                    * len(query.crew_ids)
-                    * max(1, len(request["proposed_employee_ids"] or ()))
-                    * 8
-                )
-            if fingerprint is not None:
-                result = dict(
-                    **_flags(),
-                    status="Current"
-                    if fingerprint == base["input_fingerprint"]
-                    else "Stale",
-                    reason="UNCHANGED_AT_READ"
-                    if fingerprint == base["input_fingerprint"]
-                    else "INPUTS_CHANGED",
-                )
-            else:
-                result = project_impact(snapshot, request, base, target_index)
-            c.charge_bytes(len(canonical(result).encode("utf-8")))
-            c.charge(
-                sum(len(x.get("checks", ())) for x in result.get("candidates", ()))
-            )
-            if expired():
-                raise SnapshotReadError("READ_DEADLINE_EXCEEDED")
-            return result
+            return impact_in(connection, path, request, fingerprint, deadline)
     except (SnapshotContextError, SnapshotNotFound, SnapshotReadError):
         raise
     except (
@@ -525,3 +455,80 @@ def read_impact(path: Path, request, fingerprint=None):
         OverflowError,
     ):
         raise SnapshotReadError("IMPACT_SOURCE_READ_FAILED") from None
+
+
+def impact_in(connection, path, request, fingerprint=None, deadline=None):
+    """Caller owns the pinned read or reserved write transaction; never opens I/O."""
+    deadline = deadline if deadline is not None else monotonic() + READ_SECONDS
+    query = _query(request)
+
+    def expired():
+        return int(monotonic() >= deadline)
+
+    c = ReadBudget(connection)
+    migrations = _read_schema(c)
+    profile = c.execute(
+        "SELECT ProfileId FROM DayEditorWorkspace WHERE Id=1"
+    ).fetchone()
+    if profile is None or str(UUID(profile[0])) != profile[0]:
+        raise SnapshotReadError("DATABASE_IDENTITY_INVALID")
+    target_index = tuple(
+        c.execute(
+            "SELECT 'FullDayDraft',Id,LocalDate,Revision,CrewId,Notes FROM DayDraftAssignments WHERE WorkItemId=? AND Status='Draft' "
+            "UNION ALL SELECT 'LegacyHalfDay',Id,LocalDate,Revision,CrewId,Notes FROM DraftAssignments WHERE WorkItemId=? AND Status='Draft' ORDER BY 1,2",
+            (query.work_item_id, query.work_item_id),
+        ).fetchall()
+    )
+    crews = sorted(
+        set(query.crew_ids)
+        | {
+            r[4]
+            for r in target_index
+            if query.earliest_start_date <= r[2] <= query.horizon_end_date
+        }
+    )
+    snapshot = _read_day_sources(
+        c,
+        _query(request, crews),
+        _digest(os.path.normcase(str(path.resolve()))),
+        migrations,
+    )
+    base = dict(
+        database_identity=profile[0],
+        input_fingerprint=_digest(
+            (
+                FORMAT,
+                profile[0],
+                snapshot.input_fingerprint,
+                request,
+                target_index,
+            )
+        ),
+    )
+    # Bound repeated detached validation before materializing alternatives.
+    # SQL/bytes already share the reader budget; computation is charged too.
+    if fingerprint is None:
+        c.charge(
+            (len(snapshot.day_assignments) + len(snapshot.legacy_assignments))
+            * (len(query.crew_ids) + 2)
+            * 8
+            + min(request["remaining_days"], 366)
+            * len(query.crew_ids)
+            * max(1, len(request["proposed_employee_ids"] or ()))
+            * 8
+        )
+    if fingerprint is not None:
+        result = dict(
+            **_flags(),
+            status="Current" if fingerprint == base["input_fingerprint"] else "Stale",
+            reason="UNCHANGED_AT_READ"
+            if fingerprint == base["input_fingerprint"]
+            else "INPUTS_CHANGED",
+        )
+    else:
+        result = project_impact(snapshot, request, base, target_index)
+    c.charge_bytes(len(canonical(result).encode("utf-8")))
+    c.charge(sum(len(x.get("checks", ())) for x in result.get("candidates", ())))
+    if expired():
+        raise SnapshotReadError("READ_DEADLINE_EXCEEDED")
+    return result

@@ -27,7 +27,7 @@ from rigarus_backend.daily_calendar_store import (
     snapshot,
 )
 from rigarus_backend.daily_calendar_migration import DAILY_TABLES
-from rigarus_backend.day_editor_migration import DAY_EDITOR
+from rigarus_backend.draft_version_migration import DRAFT_VERSIONS
 from rigarus_backend.day_backup import logical_digest
 from rigarus_backend.day_draft_store import DayDraftStore
 from rigarus_backend.day_drafts import DayDraft
@@ -599,7 +599,7 @@ class DailyMigrationTests(unittest.TestCase):
                 c.execute(
                     "SELECT MigrationId FROM __EFMigrationsHistory ORDER BY MigrationId DESC LIMIT 1"
                 ).fetchone(),
-                (DAY_EDITOR,),
+                (DRAFT_VERSIONS,),
             )
 
     def test_partial_or_future_schema_rejected_without_modification(self):

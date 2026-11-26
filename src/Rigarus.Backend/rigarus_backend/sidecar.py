@@ -44,13 +44,19 @@ def private_api(app, token: bytes):
 
 
 async def serve(
-    listener: socket.socket, database: Path, token: bytes, *, editor_test=False
+    listener: socket.socket,
+    database: Path,
+    token: bytes,
+    *,
+    editor_test=False,
+    draft_transaction_test=False,
 ) -> bool:
     app = private_api(
         create_app(
             database,
             database_initialized=True,
             enable_day_editor_test_writes=editor_test,
+            enable_draft_transaction_test_writes=draft_transaction_test,
         ),
         token,
     )
@@ -99,8 +105,9 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--database", required=True, type=Path)
     parser.add_argument("--synthetic-day-editor", action="store_true")
+    parser.add_argument("--synthetic-draft-transactions", action="store_true")
     arguments = parser.parse_args()
-    if arguments.synthetic_day_editor:
+    if arguments.synthetic_day_editor or arguments.synthetic_draft_transactions:
         root = os.environ.get("RIGARUS_SMOKE_DATA_ROOT", "")
         if (
             not root
@@ -143,6 +150,7 @@ def main() -> int:
                     arguments.database,
                     token,
                     editor_test=arguments.synthetic_day_editor,
+                    draft_transaction_test=arguments.synthetic_draft_transactions,
                 )
             ):
                 return 0

@@ -1,5 +1,16 @@
 # Decision register
 
+Confirmed (owner development scope), November26,2026: an exactly reviewed and
+explicitly confirmed proposal may be recorded as an **unconfirmed Draft** while
+retaining Pending and its specific missing-evidence/unsupported-policy warnings.
+The operator must acknowledge the exact warnings; known hard blockers still
+reject. This narrowly supersedes the previous incomplete-evidence refusal for
+Draft recording, not dispatch certification or Publish. Production writes remain
+closed; synthetic-only transaction/audit/recovery-preview foundation follows
+[Issue124 design](design/2026-11-26-issue-124-draft-apply.md). No automatic source
+transfer, inferred actual Rig, lock/dependency policy, actual restore or customer
+acceptance is approved by this decision.
+
 Current owner continuation November25/26: **read-only Before/After → separately
 safe human Apply → recoverable schedule versions → delay-chain replanning →
 formal PDF/Excel**. Human-merged122 and healthy main8f6e547 satisfy the earlier

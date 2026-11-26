@@ -1,5 +1,12 @@
 # Delivery playbook for repository use
 
+Issue124 backend transaction follows human-merged123: explicitly acknowledge exact
+Pending warnings to record an unconfirmed Draft, never override a known blocker.
+Synthetic-only opt-in validates atomic write/audit/receipt and recovery preview;
+production/desktop Apply, actual restore and Publish remain unavailable. Follow
+[actual checks](acceptance/2026-11-26-issue-124-draft-transactions.md). Engineering
+checks do not replace human review, native UI or qualified disconnected acceptance.
+
 Current #18 engineering slice: read-only exact-scope Before/After in the existing
 WorkItem Auto-Recommend workflow. Follow [actual checks](acceptance/2026-11-26-issue-18-impact.md).
 Then independently deliver safe human Apply, recoverable versions, delay-chain

@@ -609,7 +609,7 @@ class DailyDriverMigrationTests(unittest.TestCase):
             self.assertEqual(c.execute("PRAGMA foreign_key_check").fetchall(), [])
             self.assertEqual(
                 c.execute("SELECT count(*) FROM __EFMigrationsHistory").fetchone(),
-                (19,),
+                (20,),
             )
         after = self.digest()
         storage.initialize_database(self.database)
@@ -638,7 +638,7 @@ class DailyDriverMigrationTests(unittest.TestCase):
                 storage.initialize_database(self.database)
         self.assertEqual(self.digest(), before)
         storage.initialize_database(self.database)
-        self.assertEqual(len(self.snapshot().migrations), 19)
+        self.assertEqual(len(self.snapshot().migrations), 20)
 
     def test_read_only_adapter_does_not_migrate14(self):
         self.old14()
