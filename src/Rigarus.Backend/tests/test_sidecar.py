@@ -202,6 +202,30 @@ class SidecarTests(unittest.TestCase):
         )  # No explicit daily calendars: never assume capacity.
         self.assertFalse(preview["applyable"] or preview["publishable"])
         proof = dict(query=body, input_fingerprint=preview["input_fingerprint"])
+        with closing(sqlite3.connect(self.database)) as c:
+            before_impact = list(c.iterdump())
+        impact_route = "/day-impact/preview"
+        self.assertEqual(self.request(port, "POST", impact_route, payload=body)[0], 401)
+        self.assertEqual(
+            self.request(
+                port,
+                "POST",
+                impact_route,
+                token,
+                headers={"Host": "other.invalid"},
+                payload=body,
+            )[0],
+            401,
+        )
+        status, impact = self.request(port, "POST", impact_route, token, payload=body)
+        self.assertEqual(status, 200, impact)
+        self.assertTrue(impact["readonly"])
+        self.assertFalse(impact["applyable"] or impact["publishable"])
+        self.assertEqual(impact["ranked_crew_ids"], [])
+        self.assertEqual(impact["before"]["remaining_status"], "Not recorded")
+        impact_proof = dict(query=body, input_fingerprint=impact["input_fingerprint"])
+        with closing(sqlite3.connect(self.database)) as c:
+            self.assertEqual(list(c.iterdump()), before_impact)
         process.stdin.close()
         self.assertEqual(process.wait(timeout=10), 0)
         token = secrets.token_hex(32)
@@ -212,6 +236,11 @@ class SidecarTests(unittest.TestCase):
         )
         self.assertEqual((status, freshness["status"]), (200, "Current"))
         self.assertFalse(freshness["applyable"] or freshness["publishable"])
+        status, current_impact = self.request(
+            port, "POST", "/day-impact/freshness", token, payload=impact_proof
+        )
+        self.assertEqual((status, current_impact["status"]), (200, "Current"))
+        self.assertFalse(current_impact["applyable"] or current_impact["publishable"])
 
     def test_daily_inputs_authenticated_slotless_and_default_write_gate_closed(self):
         token = secrets.token_hex(32)

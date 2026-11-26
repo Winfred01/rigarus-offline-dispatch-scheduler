@@ -1,5 +1,17 @@
 # M0 acceptance walkthrough
 
+## Read-only full-day impact (#18)
+
+Follow [synthetic reproduction](../samples/synthetic-only/impact-preview.md) and
+[actual engineering evidence](acceptance/2026-11-26-issue-18-impact.md). Preview
+A's five saved visits with explicitly confirmed8 or2 remaining days, select exact
+typed IDs/revisions, compare before/after, retain protected B and legacy PM, inspect
+all blockers/missing checks, Cancel/Escape and verify full logical equality.
+Check sticky Current→Stale/recompute and read errors; do not infer no downstream
+impact from unsupported dependencies/locks. No active Apply/Publish/writer opening.
+This read-only engineering slice does not complete Demo C's future safe Apply,
+schedule versions, delay-chain replanning, customer UAT or disconnected acceptance.
+
 ## Full-day actual-worker weekend consent (#113/#27)
 
 See [design](design/2026-11-25-daily-weekend-checklist.md),

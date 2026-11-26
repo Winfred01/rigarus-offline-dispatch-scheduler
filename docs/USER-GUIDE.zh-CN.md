@@ -2,7 +2,7 @@
 
 [English user guide](USER-GUIDE.en.md) · [中文项目概览](README.zh-CN.md)
 
-**文档版本：**2026-11-25 工程预览。**源码基线：**main `9d40765` 加 Issue120 编辑器，等待人工审核。
+**文档版本：**2026-11-26 工程预览。**源码基线：**main `8f6e547`（已合并122），加等待审核的 Issue18 只读影响预览。
 软件界面为英文，本文保留实际英文按钮名称，方便对照。使用前核对所安装构建的提交；
 本说明书不是客户验收签收或生产派工许可。
 
@@ -305,6 +305,25 @@ Bulk Add 不会创建每日排班、推断工作项或自动核对历史实际�
 所有候选保持 **Apply=false / Publish=false**。Reports 尚不能导出经验证的
 公司/Crew/员工日程。Before/After、锁定、事务内人工 Apply、审计和可恢复版本完善后，
 才可继续正式派工与导出流程。
+
+<a id="impact-preview"></a>
+### Preview Impact（只读工程切片）
+
+从 WorkItem 的 Auto-Recommend 弹窗输入正整数 Remaining Days，明确勾选确认，
+选择候选 Crew、本地开始日期及规划终点，再点击 **Preview Impact**。
+加载后会列出本范围内既有记录。明确勾选要在内存中替换的 FullDayDraft ID
+和修订，再点 **Recompute impact**；未勾选时，所有既有占用仍被保留。
+旧半天记录显示为 Legacy / Needs Review，不能勾选为自动转换对象。
+
+对照 **Before · Saved** 与 **After · Proposed** 的日期、既有实际人员和车辆、
+拟议资源缺口、跳过日期及资源原因。Before 的 Remaining Days 显示 **Not recorded**，
+不能用已保存五个日期推断还需五天。其他任务不自动移动；锁和连锁依赖缺少可靠支持时
+显示 **Needs Review / Unsupported**，不能理解为没有影响。
+
+用 **Recheck inputs** 核对 Current / Stale。Stale 必须重新计算；读取错误不代表安全。
+**Cancel / close preview** 或 Escape 关闭时不修改 SQLite，焦点回到入口按钮。
+Apply、Publish 和生产每日写入继续关闭；此功能不能用于正式派工。
+参见[合成示例](../samples/synthetic-only/impact-preview.md)。
 
 <a id="data"></a>
 ## 14. 本地数据、升级与恢复

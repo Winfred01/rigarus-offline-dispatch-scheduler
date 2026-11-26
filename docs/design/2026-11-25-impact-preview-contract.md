@@ -1,10 +1,14 @@
 # Full-day Before/After impact preview — design only
 
-Status: **BLOCKED for product implementation while PR122 is unmerged**.
+Status update November26: human-merged122/main8f6e547 and successful main CI met
+the original prerequisite. The bounded read-only scope now has
+[implementation/evidence](../acceptance/2026-11-26-issue-18-impact.md).
+The future Apply/version/lock/dependency sections remain DESIGN ONLY.
 Owner request November25; dependencies18/19/20/29/99/120. This document implements
 no endpoint, button, allocator, lock, Apply or schedule-version restoration.
-PR122 remains the only product PR in this review. Recheck human merge/current
-main build before the next independently reviewed slice.
+The paragraphs below preserve the original pre-implementation analysis. Current
+scope supplies exact replacement, Saved/Proposed and coherent source/proposal
+proofs; it does not supply locks, dependency propagation, Apply or restoration.
 
 ## Current implementation and gaps
 

@@ -154,6 +154,8 @@ impl Sidecar {
         let path = match action {
             "preview" => "/day-recommendations/preview",
             "freshness" => "/day-recommendations/freshness",
+            "impact_preview" => "/day-impact/preview",
+            "impact_freshness" => "/day-impact/freshness",
             _ => return Err("Choose preview or freshness recheck.".into()),
         };
         if input.to_string().len() > 16_384 {

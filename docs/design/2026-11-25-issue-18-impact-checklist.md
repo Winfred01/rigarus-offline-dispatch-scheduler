@@ -87,3 +87,18 @@ dated Rig/consent approvals into the proposed plan.
 
 All new product checks NOT RUN until executed. Main CI pending at plan creation.
 Native/offline/customer acceptance separate; production daily writes remain closed.
+
+## Execution update — November26
+
+Main CI45757807364 completed success/all3 jobs before the first product edit.
+No design-policy deviation: no new schema, writer, automatic transfer or chain.
+The new bounded scenario uses the complete existing resource-validation chain.
+Root results stay Pending even if some independent subchecks are Satisfied.
+
+Native connected-host comparison inspected against L13/image65: existing Dialog,
+blue/neutral controls, inherited borders/fonts and table vocabulary retained.
+Full Day, exact typed replacement scope, explicit Pending resources and unsupported
+locks/dependencies intentionally replace prototype half-days/Validated/Apply.
+Original drawings remain local. Actual native5→8/protected B, Escape/focus/reopen
+and SQLite equality were executed; narrower sizes/native faults/offline VM were
+not. See [execution evidence](../acceptance/2026-11-26-issue-18-impact.md).

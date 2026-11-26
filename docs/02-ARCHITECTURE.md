@@ -1,5 +1,27 @@
 # Architecture
 
+## Read-only Before/After impact (#18/#29)
+
+`impact_preview_api.py` exposes strict POST /day-impact/preview and /freshness
+through two fixed authenticated Rust recommendation actions. `impact_preview.py`
+pins schema19 UUID, complete active target index, exact typed replacement revisions
+and existing day/legacy/calendar/resource sources in one query-only transaction.
+Shared100k units/64MiB/30second bounds also charge detached scenario work/output.
+Pure projection releases only reviewed day records and their nonstale Rig claims
+in memory; raw legacy, unselected visits and stale Rig claims remain protected.
+Existing generator/PR91 comparison and people/driver/capability/Rig/consent chain
+are reused. Missing people, operational Rig proof, locks/dependencies remain
+Pending/Unsupported, known blockers excluded. No staffing/approval is inherited.
+
+SHA256 binds database-lineage identity, scoped/native sources, exact request and
+target index; proposal SHA additionally binds projected output. No global revision,
+reservation, Apply credential or stored proposal is invented. Source errors fail
+without Current. React extends the existing recommendation Dialog with exact
+scope checkboxes, Saved/Proposed comparison, protected records/reasons and sticky
+Stale until recompute. Cancel/Escape/selection remain read-only; typed Locate is
+unchanged. No migration/API writer or production gate opens. See
+[evidence](acceptance/2026-11-26-issue-18-impact.md).
+
 ## Independent Full Day Draft editor (#120, schema19)
 
 Strict `day_editor_api.py` contracts call `day_editor_store.py` transaction
@@ -19,8 +41,9 @@ returns without acknowledgement; the editor's normal accept path settles once.
 This is not atomic cross-window localStorage coordination: concurrent app-instance
 journals remain an unqualified production rollout gate. See
 [review](design/2026-11-25-issue-120-recovery-review.md).
-Before/After remains [design only](design/2026-11-25-impact-preview-contract.md)
-until this prerequisite PR is human-merged and main builds.
+The original prerequisite gate was subsequently met by human merge122 and healthy
+main8f6e547. The bounded read-only implementation above follows the
+[contract](design/2026-11-25-impact-preview-contract.md); Apply/versions remain design only.
 
 React journals the unchanged request in local WebView storage before dispatch,
 scoped by database UUID, bounded and treated as untrusted. Invalid/unwritable

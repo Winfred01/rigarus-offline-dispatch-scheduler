@@ -1,5 +1,12 @@
 # Project plan for repository use
 
+Current #18 slice follows human-merged122/main8f6e547: operator-visible read-only
+Before/After with exact saved replacement scope, coherent resource checks and
+Stale detection. See [engineering evidence](acceptance/2026-11-26-issue-18-impact.md).
+Confirmed remaining delivery order: safe human Apply → recoverable versions →
+delay-chain replanning → formal PDF/Excel. Production writes/Apply/Publish stay
+closed; green engineering checks do not accept customer Demo or production.
+
 Owner November25 next-stage priority: full-day weekly workbench and namespaced
 Locate (#119), then independent safe daily Draft editing (#120), then human
 Apply/locks/transaction revalidation/audit and recoverable schedule versions
