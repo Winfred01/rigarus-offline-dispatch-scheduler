@@ -29,15 +29,20 @@ writer, dispatch certification, Publish, actual restore or customer acceptance.
 - Schema20 additive immutable DraftVersions, FK to retained schema19 lineage;
   verified pre-DDL backup, transactional migration/fault rollback/retry/reopen.
 
-## Actual verification (updated after final checks)
+## Actual verification
 
 | Check | Outcome |
 | --- | --- |
-| Focused synthetic transaction tests34 | PASS |
+| New synthetic transaction cases36 | PASS within final full suite; focused34 also passed before two added regressions |
 | Frontend locked restore / formatting /74 tests / TypeScript/Vite | PASS |
 | Historical .NET locked restore/format/Release /35 tests | PASS |
-| Full backend / packaged sidecar / Rust / Windows Release / NSIS | RUNNING; final PR/report records completed results |
-| Privacy / documentation / exact-head Windows CI | NOT RUN yet; final PR/report records results |
+| Full backend | PASS644, 235.248seconds |
+| Actual packaged sidecar | PASS17 repeated subset, 34.509seconds |
+| Rust / Windows Release / NSIS | PASS11 / PASS / PASS; installer built, not installed |
+| PS5 acceptance-harness regression | PASS; expected synthetic timeout/failure paths are not native GUI acceptance |
+| Actual prior19 binary | PASS: rejects20; independently restored verified19 backup reopens logically unchanged |
+| Staged privacy / documentation / whitespace / Ruff | PASS394 indexed paths /9 Markdown files,165 local links / PASS / PASS135 files |
+| Exact-head Windows CI | Draft PR records run/head and final job results after push |
 | New native desktop confirmation/recovery UI | NOT RUN; no UI/bridge implemented in this backend-only slice |
 | Disconnected install/upgrade/reboot | BLOCKED: owner confirmed no qualified replacement for expired Evaluation VM |
 | Customer Demo C/E/UAT / production approval | NOT RUN / pending human acceptance |
@@ -52,7 +57,9 @@ rollback, immutable audit, integrity/FKs, migration backup/preservation/fault/re
 schema19 reader refusal, inverse/no-write/Subsequent-edit Stale.
 
 Initial local tests caught path integer coercion and synthetic fixture signature
-mistakes; corrected before delivery. A discovery-time full607 run overlapped
+mistakes; corrected before delivery. The first complete642 run exposed two unchanged last-migration-name assertions;
+updated only their current schema expectation to20 and reran644 successfully.
+A discovery-time full607 run overlapped
 schema edits and failed its old sidecar migration-count assertion (19 versus20);
 it is not a clean baseline claim. Merged-main CI is the verified baseline; final
 full suite must pass on finished sources. Initial local build invoked PowerShell5
@@ -66,3 +73,11 @@ native/offline acceptance and controlled writer rollout; actual restore as a new
 conflict-checked audited transaction; granular locks/dependencies/delay propagation;
 later formal immutable Published PDF/Excel. Open Foreman/category/authority policies
 remain Open. This backend foundation does not complete Issues18/20/29/99/120.
+
+Local Windows11 Pro10.0.26200 x64, connected development host. New installer
+SHA256 e889f68a9f3fedf9a6b552bfa6712cc8e60166cc9230508d16f0d41a494d37a8;
+not executed/installed. Actual prior19 sidecar SHA256
+591a70c5141afd3d1ece0d10f85d5d767d7c96713169cff84ff733b30a78048a.
+644 backend +74 frontend +11 Rust +35 .NET =764 distinct tests; packaged17
+are repeats, not additional unique tests. No dependency locks, React or Rust
+product files changed. No real customer profile, release or merge operation.
