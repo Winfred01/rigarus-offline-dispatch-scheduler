@@ -66,3 +66,21 @@ Future impact design keeps current shell and explains unavailable locks/dependen
 6. Update original Draft PR122/Issue120 and relevant dependencies with findings,
    actual checks and missing acceptance. One existing PR only, no merge/Release/
    Issue closure/customer data. Initial new results NOT RUN.
+
+## Review execution
+
+Confirmed minimal/mismatched success and changed-journal settlement defects with
+four pre-fix failing cases; fixed exact acknowledgement and added malformed
+rejection/date coverage. No independent editor copy, new migration/API/layout or
+impact product implementation. Source-backed API receipt roundtrip also passes.
+Local full580 backend/70 frontend/9 Rust/35 .NET =694 distinct PASS, packaged16
+repeat PASS; locked builds/format, PowerShell harness and actual packaged18→19/
+verified backup/old-binary rejection/restored18 reopening PASS.
+Final docs/privacy/CI recorded in the original Draft PR after actual execution.
+Local documentation13 files/172 links and staged privacy378/diff PASS.
+
+Native GUI for this review head NOT RUN; earlier candidate evidence is historical.
+Configured VM inventory28 classes resolves to the known Evaluation base, no
+qualified replacement found. Offline install/upgrade/restart BLOCKED. Host
+activation/build checks are not substitutes. Multi-window journal atomicity is
+unqualified, not solved by a current-value guard; production daily writes stay closed.

@@ -1,5 +1,78 @@
 # Issue120 — recoverable Full Day Draft editor evidence
 
+## Resumed PR122 safety review (November25)
+
+PR122 was rechecked Open/Draft/unmerged at96c3114; main9d40765 and its Windows
+CI45706045706 succeeded. No submitted/inline/conversation review comments found.
+The owner's impact implementation prerequisite is unmet: Before/After product
+work is BLOCKED. Reused this branch/PR, no duplicate editor/new product PR.
+Fresh [review/plan](../design/2026-11-25-issue-120-recovery-review.md) committed
+fe4063c before fixes. [Impact contract](../design/2026-11-25-impact-preview-contract.md)
+is design only, not a Preview Impact feature or Apply/restore implementation.
+
+### Findings and fixes
+
+- P1: a minimal/mismatched Committed wire value could clear the journal without
+  proving the saved WorkItem/Project/Crew/date/notes/member list matched the request.
+  Now validate complete FullDayDraft fields, action/status/exact identity, allowed
+  original/no-op/next revision and false safety flags before acknowledgement.
+- P1: an older settlement could erase another current pending journal. Now reject
+  a different current payload and retain it. Transport no longer acknowledges
+  before the editor's accept path; settle once. Unknown/malformed Rejected codes/
+  flags stay uncertain, and malformed calendar dates fail journal validation.
+- Four adversarial cases first failed at the old implementation; focused14 and
+  full frontend70 pass after correction. A source-backed synthetic API Create/
+  Edit/Cancel JSON-to-frontend settlement check also passes.
+- Residual: this is not atomic cross-instance localStorage coordination. Parallel
+  windows can still race during initial journal creation/check-and-remove. Do not
+  claim multi-instance safety; production rollout remains BLOCKED until that
+  coordination is explicitly designed/tested along with remaining acceptance.
+
+### Actual revalidation
+
+| Check | Current review result |
+| --- | --- |
+| Python locked bundle restore / Ruff check and128-file format | PASS |
+| Full backend | PASS580,0 skips |
+| Frontend locked npm ci / Prettier / TypeScript/Vite / tests | PASS70, including14 recovery tests (4 new) |
+| Source/API receipt roundtrip | PASS Create/Edit/Cancel actual synthetic API results match strict settlement |
+| Packaged sidecar build / repeat tests | PASS16 |
+| Locked Cargo fmt/fetch / Windows Tauri Release/NSIS / Rust tests | PASS9 |
+| Historical .NET locked restore/format/Release/tests | PASS35,0 build warnings/errors |
+| PowerShell5 synthetic acceptance harness | PASS; expected mock timeouts are not native product failures |
+| Actual packaged18→19/old binary rejection/independent recovery | PASS; fresh consistent synthetic copy, original rows/history/FKs retained, backup equals18 and restored18 unchanged |
+| Documentation/staged privacy/diff | PASS13 Markdown files/172 local links/UTF-8, privacy378 indexed paths, clean staged diff |
+| Exact-head Windows CI | NOT RUN before push; final PR records observed head/run/jobs |
+| New native GUI create/edit/cancel/fault injection | NOT RUN for this review head; previous candidate evidence below remains historical |
+| Offline VM install/upgrade/restart | BLOCKED; same expired Evaluation prerequisite unresolved |
+
+Distinct tests694 =580+70+9+35; packaged16 repeats, roundtrip/recovery/harness are
+additional checks. Initial local runner cwd/import and Node TS dependency-loader
+issues were corrected; final commands passed, no runtime safety constraint removed.
+Final connected-host Release EXE SHA256
+`e49cdbb06dfec05ca055ca166c5fa96d8ac9cf6a4170aa86405626bcff409136`;
+local NSIS SHA256
+`f82ac1fe02fafeef8276a07aaab0fcf950661df1d15e2c6318b84b066ba8b3d9`.
+These binaries were built, not installed or newly GUI-accepted.
+
+### Windows environment and scope
+
+Host reports Windows11 Pro10.0.26200, LicenseStatus1 (Licensed), connected; this
+is environment inventory/build evidence, not disconnected VM acceptance.
+Read-only inspection of28 configured VM base/overlay classes found one shared
+backing root. Day-editor overlay still chains to that same known expired Windows11
+Evaluation source; the available OS ISO is the same IoT LTSC source, other CDs
+contain synthetic test kits. No qualified replacement/license evidence found.
+No guest activation/rearm/security bypass, host network/component change, new
+candidate installation or VM reboot test was attempted. Previous expiry evidence
+is not a freshly executed guest license query. A qualified Windows11 x64 VM/image
+is still needed to resume those acceptance steps.
+
+No additional migration/API/UI layout or production gate change in the fixes.
+No new original-design/real-data upload, merge, Release or Issue closure. Pending/
+Apply=false/Publish=false remain. The sections below describe original122 evidence,
+including older native candidate hashes, not new review-head GUI verification.
+
 ## Scope and provenance
 
 Engineering evidence for Issue120 only; not customer Demo, UAT, production rollout,

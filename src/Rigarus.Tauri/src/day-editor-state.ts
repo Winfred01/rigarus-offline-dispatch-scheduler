@@ -1,4 +1,5 @@
 import type { SavedVisit } from "./workbench-state";
+import { validLocalDate } from "./assignment-fields";
 export type DraftRecord = {
   id: number;
   revision: number;
@@ -138,7 +139,7 @@ function parseJournal(text: string, profile: string): EditorRequest {
       !positive(r.expected_project_id) ||
       !positive(r.crew_id) ||
       typeof r.local_date !== "string" ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(r.local_date) ||
+      !validLocalDate(r.local_date) ||
       typeof r.notes !== "string" ||
       Array.from(r.notes).length > 2000 ||
       r.notes.includes("\0") ||
@@ -173,27 +174,100 @@ export function settle(
   )
     throw Error("Unknown request response");
   if (
-    value.outcome === "Committed" &&
-    (!value.record ||
-      value.record.record_kind !== "FullDayDraft" ||
-      !positive(value.record.id) ||
-      !positive(value.record.revision) ||
-      value.validation_status !== "Pending" ||
-      value.applyable !== false ||
-      value.publishable !== false)
-  )
-    throw Error("Invalid saved receipt");
-  if (
     value.outcome === "NotFound" ||
     ["REQUEST_REUSED", "WRONG_PROFILE"].includes(value.code ?? "")
   )
     return false;
+  if (
+    value.validation_status !== "Pending" ||
+    value.applyable !== false ||
+    value.publishable !== false
+  )
+    throw Error("Invalid receipt safety flags");
+  if (
+    value.outcome === "Committed" &&
+    !matchesSavedRequest(request, value.record)
+  )
+    throw Error("Saved receipt does not match the original request");
+  if (
+    value.outcome === "Rejected" &&
+    ![
+      "STALE_REVISION",
+      "STALE_PROJECT",
+      "STAFFING_RECONFIRM",
+      "NOT_FOUND",
+      "OCCUPANCY_OR_REVISION",
+      "INVALID_DRAFT",
+      "SQL_GUARD",
+    ].includes(value.code ?? "")
+  )
+    throw Error("Unrecognized rejection is not a definitive result");
+  const current = readJournal(storage, request.profile_id);
+  if (current && JSON.stringify(current) !== JSON.stringify(request))
+    throw Error(
+      "Recovery journal changed. Reopen and resolve its current request.",
+    );
   try {
     storage.removeItem(journalKey(request.profile_id));
   } catch {
     /* receipt remains safely recoverable */
   }
   return true;
+}
+
+function matchesSavedRequest(
+  request: EditorRequest,
+  r: DraftRecord | undefined,
+) {
+  if (
+    !r ||
+    r.record_kind !== "FullDayDraft" ||
+    !positive(r.id) ||
+    !positive(r.revision) ||
+    !positive(r.work_item_id) ||
+    !positive(r.project_id) ||
+    !positive(r.crew_id) ||
+    typeof r.local_date !== "string" ||
+    !validLocalDate(r.local_date) ||
+    typeof r.notes !== "string" ||
+    Array.from(r.notes).length > 2000 ||
+    r.notes.includes("\0") ||
+    !["Draft", "Cancelled"].includes(r.status) ||
+    (r.employee_ids !== null &&
+      (!Array.isArray(r.employee_ids) ||
+        r.employee_ids.length > 1000 ||
+        r.employee_ids.some((e) => !positive(e)) ||
+        new Set(r.employee_ids).size !== r.employee_ids.length))
+  )
+    return false;
+  if (request.action === "Create") {
+    if (r.revision !== 1 || r.status !== "Draft") return false;
+  } else if (
+    r.id !== request.id ||
+    !positive(request.expected_revision) ||
+    (r.revision !== request.expected_revision &&
+      r.revision !== request.expected_revision! + 1)
+  )
+    return false;
+  if (request.action === "Cancel") return r.status === "Cancelled";
+  return (
+    r.status === "Draft" &&
+    r.work_item_id === request.work_item_id &&
+    r.project_id === request.expected_project_id &&
+    r.crew_id === request.crew_id &&
+    r.local_date === request.local_date &&
+    r.notes === request.notes &&
+    JSON.stringify(
+      r.employee_ids === null
+        ? null
+        : [...r.employee_ids].sort((a, b) => a - b),
+    ) ===
+      JSON.stringify(
+        request.employee_ids === null
+          ? null
+          : [...(request.employee_ids ?? [])].sort((a, b) => a - b),
+      )
+  );
 }
 export async function sendRemembered(
   storage: Journal,
@@ -204,7 +278,6 @@ export async function sendRemembered(
   if (JSON.stringify(original) !== JSON.stringify(request))
     throw Error("Original request must be retained unchanged");
   const value = await transport("submit", original!);
-  settle(storage, original!, value);
   return value;
 }
 

@@ -1,6 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
+import { readFileSync } from "node:fs";
+import { stripTypeScriptTypes } from "node:module";
+const moduleUrl = (source) =>
+  `data:text/javascript;base64,${Buffer.from(stripTypeScriptTypes(source)).toString("base64")}`;
+const fieldsUrl = moduleUrl(
+  readFileSync(new URL("../src/assignment-fields.ts", import.meta.url), "utf8"),
+);
+const stateUrl = moduleUrl(
+  readFileSync(
+    new URL("../src/day-editor-state.ts", import.meta.url),
+    "utf8",
+  ).replace('from "./assignment-fields"', `from "${fieldsUrl}"`),
+);
+const {
   readJournal,
   remember,
   sendRemembered,
@@ -8,7 +21,7 @@ import {
   journalKey,
   refreshCommitted,
   editorDeadline,
-} from "../src/day-editor-state.ts";
+} = await import(stateUrl);
 
 test("bounded desktop timeout keeps the original journal even if a commit reply arrives late", async () => {
   const s = storage();
@@ -61,7 +74,18 @@ const receipt = {
   validation_status: "Pending",
   applyable: false,
   publishable: false,
-  record: { record_kind: "FullDayDraft", id: 7, revision: 1, status: "Draft" },
+  record: {
+    record_kind: "FullDayDraft",
+    id: 7,
+    revision: 1,
+    status: "Draft",
+    work_item_id: request.work_item_id,
+    project_id: request.expected_project_id,
+    crew_id: request.crew_id,
+    local_date: request.local_date,
+    notes: request.notes,
+    employee_ids: request.employee_ids,
+  },
 };
 test("journal persists exact payload across reopen and database scopes", () => {
   const s = storage();
@@ -101,7 +125,77 @@ test("not observed receipt remains uncertain and manual replay uses exact origin
     return receipt;
   });
   assert.deepEqual(seen, [["submit", request]]);
+  assert.deepEqual(readJournal(s, profile), request);
+  assert.equal(settle(s, request, receipt), true);
   assert.equal(readJournal(s, profile), undefined);
+});
+
+test("incomplete or mismatched committed data never clears recovery or claims success", () => {
+  const s = storage();
+  remember(s, request);
+  for (const record of [
+    { record_kind: "FullDayDraft", id: 7, revision: 1, status: "Draft" },
+    { ...receipt.record, project_id: 99 },
+    { ...receipt.record, work_item_id: 99 },
+    { ...receipt.record, crew_id: 99 },
+    { ...receipt.record, local_date: "2026-11-26" },
+    { ...receipt.record, notes: "Different saved payload" },
+    { ...receipt.record, employee_ids: [] },
+    { ...receipt.record, status: "Cancelled" },
+    { ...receipt.record, revision: 3 },
+  ]) {
+    assert.throws(() => settle(s, request, { ...receipt, record }));
+    assert.deepEqual(readJournal(s, profile), request);
+  }
+});
+
+test("an older settled receipt cannot erase a different pending request", () => {
+  const s = storage();
+  const other = {
+    ...request,
+    request_id: "33333333-3333-4333-8333-333333333333",
+  };
+  remember(s, other);
+  assert.throws(() => settle(s, request, receipt));
+  assert.deepEqual(readJournal(s, profile), other);
+});
+
+test("saved edit and cancellation receipts bind exact identity and allowed revision", () => {
+  const s = storage(),
+    edit = { ...request, action: "Edit", id: 7, expected_revision: 1 };
+  remember(s, edit);
+  for (const record of [
+    { ...receipt.record, id: 8 },
+    { ...receipt.record, revision: 3 },
+  ])
+    assert.throws(() => settle(s, edit, { ...receipt, record }));
+  assert.equal(
+    settle(s, edit, { ...receipt, record: { ...receipt.record, revision: 2 } }),
+    true,
+  );
+  const cancel = {
+    profile_id: profile,
+    request_id: "44444444-4444-4444-8444-444444444444",
+    action: "Cancel",
+    id: 7,
+    expected_revision: 2,
+  };
+  remember(s, cancel);
+  assert.throws(() =>
+    settle(s, cancel, {
+      ...receipt,
+      request_id: cancel.request_id,
+      record: { ...receipt.record, revision: 3 },
+    }),
+  );
+  assert.equal(
+    settle(s, cancel, {
+      ...receipt,
+      request_id: cancel.request_id,
+      record: { ...receipt.record, revision: 3, status: "Cancelled" },
+    }),
+    true,
+  );
 });
 test("payload alteration after unknown cannot dispatch another request", async () => {
   const s = storage();
@@ -121,6 +215,9 @@ test("stale revision rejection preserves caller fields and permits explicit corr
     before = structuredClone(request);
   remember(s, request);
   const rejected = {
+    validation_status: "Pending",
+    applyable: false,
+    publishable: false,
     outcome: "Rejected",
     request_id: request.request_id,
     code: "STALE_REVISION",
@@ -130,7 +227,25 @@ test("stale revision rejection preserves caller fields and permits explicit corr
     rejected,
   );
   assert.deepEqual(request, before);
+  assert.equal(settle(s, request, rejected), true);
   assert.equal(readJournal(s, profile), undefined);
+});
+
+test("unknown or malformed rejection is uncertain and retains the exact journal", () => {
+  const s = storage();
+  remember(s, request);
+  for (const value of [
+    {
+      outcome: "Rejected",
+      request_id: request.request_id,
+      code: "STALE_REVISION",
+    },
+    { ...receipt, outcome: "Rejected", code: "UNKNOWN_STORAGE_FAILURE" },
+    { ...receipt, outcome: "Rejected", code: "SQL_GUARD", publishable: true },
+  ]) {
+    assert.throws(() => settle(s, request, value));
+    assert.deepEqual(readJournal(s, profile), request);
+  }
 });
 test("wrong-profile/reused-request/unknown identities never clear the original journal", () => {
   const s = storage();
@@ -155,6 +270,7 @@ test("corrupt, oversized and foreign journal fails closed", () => {
     "x".repeat(64001),
     JSON.stringify({ ...request, profile_id: "other" }),
     JSON.stringify({ ...request, employee_ids: [5, 5] }),
+    JSON.stringify({ ...request, local_date: "2026-02-30" }),
   ]) {
     s.setItem(journalKey(profile), value);
     assert.throws(() => readJournal(s, profile));

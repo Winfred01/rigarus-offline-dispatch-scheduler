@@ -11,6 +11,17 @@ failure rolls back. Same request replays its original JSON; changed payload
 cannot reuse it. Resource reasons remain Blocked/Pending with root false flags.
 No default safety policy, worker/source transfer or actual Rig is inferred.
 
+PR122 recovery review additionally validates the complete Committed record against
+the original action/typed ID/revision/WorkItem/Project/Crew/date/notes/members and
+false safety flags before clearing recovery evidence. Unknown/malformed rejection
+is uncertain; another current journal is never intentionally cleared. Transport
+returns without acknowledgement; the editor's normal accept path settles once.
+This is not atomic cross-window localStorage coordination: concurrent app-instance
+journals remain an unqualified production rollout gate. See
+[review](design/2026-11-25-issue-120-recovery-review.md).
+Before/After remains [design only](design/2026-11-25-impact-preview-contract.md)
+until this prerequisite PR is human-merged and main builds.
+
 React journals the unchanged request in local WebView storage before dispatch,
 scoped by database UUID, bounded and treated as untrusted. Invalid/unwritable
 journal blocks dispatch. Resolve reads the exact receipt; NotFound is not proof

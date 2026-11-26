@@ -1,5 +1,10 @@
 # Issue120 — independent Full Day Draft editor
 
+Resumed safety review for the owner's next-stage request: see the
+[fresh source checklist/fix plan](2026-11-25-issue-120-recovery-review.md) and
+[future impact contract](2026-11-25-impact-preview-contract.md).
+PR122 is still unmerged, so no dependent impact UI/engine is implemented.
+
 ## Design Compliance Checklist
 
 Fresh baseline main9d40765 (human-merged PR121), public repository, no open PR
