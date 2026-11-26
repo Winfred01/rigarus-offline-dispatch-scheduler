@@ -122,3 +122,14 @@ Add a read-only Reload saved visits action that visibly clears selection and rea
 current scope, requiring deliberate reselection of new revisions. Never silently
 rebind old intent to changed records. Keep query confirmation, epochs, false gates
 and Cancel behavior; add the409→explicit reload→reselection API regression.
+
+### Complete related-resource scope (before affected projection edit)
+
+Review found that resource checks can identify another Crew's saved worker/Rig
+conflict while the displayed affected/protected list only includes candidate
+Crews. Reproduce with explicit proposed worker/Rig and a different saved WorkItem;
+require that source Crew/WorkItem/typed record appear in related scope. Include
+unselected visits of the target WorkItem, both-Crew worker source keys and exact
+Rig collision references (including conservative outside-range claims), without
+changing their validation state, moving them or making unsupported dependency
+claims. Existing DTO lists suffice; no new UI, schema, writer or safety algorithm.

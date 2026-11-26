@@ -249,6 +249,7 @@ def project_impact(snapshot, request, base, target_index):
     )
     generated = generate_from_day_snapshot(scenario)
     candidates, options = [], []
+    related_keys, related_crews, related_works = set(), set(), set()
     crew_names = {c.crew_id: c.name for c in snapshot.crews}
     for c in generated.generated.candidates:
         checks, state = [], "Pending"
@@ -282,6 +283,26 @@ def project_impact(snapshot, request, base, target_index):
             )
             # Include exact proposed dates and both-Crew borrowing observations.
             source_keys = {x.visit.key for x in driver.source_checks}
+            for check in driver.source_checks:
+                related_crews.add(check.visit.crew_id)
+                related_works.add(check.visit.work_item_id)
+            for collision in proof.rig.after.conflicts:
+                if not any(v.record_kind == "Proposal" for v in collision.visits):
+                    continue
+                for ref in collision.visits:
+                    if ref.record_kind != "Proposal":
+                        source_keys.add(ref.key)
+                        related_crews.add(ref.crew_id)
+                        if ref.work_item_id is not None:
+                            related_works.add(ref.work_item_id)
+            related_keys.update(source_keys)
+            # A stale Rig can retain a recorded claim inside this horizon while
+            # its current visit/WorkItem has moved outside. Expose both identities.
+            for check in proof.rig.after.checks:
+                visit = check.observation.visit
+                if visit.key in source_keys:
+                    related_crews.add(visit.crew_id)
+                    related_works.add(visit.work_item_id)
             checks = [
                 r
                 for r in checks
@@ -332,7 +353,11 @@ def project_impact(snapshot, request, base, target_index):
     protected = [
         r
         for r in saved
-        if r["crew_id"] in request["crew_ids"]
+        if (
+            r["crew_id"] in request["crew_ids"]
+            or r["work_item_id"] == request["work_item_id"]
+            or (r["record_kind"], r["record_id"], r["local_date"]) in related_keys
+        )
         and not (r["record_kind"] == "FullDayDraft" and r["record_id"] in replacements)
     ]
     result = dict(
@@ -372,6 +397,8 @@ def project_impact(snapshot, request, base, target_index):
         ),
         affected_crew_ids=sorted(
             set(request["crew_ids"])
+            | related_crews
+            | {r["crew_id"] for r in protected}
             | {
                 a.crew_id
                 for a in saved_by_id.values()
@@ -379,7 +406,9 @@ def project_impact(snapshot, request, base, target_index):
             }
         ),
         affected_work_item_ids=sorted(
-            {request["work_item_id"]} | {r["work_item_id"] for r in protected}
+            {request["work_item_id"]}
+            | related_works
+            | {r["work_item_id"] for r in protected}
         ),
         lock_status="Not recorded / Unsupported",
         downstream_status="Needs Review / Unsupported Dependency",

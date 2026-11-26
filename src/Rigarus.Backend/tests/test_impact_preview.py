@@ -249,8 +249,18 @@ class ImpactTests(unittest.TestCase):
 
     def test_borrowing_collision_rechecks_source_and_target_without_transfer(self):
         p = self.employee()
+        other = ProjectStore(self.database).save(
+            ProjectDraft(
+                "SYN-SOURCE",
+                "SOURCE",
+                "Synthetic resource source",
+                [WorkItemDraft(None, WorkType.CIVIL, 1, 2)],
+            )
+        )
         source = DayDraftStore(self.database).save(
-            DayDraft(self.work.id, self.c2.id, "2026-11-23", employee_ids=(p.id,))
+            DayDraft(
+                other.work_items[0].id, self.c2.id, "2026-11-23", employee_ids=(p.id,)
+            )
         )
         original = self.dump()
         data = self.post(
@@ -267,6 +277,9 @@ class ImpactTests(unittest.TestCase):
             )
         )
         self.assertIn(self.c1.id, data["blocked_crew_ids"])
+        self.assertIn(self.c2.id, data["affected_crew_ids"])
+        self.assertIn(other.work_items[0].id, data["affected_work_item_ids"])
+        self.assertIn(source["id"], [r["record_id"] for r in data["protected_records"]])
         self.assertEqual(original, self.dump())
 
     def test_driver_negative_and_missing_full_day_proof(self):
@@ -334,6 +347,26 @@ class ImpactTests(unittest.TestCase):
         )
         data = self.post(**changes).json()
         self.assertEqual(data["candidates"][0]["resource_state"], "Blocked")
+        self.assertIn(self.c2.id, data["affected_crew_ids"])
+        self.assertIn(row["id"], [r["record_id"] for r in data["protected_records"]])
+        moved_work = ProjectStore(self.database).save(
+            ProjectDraft(
+                "SYN-RIG-MOVE",
+                "RIG-MOVE",
+                "Synthetic moved resource",
+                [WorkItemDraft(None, WorkType.CIVIL, 1, 2)],
+            )
+        )
+        row = DayDraftStore(self.database).save(
+            DayDraft(moved_work.work_items[0].id, self.c2.id, "2026-12-07"),
+            row["id"],
+            row["revision"],
+        )
+        stale_claim = self.post(**changes).json()
+        self.assertEqual(stale_claim["candidates"][0]["resource_state"], "Blocked")
+        self.assertIn(
+            moved_work.work_items[0].id, stale_claim["affected_work_item_ids"]
+        )
         DayDraftStore(self.database).cancel(row["id"], row["revision"])
         DailyRigStore(self.database).save_period(
             rig.id,

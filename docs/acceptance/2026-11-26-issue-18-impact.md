@@ -77,6 +77,18 @@ with file/SQL/network/clock access forbidden. Full logical dumps remain equal.
 Front-end tests bind exact scope and latch Stale across source reversion.
 Actual final packaged-sidecar16 repeats include authenticated impact preview,
 wrong/missing Host/token rejection, logical equality, and Current after restart.
+They now also seed explicit synthetic daily calendars and execute a complete
+two-day plan through the packaged binary, retaining Pending/false flags.
+
+Related-scope follow-up: two added assertions first reproduced omitted source
+Crew IDs despite correctly Blocked personnel/Rig results. Protected/affected
+lists now include unselected target visits, actual borrowed-worker sources and
+Rig collision references, including recorded and current WorkItems for stale
+claims whose current date moved outside the horizon. Existing states/occupation
+are unchanged. Focused27, full607 and real packaged16 all pass after correction.
+An integration field-name mismatch was caught locally and corrected before
+commit; no failing candidate or relaxed rule was delivered. Additional related-
+scope display cases are API/test evidence, not a new native GUI acceptance claim.
 One boundary fixture initially used the excluded annual anniversary and was
 corrected to November22,2027; November23 is now explicitly tested as422.
 An out-of-horizon replacement fixture was corrected rather than weakening exact

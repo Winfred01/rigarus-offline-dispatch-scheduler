@@ -226,6 +226,42 @@ class SidecarTests(unittest.TestCase):
         impact_proof = dict(query=body, input_fingerprint=impact["input_fingerprint"])
         with closing(sqlite3.connect(self.database)) as c:
             self.assertEqual(list(c.iterdump()), before_impact)
+        # Explicit synthetic fixture setup; production HTTP writers stay closed.
+        # Exercise a COMPLETE real packaged plan, not only the no-calendar branch.
+        from rigarus_backend.daily_calendar_store import DailyCalendarStore
+        from rigarus_backend.daily_calendars import DailyInput
+
+        calendars = DailyCalendarStore(self.database)
+        for scope, identity in (("Project", project["id"]), ("Crew", crew["id"])):
+            old = calendars.read(scope, identity, "2026-11-23", "2026-11-27")
+            calendars.save(
+                scope,
+                identity,
+                DailyInput(
+                    "2026-11-23",
+                    "2026-11-27",
+                    "Working",
+                    True,
+                    True,
+                    "Synthetic packaged impact capacity",
+                ),
+                old["revision"],
+                old["review_token"],
+            )
+        with closing(sqlite3.connect(self.database)) as c:
+            complete_before = list(c.iterdump())
+        status, complete = self.request(port, "POST", impact_route, token, payload=body)
+        self.assertEqual(status, 200, complete)
+        self.assertEqual(complete["ranked_crew_ids"], [crew["id"]])
+        self.assertEqual(
+            complete["candidates"][0]["proposed_finish_date"], "2026-11-24"
+        )
+        self.assertEqual(complete["candidates"][0]["resource_state"], "Pending")
+        impact_proof = dict(query=body, input_fingerprint=complete["input_fingerprint"])
+        _, refreshed = self.request(port, "POST", route, token, payload=body)
+        proof = dict(query=body, input_fingerprint=refreshed["input_fingerprint"])
+        with closing(sqlite3.connect(self.database)) as c:
+            self.assertEqual(list(c.iterdump()), complete_before)
         process.stdin.close()
         self.assertEqual(process.wait(timeout=10), 0)
         token = secrets.token_hex(32)
