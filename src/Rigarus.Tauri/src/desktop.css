@@ -1057,6 +1057,57 @@ kbd {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
+.desktop-dialog.draft-confirmation-dialog {
+  width: min(1080px, calc(100vw - 40px));
+}
+.draft-confirmation-dialog section {
+  margin: 20px 0;
+}
+.draft-values-scroll {
+  max-height: 320px;
+  overflow: auto;
+  margin: 16px 0;
+}
+.draft-values-scroll table {
+  width: 100%;
+  min-width: 660px;
+  font-variant-numeric: tabular-nums;
+}
+.draft-values-scroll th {
+  position: sticky;
+  top: 0;
+  background: #f7f9fc;
+}
+.draft-values-scroll td {
+  vertical-align: top;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.draft-values-scroll td p {
+  margin: 4px 0;
+}
+.draft-warnings-scroll {
+  max-height: 280px;
+  overflow: auto;
+  border: 1px solid #d3dce8;
+  padding: 12px;
+  margin: 12px 0;
+}
+.draft-confirmation-dialog dl {
+  margin: 4px 0 12px;
+}
+.draft-confirmation-dialog dt {
+  font-weight: 600;
+}
+.draft-confirmation-dialog dd {
+  margin: 2px 0 8px 16px;
+}
+.draft-confirmation-dialog
+  button:not(#record-unconfirmed-draft):not(:disabled) {
+  background: #fff;
+  color: #20395b;
+  border: 1px solid #cbd5e1;
+}
 .desktop-dialog.day-editor-dialog {
   width: min(900px, calc(100vw - 48px));
 }

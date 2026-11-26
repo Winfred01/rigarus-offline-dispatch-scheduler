@@ -1,5 +1,12 @@
 # Decision register
 
+November26 owner Continue after human merge125 advances desktop integration of
+the already-approved unconfirmed-Draft contract (#126). No new business default,
+dispatch authority, actual restore or production gate is approved. Native durable
+request/acknowledgement implementation is an engineering safeguard requiring
+review and target-environment qualification; it does not certify all cross-instance
+or power-loss cases. Existing manual-editor journal limitations remain separate.
+
 Confirmed (owner development scope), November26,2026: an exactly reviewed and
 explicitly confirmed proposal may be recorded as an **unconfirmed Draft** while
 retaining Pending and its specific missing-evidence/unsupported-policy warnings.

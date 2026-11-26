@@ -59,6 +59,12 @@ class SidecarTests(unittest.TestCase):
         token = secrets.token_hex(32)
         process = self.launch(token, draft_transaction_test=True)
         port = self.read_port(process)
+        self.assertEqual(
+            self.request(port, "GET", "/draft-transactions/status")[0], 401
+        )
+        gate = self.request(port, "GET", "/draft-transactions/status", token)[1]
+        self.assertTrue(gate["test_writes_enabled"])
+        self.assertFalse(gate["production_writes_enabled"])
         plan = dict(
             query=dict(
                 work_item_id=project.work_items[0].id,
@@ -102,6 +108,11 @@ class SidecarTests(unittest.TestCase):
         self.assertEqual(process.wait(timeout=10), 0)
         restarted = self.launch(token)
         port = self.read_port(restarted)
+        self.assertFalse(
+            self.request(port, "GET", "/draft-transactions/status", token)[1][
+                "test_writes_enabled"
+            ]
+        )
         self.assertEqual(
             self.request(
                 port,

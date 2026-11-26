@@ -1,5 +1,16 @@
 # M0 acceptance walkthrough
 
+## Desktop exact Draft confirmation/reconciliation (#126)
+
+Use the [fresh checklist](design/2026-11-26-issue-126-desktop-confirmation.md)
+and [candidate evidence](acceptance/2026-11-26-issue-126-desktop-confirmation.md).
+Review exact saved/proposed/cancelled IDs and every warning; each of the two
+confirmations is separate. Cancel before submit makes no business changes. In an
+isolated synthetic profile verify stale rejection, original-key recovery after
+restart, complete immutable receipt acknowledgement, persisted weekly refresh and
+read-only exact version/inverse Current-Stale. Restore/Publish and production
+writing remain closed. Native, offline and customer acceptance are separate gates.
+
 ## Confirmed Draft transaction foundation (#124)
 
 Follow [synthetic sequence](../samples/synthetic-only/draft-transactions.md) and

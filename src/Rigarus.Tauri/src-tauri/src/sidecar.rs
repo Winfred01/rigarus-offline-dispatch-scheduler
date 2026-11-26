@@ -31,6 +31,7 @@ struct Ready {
 }
 
 pub struct Sidecar {
+    database: PathBuf,
     child: Child,
     client: Client,
     token: String,
@@ -63,6 +64,15 @@ impl Sidecar {
             }
             command.arg("--synthetic-day-editor");
         }
+        if std::env::var("RIGARUS_DRAFT_TRANSACTIONS_TEST").as_deref() == Ok("1") {
+            let root = std::env::var_os("RIGARUS_SMOKE_DATA_ROOT")
+                .filter(|r| !r.is_empty())
+                .ok_or("Synthetic Draft transactions require a separate root.")?;
+            if database != PathBuf::from(root).join("data/rigarus.db") {
+                return Err("Synthetic Draft database does not match its root.".into());
+            }
+            command.arg("--synthetic-draft-transactions");
+        }
         let child = command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -71,6 +81,7 @@ impl Sidecar {
             .spawn()
             .map_err(|_| "Unable to launch the local service. Reinstall Rigarus.")?;
         let mut service = Self {
+            database,
             child,
             client,
             token,
@@ -218,6 +229,112 @@ impl Sidecar {
             _ => return Err("Choose a supported day editor action.".into()),
         };
         self.send(request.timeout(Duration::from_secs(60)))
+    }
+
+    fn draft_wire(&self, action: &str, input: &Value) -> Result<Value, String> {
+        let path = draft_path(action, input)?;
+        let request = if matches!(action, "prepare" | "submit") {
+            self.client.post(self.url(&path)).json(input)
+        } else {
+            self.client.get(self.url(&path))
+        };
+        let response = request
+            .timeout(Duration::from_secs(60))
+            .bearer_auth(&self.token)
+            .send()
+            .map_err(|_| SERVICE_UNAVAILABLE)?;
+        let status = response.status();
+        let value: Value = response.json().map_err(|_| SERVICE_UNAVAILABLE)?;
+        if status.is_success() {
+            return Ok(value);
+        }
+        let code = value["detail"].as_str().unwrap_or("");
+        if action == "submit"
+            && status.as_u16() == 409
+            && matches!(
+                code,
+                "STALE_OR_CHANGED_EXACT_PLAN"
+                    | "BLOCKED_OR_INCOMPLETE_PLAN"
+                    | "FINAL_SAVED_RESOURCE_BLOCKED"
+                    | "EXPLICIT_PLAN_AND_PENDING_CONFIRMATION_REQUIRED"
+                    | "ACTUAL_RIG_WRITE_UNSUPPORTED"
+            )
+        {
+            return Ok(
+                serde_json::json!({"outcome":"Rejected","code":code,"request_id":input["request_id"],"database_identity":input["profile_id"],"confirmation":input,"validation_status":"Pending","applyable":false,"publishable":false}),
+            );
+        }
+        Err(if action=="submit"{"Draft result is unknown or cannot be retired. Resolve the original key."}else{"Draft preparation/version is unavailable or stale. Reload exact inputs; no safety approval."}.into())
+    }
+
+    pub fn draft_transactions(&self, action: &str, input: &Value) -> Result<Value, String> {
+        if input.to_string().len() > crate::draft_journal::LIMIT {
+            return Err("Draft recovery payload exceeds its bound.".into());
+        }
+        let mut status = self.draft_wire("status", &serde_json::json!({}))?;
+        let profile = editor_uuid(&status["database_identity"])?;
+        let journal = crate::draft_journal::Journal::open(&self.database, &profile)?;
+        if action == "status" {
+            status["pending"] = journal.pending()?.unwrap_or(Value::Null);
+            return Ok(status);
+        }
+        if matches!(action, "prepare" | "receipt" | "version" | "recovery") {
+            if action != "prepare" && input["profile_id"] != profile {
+                return Err("Draft recovery belongs to another database.".into());
+            }
+            return self.draft_wire(action, input);
+        }
+        if action == "submit" {
+            if status["test_writes_enabled"] != true || status["production_writes_enabled"] != false
+            {
+                return Err("Production Draft writes are closed.".into());
+            }
+            let request = &input["request"];
+            editor_uuid(&request["request_id"])?;
+            if request["profile_id"] != profile
+                || request["plan_fingerprint"] != input["reviewed"]["plan_fingerprint"]
+                || request.to_string().len() > 65_536
+            {
+                return Err("Exact reviewed Draft context is invalid.".into());
+            }
+            journal.remember(input)?;
+            return self.draft_wire("submit", request);
+        }
+        if action == "acknowledge" {
+            let pending = journal
+                .pending()?
+                .ok_or("No original Draft request to acknowledge.")?;
+            let request = &pending["request"];
+            if input["request_id"] != request["request_id"] || request["profile_id"] != profile {
+                return Err("Wrong Draft acknowledgement identity.".into());
+            }
+            let receipt = self.draft_wire(
+                "receipt",
+                &serde_json::json!({"profile_id":profile,"request_id":request["request_id"]}),
+            )?;
+            let verified = if receipt["outcome"] == "Committed" {
+                receipt
+            } else {
+                if input["receipt"]["outcome"] != "Rejected"
+                    || status["test_writes_enabled"] != true
+                {
+                    return Err("No definite matching receipt. Retain the original request.".into());
+                }
+                // Explicit retirement replays the same immutable key, never a new write key.
+                self.draft_wire("submit", request)?
+            };
+            if verified != input["receipt"]
+                || verified["confirmation"] != *request
+                || (verified["outcome"] == "Committed" && verified["plan"] != pending["reviewed"])
+            {
+                return Err(
+                    "Receipt changed or is incomplete. Resolve the original request again.".into(),
+                );
+            }
+            journal.acknowledge(&pending, &verified)?;
+            return Ok(serde_json::json!({"acknowledged":true}));
+        }
+        Err("Unsupported Draft transaction action.".into())
     }
 
     pub fn search_crews(&self, term: &str) -> Result<Value, String> {
@@ -442,6 +559,70 @@ impl Sidecar {
             .json::<ApiError>()
             .map(|error| error.detail)
             .unwrap_or_else(|_| SERVICE_UNAVAILABLE.into()))
+    }
+}
+
+fn draft_path(action: &str, input: &Value) -> Result<String, String> {
+    if input.to_string().len() > 65_536 {
+        return Err("Draft request exceeds 64KiB.".into());
+    }
+    let base = "/draft-transactions";
+    match action {
+        "status" | "prepare" | "submit" => Ok(format!("{base}/{action}")),
+        "receipt" => Ok(format!(
+            "{base}/receipt/{}/{}",
+            editor_uuid(&input["profile_id"])?,
+            editor_uuid(&input["request_id"])?
+        )),
+        "version" | "recovery" => {
+            let id = input["version_id"]
+                .as_u64()
+                .filter(|n| *n > 0 && *n <= 9_007_199_254_740_991)
+                .ok_or("Choose an exact saved version ID.")?;
+            Ok(format!(
+                "{base}/{}/{}/{id}",
+                if action == "version" {
+                    "version"
+                } else {
+                    "recovery-preview"
+                },
+                editor_uuid(&input["profile_id"])?
+            ))
+        }
+        _ => Err("Unsupported Draft path.".into()),
+    }
+}
+
+#[cfg(test)]
+mod draft_transport_tests {
+    use super::*;
+    #[test]
+    fn fixed_draft_paths_bound_uuid_id_and_payload() {
+        let p = "11111111-1111-4111-8111-111111111111";
+        assert_eq!(
+            draft_path(
+                "version",
+                &serde_json::json!({"profile_id":p,"version_id":7})
+            )
+            .unwrap(),
+            format!("/draft-transactions/version/{p}/7")
+        );
+        assert!(
+            draft_path(
+                "version",
+                &serde_json::json!({"profile_id":p,"version_id":0})
+            )
+            .is_err()
+        );
+        assert!(
+            draft_path(
+                "receipt",
+                &serde_json::json!({"profile_id":"../x","request_id":p})
+            )
+            .is_err()
+        );
+        assert!(draft_path("restore", &serde_json::json!({})).is_err());
+        assert!(draft_path("submit", &serde_json::json!({"notes":"x".repeat(65_536)})).is_err());
     }
 }
 

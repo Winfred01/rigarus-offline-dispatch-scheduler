@@ -10,7 +10,7 @@ from .assignment_api import SafeId
 from .roster_api import RosterId
 from .assignments import AssignmentConflict, AssignmentNotFound
 from .daily_calendar_store import DailySourceError, DailyNotFound
-from .draft_apply import prepare, submit, read_version, DraftRejected
+from .draft_apply import prepare, submit, read_version, read_status, DraftRejected
 from .impact_preview_api import ImpactQuery
 from .recommendation_adapter import (
     SnapshotReadError,
@@ -55,12 +55,11 @@ def draft_apply_router(path, *, enable_test_writes=False):
     def execute(operation):
         try:
             return operation()
+        except (SnapshotContextError, SnapshotNotFound, AssignmentNotFound):
+            raise HTTPException(409, "STALE_OR_CHANGED_EXACT_PLAN") from None
         except (
             DraftRejected,
             AssignmentConflict,
-            AssignmentNotFound,
-            SnapshotContextError,
-            SnapshotNotFound,
         ) as e:
             raise HTTPException(409, str(e)) from None
         except (
@@ -88,6 +87,10 @@ def draft_apply_router(path, *, enable_test_writes=False):
                 422,
                 "Check explicit confirmed days, selected Crew and exact replacement scope.",
             ) from None
+
+    @router.get("/status")
+    def status():
+        return execute(lambda: read_status(path, enable_test_writes))
 
     @router.post("/prepare")
     def preview(request: PrepareDraft):

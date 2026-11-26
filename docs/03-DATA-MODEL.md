@@ -1,5 +1,13 @@
 # SQLite data model
 
+Issue126 desktop integration adds no SQLite migration: schema20 is unchanged.
+Native exact-request journals/acknowledged receipt archives are local recovery
+files, separate from immutable DraftVersions. Preserve unresolved recovery files
+with their matching database/profile during diagnosis; a NotFound receipt is not
+proof of rejection. This is not database-file undo, a Published version store or
+permission to discard later edits. Existing IDs/notes/people/history/legacy rows
+and all previous schema compatibility guards remain in force.
+
 ## Confirmed Draft changeset versions (schema twenty, #124)
 
 `20261126010000_AddDraftVersions` adds only immutable DraftVersions: monotonic

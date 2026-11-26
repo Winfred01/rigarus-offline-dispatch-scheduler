@@ -1,5 +1,43 @@
 # Architecture
 
+## Desktop exact Draft recording and recovery (#126)
+
+After human-merged125, the existing recommendation Dialog opens an independent
+exact preparation/confirmation sheet; Schedule also has a recovery/version entry
+that does not require a successful recommendation. Existing schema20 generator,
+transaction and safety rules are reused without migration. A small authenticated
+status projection exposes the real separate synthetic gate and database identity.
+The default remains closed; `RIGARUS_DRAFT_TRANSACTIONS_TEST=1` additionally requires
+the exact dedicated smoke-root database before Rust passes the existing sidecar
+synthetic flag. No runtime production toggle or Publish/Restore command exists.
+
+Fixed Rust status/prepare/submit/receipt/version/recovery/acknowledge actions bound
+IDs/UUIDs and64KiB requests. Before sending a write, Rust retains the exact request
+and reviewed plan under `data/draft-recovery/<database UUID>/pending.json`, using
+create-new, complete-write/flush and an OS-exclusive permanent guard-file handle.
+Competing instances fail explicitly while the guard is held; process exit releases
+the handle, not the retained journal. Malformed/oversized/unreadable/other-key
+journals block replacement. Native recovery bounds are8MB, HTTP60s and outer
+desktop150s; timeout does not imply cancellation. No automatic retry.
+
+React validates complete preparation/confirmation and actual saved IDs/revisions,
+values, staffing, observations and false flags. A verified Committed result stays
+Committed even if read refresh fails. The retained request remains until explicit
+acknowledgement; Rust rereads the authenticated receipt, matches exact confirmation
+and reviewed plan, flushes its local immutable receipt archive, then removes only
+that original pending file under the exclusive guard. Definite whitelisted rejection
+retirement explicitly rechecks the same original request/key before releasing it;
+unknown, absent, identity/payload mismatch and storage errors never clear recovery.
+The current backend does not persist rejection receipts; retirement is a same-key
+revalidation, not a NotFound-based discard. This remains a synthetic engineering
+workflow requiring native/offline/fault/concurrency qualification before rollout.
+
+Exact version lookup renders immutable Before/After and the backend's Current/
+Stale read-only inverse. Current refers only to touched values/revisions; no restore
+resource/lock/dependency approval is inferred. Rows are cloned/sorted for display
+without changing the reviewed order/proof. Original manual editor localStorage
+coordination is a separate existing limitation, not claimed fixed here.
+
 ## Confirmed unconfirmed-Draft transaction (#124, schema20)
 
 Backend-only `draft_apply_api.py` adds exact read-only preparation and separately

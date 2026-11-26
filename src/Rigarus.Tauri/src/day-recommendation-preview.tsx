@@ -1,6 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import { Dialog } from "./dialog";
+import { DraftConfirmation } from "./draft-confirmation";
+import {
+  planInput,
+  type PrepareInput,
+  type DraftReceipt,
+} from "./draft-confirmation-state";
 import { ImpactFreshness, sameImpactScope } from "./impact-state";
 import {
   ImpactComparison,
@@ -61,13 +67,16 @@ export function DayRecommendationPreview({
   jobNumber,
   workType,
   onClose,
+  onSaved,
 }: {
   projectId: number;
   workItemId: number;
   jobNumber: string;
   workType: string;
   onClose: () => void;
+  onSaved?: (r: DraftReceipt) => Promise<boolean>;
 }) {
+  const [draftFlow, setDraftFlow] = useState<{ initial?: PrepareInput }>();
   const [today] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -261,6 +270,24 @@ export function DayRecommendationPreview({
       .filter((c): c is Candidate => Boolean(c)) ?? [];
   const diagnostic =
     result?.data.candidates.filter((c) => c.status === "Needs Review") ?? [];
+  if (draftFlow)
+    return (
+      <DraftConfirmation
+        initial={draftFlow.initial}
+        onSaved={onSaved}
+        onClose={(saved) => {
+          if (saved) {
+            onClose();
+            return;
+          }
+          setDraftFlow(undefined);
+          setResult(undefined);
+          setScope([]);
+          setReplacements([]);
+          setFreshness("Not checked");
+        }}
+      />
+    );
   return (
     <Dialog
       title={`Auto-Recommend · ${result?.data.job_number ?? jobNumber} (${result?.data.work_type ?? workType}) · WorkItem #${workItemId}`}
@@ -273,6 +300,9 @@ export function DayRecommendationPreview({
           alternatives. Actual workers and Rig are not selected; this preview
           does not reserve resources.
         </p>
+        <button className="secondary-button" onClick={() => setDraftFlow({})}>
+          Recover recorded plan / Read Draft version
+        </button>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -494,6 +524,21 @@ export function DayRecommendationPreview({
                   )}
                   days={result.query.remaining_days}
                 />
+                <button
+                  disabled={
+                    busy ||
+                    freshness !== "Current" ||
+                    !result.data.ranked_crew_ids.includes(selectedCrew ?? 0)
+                  }
+                  onClick={() =>
+                    selectedCrew &&
+                    setDraftFlow({
+                      initial: planInput({ ...result.query }, selectedCrew),
+                    })
+                  }
+                >
+                  Review exact unconfirmed Draft changes
+                </button>
               </>
             )}
             {!ranked.length && (
@@ -517,7 +562,7 @@ export function DayRecommendationPreview({
                   <CandidateDetails candidate={c} />
                 </details>
                 <button type="button" disabled>
-                  Apply to Draft — not available
+                  Use Before / After to review exact Draft changes
                 </button>
               </article>
             ))}

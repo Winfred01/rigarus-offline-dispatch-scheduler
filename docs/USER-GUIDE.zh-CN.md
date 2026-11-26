@@ -2,9 +2,29 @@
 
 [English user guide](USER-GUIDE.en.md) · [中文项目概览](README.zh-CN.md)
 
-**文档版本：**2026-11-26 工程预览。**源码基线：**main `8f6e547`（已合并122），加等待审核的 Issue18 只读影响预览。
+**文档版本：**2026-11-26 工程预览。**源码基线：**main `0f12822`（已合并125），加等待审核的 Issue126 桌面确认／恢复。
 软件界面为英文，本文保留实际英文按钮名称，方便对照。使用前核对所安装构建的提交；
 本说明书不是客户验收签收或生产派工许可。
+
+## 复核方案与恢复 Draft 回执
+
+在 Auto-Recommend 明确确认 Remaining Days 和候选 Crew。使用 **Preview Impact**，
+手动选择需要替换的 FullDayDraft ID／修订，再重新计算。核对所选 Crew 的 Before／After，
+打开 **Review exact unconfirmed Draft changes**。独立面板列出保存前、拟议和取消的日期、
+备注、实际员工 ID 及全部缺失证据。未记录的拟议人员不会继承旧名单，也不会分配实际 Rig。
+
+分别确认精确变更及全部 Pending／未支持规则告警。**Record reviewed unconfirmed Draft**
+仅在明确隔离的合成工程测试环境可用；生产写入仍关闭。提交前 Cancel／Escape 不写业务数据。
+已知硬冲突会拒绝；记录未确认 Draft 不等于派工合规或正式发布。
+
+发送前，原生恢复日志保存完整原请求。Unknown／NotFound 均不能证明失败：使用
+**Resolve original request** 或明确选择 **Retry same unchanged request**，不得删除恢复
+文件或换新 key 重试。明确拒绝可显式复核后收尾；身份、载荷或存储不确定时保留原请求。
+Committed 后刷新失败只重读，不重复 Save。核验回执后再确认收尾；未确认就关闭时，重启仍保留。
+
+Schedule 的 **Draft plan recovery / Versions** 无需重新推荐即可恢复请求。输入准确版本 ID，
+读取不可变变更及只读逆向对比。Current 仅表示涉及记录仍匹配该版，不证明恢复安全；Stale
+表示需要核对后续变更。**Restore 尚未实现**。此处不是已发布版本历史或完整版本浏览器。
 
 ## 目录
 

@@ -3,9 +3,38 @@
 [中文使用说明书](USER-GUIDE.zh-CN.md) · [Project README](../README.md)
 
 **Edition:** November26,2026 engineering preview. **Source baseline:** main
-`8f6e547` (merged122) plus the Issue18 read-only impact slice (awaiting review). The desktop
+`0f12822` (merged125) plus Issue126 desktop confirmation/recovery (awaiting review). The desktop
 interface is English. Confirm the commit of your installed build.
 It is an operator reference, not customer acceptance or production authorization.
+
+## Review a plan and reconcile its Draft receipt
+
+In Auto-Recommend, explicitly confirm Remaining Days and choose candidate Crews.
+Use **Preview Impact**, deliberately select exact saved FullDayDraft IDs/revisions
+to replace, then recompute. Review the selected Crew's Before/After and choose
+**Review exact unconfirmed Draft changes**. The separate sheet shows exact saved,
+proposed and cancelled dates, notes, actual Employee IDs and all missing evidence.
+Unrecorded proposed people do not inherit the saved roster; no actual Rig is assigned.
+
+Two separate confirmations acknowledge the exact changes and every Pending/
+unsupported warning. **Record reviewed unconfirmed Draft** is enabled only in an
+explicit isolated synthetic engineering profile; normal production recording is
+closed. Cancel/Escape before submission makes no business changes. Known blockers
+reject. Recording does not certify dispatch or enable Publish.
+
+Once sent, the original exact request is retained in native recovery until verified
+receipt acknowledgement. Unknown or NotFound does not mean failure: use **Resolve
+original request** or explicitly **Retry same unchanged request**; never clear local
+recovery files or create a replacement key. A confirmed rejection can be explicitly
+rechecked/retired; unknown/identity/payload/storage errors retain recovery. After
+Committed, refresh failures require reads only, not another Save. Acknowledge only
+the verified receipt; closing before acknowledgement retains it across restart.
+
+Schedule's **Draft plan recovery / Versions** works without a new recommendation.
+Enter an exact version ID to inspect immutable saved changes and the read-only
+inverse. Current means touched records still match that version, not that Restore
+is safe. Stale requires reviewing later changes. **Restore is not implemented**.
+This is not Published History or a complete schedule-version browser.
 
 ## Contents
 
