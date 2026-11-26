@@ -2,7 +2,7 @@
 
 [English user guide](USER-GUIDE.en.md) · [中文项目概览](README.zh-CN.md)
 
-**文档版本：**2026-11-25 工程预览。**源码基线：**main `6d93916` 加 Issue119 只读工作台，等待人工审核。
+**文档版本：**2026-11-25 工程预览。**源码基线：**main `9d40765` 加 Issue120 编辑器，等待人工审核。
 软件界面为英文，本文保留实际英文按钮名称，方便对照。使用前核对所安装构建的提交；
 本说明书不是客户验收签收或生产派工许可。
 
@@ -44,12 +44,30 @@ Rigarus 面向一名本地调度员，运行于 Windows，无需软件账号或�
 | 整天 Draft、每日日期生成及资源检查 | 后端工程能力；生产每日写入仍关闭 |
 | 整天 WorkItem Auto-Recommend | 只读日期候选、解释及 Current/Stale 检查 |
 | 整天周排班板 | 只读新旧记录工作台、类型化 Locate 及已保存资源检查 |
-| 独立每日编辑 | 下一条 #120；生产每日写入仍关闭 |
+| 独立每日编辑 | 隔离合成测试配置内新增／编辑／取消、明确选人及请求恢复；生产 Save 仍禁用 |
 | 人工 Apply、锁定、事务复核、可恢复版本 | 等待完整操作流程 |
 | 正式排班及公司/Crew/员工 PDF、Excel | 尚不可用，导出按钮仍禁用 |
 
 所有 Draft 和候选保持 **Validation Pending（待验证）**，不能当作已确认员工日程
 对外分发。某一项资源检查通过，不等于整项派工已批准。
+
+### 独立整天编辑器（工程预览）
+
+从 **New / Recover Full Day Draft** 或整天卡片的 **Edit Full Day Draft** 进入。
+普通安装仅预览，Save 禁用；维护人员的合成测试写入配置不等于客户投产许可。
+选择已保存 WorkItem、Crew、完整本地日期和备注，明确选择“人员未记录”或实际员工名单。
+Home Crew 不会自动成为出勤；更改工作项、Crew 或日期后须重新确认人员名单。
+**Close without saving** 不修改 Draft。取消已保存记录须确认类型、ID 和修订号，
+保留原备注与人员历史，仅从活动周表移除该整天记录，不删除旧半天记录。
+重开后可通过 **Open saved Full Day ID, including cancelled** 查询取消记录，
+使用 **Read latest 100 immutable Draft revisions** 查看最近100次不可覆盖修订。
+
+Stale revision 会保留未提交输入；明确加载当前保存值会替换输入供重新核对，不会强盖新版本。
+结果 Unknown 时保留原恢复请求，先用 **Resolve original request** 查询回执；
+未查到不代表未保存。必要时只能 **Retry same unchanged request**，不能另建请求盲目重试。
+明确已保存但周表刷新失败时，点击 **Retry weekly refresh — no writes**，不要再次 Save。
+本地恢复日志读取失败时保留证据，不得静默清空。逐项查看 Blocked／Pending；
+编辑器不开放推荐 Apply 或正式 Publish。
 
 默认 **Job Schedule / Crew Board** 是只读 Full Day 工作台，两张表使用同一周快照。
 蓝色整天卡保留无 Slot 的日期，黄色 Legacy AM/PM 保留原 ID/时段并标记 Needs Review。

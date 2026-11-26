@@ -52,9 +52,18 @@ impl Sidecar {
             write!(&mut token, "{byte:02x}").expect("Writing to a string cannot fail.");
         }
 
-        let child = Command::new(executable)
-            .arg("--database")
-            .arg(database)
+        let mut command = Command::new(executable);
+        command.arg("--database").arg(&database);
+        if std::env::var("RIGARUS_DAY_EDITOR_TEST").as_deref() == Ok("1") {
+            let root = std::env::var_os("RIGARUS_SMOKE_DATA_ROOT")
+                .filter(|root| !root.is_empty())
+                .ok_or("Synthetic editor requires a separate test data root.")?;
+            if database != PathBuf::from(root).join("data/rigarus.db") {
+                return Err("Synthetic editor database does not match its test root.".into());
+            }
+            command.arg("--synthetic-day-editor");
+        }
+        let child = command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -184,6 +193,36 @@ impl Sidecar {
                     .get(self.url(&format!("/schedule-workbench/locate/{kind}/{id}")))
             }
             _ => return Err("Choose week or typed Locate.".into()),
+        };
+        self.send(request.timeout(Duration::from_secs(60)))
+    }
+
+    pub fn day_editor(&self, action: &str, input: &Value) -> Result<Value, String> {
+        if input.to_string().len() > 64000 {
+            return Err("Day editor request is too large.".into());
+        }
+        let safe_id = || {
+            input["id"]
+                .as_i64()
+                .filter(|n| *n > 0 && *n <= 9_007_199_254_740_991)
+                .ok_or("Choose a saved Full Day ID.")
+        };
+        let request = match action {
+            "status" => self.client.get(self.url("/day-editor/status")),
+            "read" => self
+                .client
+                .get(self.url(&format!("/day-editor/record/{}", safe_id()?))),
+            "history" => self
+                .client
+                .get(self.url(&format!("/day-editor/history/{}", safe_id()?))),
+            "receipt" => {
+                let profile = editor_uuid(&input["profile_id"])?;
+                let request = editor_uuid(&input["request_id"])?;
+                self.client
+                    .get(self.url(&format!("/day-editor/receipt/{profile}/{request}")))
+            }
+            "submit" => self.client.post(self.url("/day-editor/submit")).json(input),
+            _ => return Err("Choose a supported day editor action.".into()),
         };
         self.send(request.timeout(Duration::from_secs(60)))
     }
@@ -413,6 +452,22 @@ impl Sidecar {
     }
 }
 
+fn editor_uuid(value: &Value) -> Result<&str, String> {
+    let value = value.as_str().ok_or("Choose an editor request identity.")?;
+    if value.len() != 36
+        || value.bytes().enumerate().any(|(i, b)| {
+            if matches!(i, 8 | 13 | 18 | 23) {
+                b != b'-'
+            } else {
+                !b.is_ascii_hexdigit()
+            }
+        })
+    {
+        return Err("Choose a valid editor UUID.".into());
+    }
+    Ok(value)
+}
+
 fn working_calendar_path(scope: &str, id: i64) -> Result<String, String> {
     if !matches!(scope, "Crew" | "Project") || !(1..=9_007_199_254_740_991).contains(&id) {
         return Err("Select an existing Crew or Project calendar.".to_string());
@@ -606,6 +661,19 @@ mod tests {
                 wait_for_readiness(ready_rx, error_rx, Duration::ZERO),
                 Err(SERVICE_UNAVAILABLE),
             );
+        }
+    }
+
+    #[test]
+    fn editor_receipt_path_rejects_injected_or_partial_identities() {
+        assert!(editor_uuid(&serde_json::json!("11111111-1111-4111-8111-111111111111")).is_ok());
+        for value in [
+            serde_json::json!("../receipt"),
+            serde_json::json!("11111111-1111-4111-8111-11111111111/"),
+            serde_json::json!(1),
+            serde_json::Value::Null,
+        ] {
+            assert!(editor_uuid(&value).is_err());
         }
     }
 }

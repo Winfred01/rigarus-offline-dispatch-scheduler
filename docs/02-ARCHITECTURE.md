@@ -1,5 +1,58 @@
 # Architecture
 
+## Independent Full Day Draft editor (#120, schema19)
+
+Strict `day_editor_api.py` contracts call `day_editor_store.py` transaction
+service, reusing connection-level DayDraftStore and saved-resource validators.
+One BEGIN IMMEDIATE covers database/request identity and payload hash, current
+revision/Project, explicit staffing, existing day/legacy/Rig SQL guards, saved
+row/history, complete observations and immutable result receipt. Source/storage
+failure rolls back. Same request replays its original JSON; changed payload
+cannot reuse it. Resource reasons remain Blocked/Pending with root false flags.
+No default safety policy, worker/source transfer or actual Rig is inferred.
+
+PR122 recovery review additionally validates the complete Committed record against
+the original action/typed ID/revision/WorkItem/Project/Crew/date/notes/members and
+false safety flags before clearing recovery evidence. Unknown/malformed rejection
+is uncertain; another current journal is never intentionally cleared. Transport
+returns without acknowledgement; the editor's normal accept path settles once.
+This is not atomic cross-window localStorage coordination: concurrent app-instance
+journals remain an unqualified production rollout gate. See
+[review](design/2026-11-25-issue-120-recovery-review.md).
+Before/After remains [design only](design/2026-11-25-impact-preview-contract.md)
+until this prerequisite PR is human-merged and main builds.
+
+React journals the unchanged request in local WebView storage before dispatch,
+scoped by database UUID, bounded and treated as untrusted. Invalid/unwritable
+journal blocks dispatch. Resolve reads the exact receipt; NotFound is not proof
+of rejection. Only explicit unchanged same-key replay is permitted after unknown
+outcomes, never blind create retry. Stale rejection retains form fields until
+deliberately loading saved values. Committed save survives failed weekly refresh;
+retry refresh is read-only. Unclear journal clearing leaves recoverable evidence.
+UUID is database-lineage identity, not authentication or future freshness proof.
+Desktop editor calls have a150second outer deadline; timeout does not cancel or
+disprove a commit. Preserve the journal and ignore a late reply until explicit
+reconciliation. Rust HTTP60second and SQL30second checks remain independent.
+
+Boards reload actual rows; active identities use typed Locate, cancellation
+leaves active grids but remains readable by Full Day ID/history. Context edits
+require explicit worker reconfirmation; note-only edits preserve members. Raw
+legacy records, original IDs/notes/history and independent evidence are retained.
+
+Schema19 is additive with verified backup/atomic migration. Older binaries
+reject19 and need an independent compatible pre-upgrade backup; restoring it
+does not retain later edits. No operational downgrade or customer DB restore.
+Readers now recognize19; schema18 workbench below is merged119's baseline.
+
+Production daily writes stay closed. Packaged sidecar test flag
+`--synthetic-day-editor` requires the dedicated
+`RIGARUS_SMOKE_DATA_ROOT/data/rigarus.db`; desktop adds it only with explicit
+`RIGARUS_DAY_EDITOR_TEST=1` and matching root. This synthetic engineering opt-in
+does not authorize customer rollout. Raw day/calendar writer gates remain
+independently closed; Apply/Publish are not exposed by this editor.
+See [design](design/2026-11-25-issue-120-day-editor-checklist.md) and
+[evidence](acceptance/2026-11-25-issue-120-day-editor.md).
+
 ## Full-day weekly workbench (#119)
 
 `schedule_workbench.py` reads schema18 through one pinned mode=ro/query-only

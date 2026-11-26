@@ -4,7 +4,7 @@
 
 Rigarus 是一款面向**单名办公室调度员**的 Windows 离线桌面排班软件，**无需注册或登录账号**即可使用。技术栈为 **Tauri/Rust + React/TypeScript + 随应用打包的 Python FastAPI + 本地 SQLite**。运行时不需要 Google Calendar、云同步或外部排班服务，软件界面为英文。
 
-> **工程预览版 · 2026-11-25，基线 main 6d93916 加 Issue119 工作台。** 本分支等待人工审核。GitHub 代码已合并不代表客户正式验收。Demo A–F、完整派工安全检查、正式分发及 UAT 仍未完成。开发、演示和 CI 应使用合成数据；Draft 不等于正式施工派工。
+> **工程预览版 · 2026-11-25，基线 main 9d40765 加 Issue120 编辑器。** 本分支等待人工审核，生产每日写入仍关闭。代码合并不代表客户验收；Demo、完整派工安全、正式分发及 UAT 未批准。开发、演示和 CI 仅用合成数据；Draft 不等于正式派工。
 
 所有者已于2026-11-24确认新排班使用 **Full Day**。下述桌面 AM/PM 控件仅为旧数据兼容路径，整天界面尚未完成，生产每日写入仍关闭。不得擅自合并、四舍五入或转换历史记录。[使用说明书](USER-GUIDE.zh-CN.md#scope)区分现有界面与后端能力。
 
@@ -12,7 +12,7 @@ Rigarus 是一款面向**单名办公室调度员**的 Windows 离线桌面排�
 
 | 模块 | 当前工程预览能力 |
 | --- | --- |
-| **Schedule → Job Schedule / Crew Board** | 默认打开只读 Full Day 工作台，同一快照显示整天 Draft、原始 Legacy AM/PM、资源子检查、详情、筛选及类型化 Locate；可打开只读推荐。旧半天新增/编辑/取消/条带仍在明确标记的 **Legacy compatibility** 中；独立每日编辑是下一条切片。 |
+| **Schedule → Job Schedule / Crew Board** | 同一快照显示整天 Draft、原始 Legacy AM/PM、资源原因、详情及类型化 Locate，可打开只读推荐。独立整天编辑器支持新增、编辑、取消、明确选人、修订冲突和请求恢复，但仅在隔离合成测试配置中允许保存；生产 Save 仍禁用。半天编辑保留于 **Legacy compatibility**。 |
 | **Project Management** | 新增、编辑、搜索、排序 Projects 和 Small/Civil/Tower/Other WorkItems。Bulk Add 支持粘贴 CSV、Excel TAB 分隔文本或上传本地 `.xlsx`；先只读预览重复/错误，再由调度员明确确认事务式新增。 |
 | **People → Employees / Crews** | 管理员工、Civil/Tower 班组、Home Crew、技能等级、Foreman 任命和历史；能够为具体 Draft 安排显式选择员工，临时加入其他 Crew **不会修改 Home Crew**。 |
 | **People → Availability** | 按含首尾日期范围记录 Available、Unavailable、Not recorded，支持全天、AM、PM 及变更历史。这只是计划参考，不代表通过派工资格审核。 |

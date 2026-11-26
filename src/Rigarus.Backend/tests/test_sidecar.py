@@ -18,6 +18,76 @@ from rigarus_backend.storage import DRAFT_ASSIGNMENTS, initialize_database
 
 
 class SidecarTests(unittest.TestCase):
+    def test_editor_opt_in_receipt_restart_and_default_closed(self):
+        from uuid import uuid4
+
+        token = secrets.token_hex(32)
+        process = self.launch(token, editor_test=True)
+        port = self.read_port(process)
+
+        def request(method, route, payload=None):
+            code, value = self.request(port, method, route, token, payload=payload)
+            self.assertIn(code, (200, 201), value)
+            return value
+
+        profile = request("GET", "/day-editor/status")
+        self.assertTrue(profile["test_writes_enabled"])
+        crew = request(
+            "POST", "/crews", dict(name="Synthetic editor Crew", type="Civil")
+        )
+        project = request(
+            "POST",
+            "/projects",
+            dict(
+                job_number="SYN-EDITOR-120",
+                site_id="0120",
+                site_name="Synthetic editor",
+                work_items=[
+                    dict(type="Civil", required_crew_count=1, estimated_half_days=99)
+                ],
+            ),
+        )
+        body = dict(
+            profile_id=profile["profile_id"],
+            request_id=str(uuid4()),
+            action="Create",
+            work_item_id=project["work_items"][0]["id"],
+            expected_project_id=project["id"],
+            crew_id=crew["id"],
+            local_date="2026-11-25",
+            notes="Synthetic packaged editor",
+            employee_ids=None,
+            staffing_confirmed=False,
+        )
+        self.assertEqual(
+            self.request(port, "POST", "/day-editor/submit", payload=body)[0], 401
+        )
+        result = request("POST", "/day-editor/submit", body)
+        self.assertEqual(result["outcome"], "Committed")
+        self.assertEqual(request("POST", "/day-editor/submit", body), result)
+        process.stdin.close()
+        self.assertEqual(process.wait(timeout=10), 0)
+        restarted = self.launch(token)
+        port = self.read_port(restarted)
+        self.assertFalse(request("GET", "/day-editor/status")["test_writes_enabled"])
+        self.assertEqual(
+            request(
+                "GET",
+                f"/day-editor/receipt/{profile['profile_id']}/{body['request_id']}",
+            ),
+            result,
+        )
+        self.assertEqual(
+            self.request(port, "POST", "/day-editor/submit", token, payload=body)[0],
+            409,
+        )
+        self.assertEqual(
+            request("GET", f"/day-editor/record/{result['record']['id']}")["notes"],
+            "Synthetic packaged editor",
+        )
+        restarted.stdin.close()
+        self.assertEqual(restarted.wait(timeout=10), 0)
+
     def test_weekly_workbench_authenticated_namespaces_and_restart(self):
         from rigarus_backend.project_store import ProjectStore
         from rigarus_backend.projects import ProjectDraft, WorkItemDraft, WorkType
@@ -223,15 +293,21 @@ class SidecarTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.database = Path(temporary.name) / "data" / "rigarus.db"
 
-    def launch(self, token):
+    def launch(self, token, editor_test=False):
         packaged = os.environ.get("RIGARUS_SIDECAR_TEST_EXE")
         command = (
             [packaged]
             if packaged
             else [sys.executable, "-m", "rigarus_backend.sidecar"]
         )
+        environment = os.environ.copy()
+        extra = []
+        if editor_test:
+            environment["RIGARUS_SMOKE_DATA_ROOT"] = str(self.database.parent.parent)
+            extra.append("--synthetic-day-editor")
         process = subprocess.Popen(
-            [*command, "--database", str(self.database)],
+            [*command, "--database", str(self.database), *extra],
+            env=environment,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -611,7 +687,7 @@ class SidecarTests(unittest.TestCase):
                 connection.execute(
                     "SELECT count(*) FROM __EFMigrationsHistory"
                 ).fetchone(),
-                (18,),
+                (19,),
             )
             self.assertEqual(
                 connection.execute("PRAGMA integrity_check").fetchone(), ("ok",)

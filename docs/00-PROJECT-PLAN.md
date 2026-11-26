@@ -4,9 +4,11 @@ Owner November25 next-stage priority: full-day weekly workbench and namespaced
 Locate (#119), then independent safe daily Draft editing (#120), then human
 Apply/locks/transaction revalidation/audit and recoverable schedule versions
 (#18/#29/#20), then formal company/Crew/employee PDF/Excel (#17/#71/#32).
-Human-merged118 already supplies read-only WorkItem recommendations. This branch
-adds read-only weekly visibility, not the daily editor or a completed dispatch
-loop. No write/publication gate opens from green read-only checks.
+Human-merged118 supplies read-only WorkItem recommendations and merged121 the
+weekly workbench. Issue120 adds independent manual editing/recovery with explicit
+synthetic-only test writes; production daily writes remain closed. Next human
+Apply/version recovery → delay-chain replanning → formal exports. Green engineering
+checks do not open a production/publication gate.
 
 Daily actual-worker consent (#113/#27) adds independent full-day decisions and
 roster-bound weekend planning in coherent snapshot v6. Pending/partial/refusal

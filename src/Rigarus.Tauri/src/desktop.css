@@ -1052,3 +1052,63 @@ kbd {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.day-editor-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.desktop-dialog.day-editor-dialog {
+  width: min(900px, calc(100vw - 48px));
+}
+.day-editor-dialog button:not(.editor-primary):not(:disabled) {
+  background: #fff;
+  color: #20395b;
+  border: 1px solid #cbd5e1;
+}
+.day-editor-dialog button.editor-cancel:not(:disabled) {
+  color: #9b2020;
+}
+.day-editor-dialog label.day-editor-confirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.day-editor-dialog input[type="checkbox"] {
+  width: auto;
+  flex: none;
+  margin: 4px 0 0;
+}
+.day-editor-fields label,
+.desktop-dialog > label {
+  display: grid;
+  gap: 6px;
+}
+.day-editor-members {
+  max-height: 220px;
+  overflow-y: auto;
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.day-editor-members label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.editor-outcome,
+.editor-recovery,
+.editor-receipt {
+  padding: 12px;
+  border: 1px solid #d3dce8;
+  background: #f7f9fc;
+  overflow-wrap: anywhere;
+}
+.day-editor-history {
+  max-height: 260px;
+  overflow-y: auto;
+}
+@media (max-width: 640px) {
+  .day-editor-fields {
+    grid-template-columns: 1fr;
+  }
+}
