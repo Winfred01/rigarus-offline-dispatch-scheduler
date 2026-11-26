@@ -52,10 +52,10 @@ Five A visits November23–27,2026, explicitly selected by typed ID/revision:
 | --- | --- |
 | Latest-main baseline frontend70/backend580 | PASS |
 | New focused impact tests27 | PASS, final focused rerun25.325seconds, including100 extra synthetic projects/visits and a10second read assertion |
-| Full backend / frontend / Rust / historical .NET | PASS607 /74 /9 /35 =725 distinct tests; packaged16 repeats |
+| Full backend / frontend / Rust / historical .NET | PASS607 /74 /11 /35 =727 distinct tests; packaged16 repeats |
 | Actual packaged sidecar build/tests | PASS16 repeat subset |
 | Locked bundle/npm/.NET restores; Ruff/Prettier/TS/Vite | PASS; no lock/dependency changes |
-| Windows Release and Rust tests | PASS9 |
+| Windows Release and Rust tests | PASS11, including annual-scope transport whitelist/size tests |
 | NSIS | PASS after normal client exit/retry; initial attempt FAIL due to running synthetic binary holding a build file |
 | PS5 synthetic acceptance harness | PASS, including expected mock-failure checks |
 | Documentation | PASS12 Markdown files/202 local links, UTF8/fences/unique anchors |
@@ -80,12 +80,19 @@ corrected to November22,2027; November23 is now explicitly tested as422.
 An out-of-horizon replacement fixture was corrected rather than weakening exact
 scope validation. No safety rule was relaxed to make tests pass.
 
-Final local NSIS SHA256
+Initial accepted local NSIS SHA256 before transport-bound follow-up
 c9527931749f7cd267ab0ba44625d335dccaada1e1291dffd96075c171b523ab
-(built, not installed or released). Native screenshots below belong to the
+(built, not installed or released; final PR records the subsequent64KiB build).
+Native screenshots below belong to the
 separately identified earlier executable; final sidecar additionally enforces
 explicit confirmation at the direct service boundary. No borrowed final-native
 fault/offline acceptance is claimed.
+
+The actual366-row serialization was25,164bytes, exceeding the inherited16KiB
+bridge. Both impact actions now accept at most64KiB; date-only actions retain
+16KiB. Rust tests prove annual scope acceptance, oversized rejection before
+network and refusal of Apply/Publish/injected action names. This is a technical
+read-only transport correction, no writer or business-policy change.
 
 ## Actual native development-host check (not VM acceptance)
 

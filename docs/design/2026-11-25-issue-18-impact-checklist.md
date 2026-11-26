@@ -102,3 +102,13 @@ locks/dependencies intentionally replace prototype half-days/Validated/Apply.
 Original drawings remain local. Actual native5→8/protected B, Escape/focus/reopen
 and SQLite equality were executed; narrower sizes/native faults/offline VM were
 not. See [execution evidence](../acceptance/2026-11-26-issue-18-impact.md).
+
+### Transport-bound correction (before affected code edit)
+
+Actual serialization check:366 simple replacement rows occupy25,164 bytes,
+exceeding the inherited16KiB recommendation bridge despite the strict API366-row
+limit. A365-day saved scope is affected too. Keep the existing16KiB date-only
+actions; allow64KiB only for the two fixed read-only impact actions. This covers
+bounded safe-ID/revision/nominee lists including freshness wrapping; every other
+action/path remains rejected. Add real Rust white-list/size tests and repeat
+locked Rust/build/CI; no UI/schema/writer or business-policy change.

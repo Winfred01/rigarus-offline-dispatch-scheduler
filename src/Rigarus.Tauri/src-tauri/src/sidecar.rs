@@ -151,16 +151,7 @@ impl Sidecar {
     }
 
     pub fn day_recommendations(&self, action: &str, input: &Value) -> Result<Value, String> {
-        let path = match action {
-            "preview" => "/day-recommendations/preview",
-            "freshness" => "/day-recommendations/freshness",
-            "impact_preview" => "/day-impact/preview",
-            "impact_freshness" => "/day-impact/freshness",
-            _ => return Err("Choose preview or freshness recheck.".into()),
-        };
-        if input.to_string().len() > 16_384 {
-            return Err("The recommendation input exceeds the supported size.".into());
-        }
+        let path = recommendation_path(action, input)?;
         self.send(
             self.client
                 .post(self.url(path))
@@ -454,6 +445,20 @@ impl Sidecar {
     }
 }
 
+fn recommendation_path(action: &str, input: &Value) -> Result<&'static str, String> {
+    let (path, limit) = match action {
+        "preview" => ("/day-recommendations/preview", 16_384),
+        "freshness" => ("/day-recommendations/freshness", 16_384),
+        "impact_preview" => ("/day-impact/preview", 65_536),
+        "impact_freshness" => ("/day-impact/freshness", 65_536),
+        _ => return Err("Choose a supported read-only preview or freshness recheck.".into()),
+    };
+    if input.to_string().len() > limit {
+        return Err("The recommendation input exceeds the supported size.".into());
+    }
+    Ok(path)
+}
+
 fn editor_uuid(value: &Value) -> Result<&str, String> {
     let value = value.as_str().ok_or("Choose an editor request identity.")?;
     if value.len() != 36
@@ -543,6 +548,37 @@ impl Drop for Sidecar {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn impact_transport_accepts_annual_scope_only_on_fixed_read_only_paths() {
+        let rows: Vec<Value> = (1..=366).map(|id|
+            serde_json::json!({"record_kind":"FullDayDraft","record_id":id,"expected_revision":1})
+        ).collect();
+        let input = serde_json::json!({"replacements":rows});
+        assert!(input.to_string().len() > 16_384);
+        assert_eq!(
+            recommendation_path("impact_preview", &input).unwrap(),
+            "/day-impact/preview"
+        );
+        assert_eq!(
+            recommendation_path("impact_freshness", &input).unwrap(),
+            "/day-impact/freshness"
+        );
+        assert!(recommendation_path("preview", &input).is_err());
+        for action in ["apply", "publish", "impact_preview/../submit", ""] {
+            assert!(recommendation_path(action, &input).is_err());
+        }
+    }
+
+    #[test]
+    fn impact_transport_rejects_oversized_input_before_network() {
+        let oversized = serde_json::json!({"unexpected": "x".repeat(65_536)});
+        assert!(recommendation_path("impact_preview", &oversized).is_err());
+        assert!(recommendation_path("impact_freshness", &oversized).is_err());
+        assert_eq!(
+            recommendation_path("preview", &serde_json::json!({})).unwrap(),
+            "/day-recommendations/preview"
+        );
+    }
     #[test]
     fn working_calendar_paths_allow_only_shared_project_or_crew_owners() {
         assert_eq!(
