@@ -1,5 +1,20 @@
 # Architecture
 
+## Confirmed unconfirmed-Draft transaction (#124, schema20)
+
+Backend-only `draft_apply_api.py` adds exact read-only preparation and separately
+synthetic-gated submission/reconciliation/version/inverse-preview. The owner
+explicitly permits acknowledged Pending for unconfirmed Draft recording;
+known blockers reject and dispatch/Publish remain false. `impact_in` reuses the
+same existing impact projection/resource chain in a caller-owned transaction.
+One BEGIN IMMEDIATE rechecks lineage/schema/source/plan proof, persists only
+reviewed day changes/history, observes final saved resources and commits immutable
+DraftVersions audit/receipt together. No client After values are trusted.
+Replays use separate request namespace; timeout/NotFound needs unchanged-key
+reconciliation. Inverse is read-only, exact touched-revision comparison only;
+actual restore/desktop Apply/production rollout remain separate. See
+[contract and checks](acceptance/2026-11-26-issue-124-draft-transactions.md).
+
 ## Read-only Before/After impact (#18/#29)
 
 `impact_preview_api.py` exposes strict POST /day-impact/preview and /freshness

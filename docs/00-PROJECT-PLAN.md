@@ -1,5 +1,13 @@
 # Project plan for repository use
 
+Issue124 follows merged123 with backend-only exact human-confirmed proposal→
+unconfirmed Draft transaction/audit/version receipt and read-only inverse preview.
+Owner November26 allows explicitly acknowledged Pending for this recording step;
+known blockers reject. Production writers, desktop Apply, actual restore and
+Publish remain closed. See [checks](acceptance/2026-11-26-issue-124-draft-transactions.md).
+Next desktop confirmation/recovery and separately reviewed recoverable-version
+execution, then dependency-aware delay replanning and formal exports.
+
 Current #18 slice follows human-merged122/main8f6e547: operator-visible read-only
 Before/After with exact saved replacement scope, coherent resource checks and
 Stale detection. See [engineering evidence](acceptance/2026-11-26-issue-18-impact.md).

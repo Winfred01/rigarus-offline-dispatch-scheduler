@@ -85,6 +85,7 @@ CURRENT_HISTORY = (
     storage.DAILY_RIGS,
     storage.DAILY_WEEKEND,
     storage.DAY_EDITOR,
+    storage.DRAFT_VERSIONS,
 )
 CURRENT_TABLES = storage.CREW_TABLES | {
     "Employees",
@@ -105,6 +106,7 @@ CURRENT_TABLES = storage.CREW_TABLES | {
     *storage.DAILY_RIG_TABLES,
     *storage.DAILY_WEEKEND_TABLES,
     *storage.DAY_EDITOR_TABLES,
+    *storage.DRAFT_VERSION_TABLES,
 }
 
 

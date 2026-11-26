@@ -25,7 +25,7 @@ from rigarus_backend.day_drafts import (
     legacy_day_observation,
 )
 from rigarus_backend.day_draft_store import DayDraftStore
-from rigarus_backend.day_editor_migration import DAY_EDITOR
+from rigarus_backend.draft_version_migration import DRAFT_VERSIONS
 from rigarus_backend.roster import EmployeeDraft
 from rigarus_backend.roster_store import EmployeeStore
 from rigarus_backend.staffing_store import StaffingStore
@@ -453,7 +453,7 @@ class DayDraftTests(unittest.TestCase):
                 c.execute(
                     "SELECT MigrationId FROM __EFMigrationsHistory ORDER BY MigrationId DESC LIMIT 1"
                 ).fetchone(),
-                (DAY_EDITOR,),
+                (DRAFT_VERSIONS,),
             )
 
     def test_daily_id_namespace_does_not_replace_legacy_id(self):

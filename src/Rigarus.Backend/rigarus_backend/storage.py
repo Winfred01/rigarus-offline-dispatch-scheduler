@@ -4,6 +4,11 @@ from pathlib import Path
 from uuid import uuid4
 
 from .day_editor_migration import DAY_EDITOR, DAY_EDITOR_TABLES, CREATE_DAY_EDITOR
+from .draft_version_migration import (
+    DRAFT_VERSIONS,
+    DRAFT_VERSION_TABLES,
+    CREATE_DRAFT_VERSIONS,
+)
 
 from .domain import DemoProject, validate_note
 from .day_migration import DAY_DRAFTS, DAY_TABLES, CREATE_DAY_DRAFTS
@@ -304,6 +309,7 @@ def initialize_database(path: Path) -> None:
                 DAILY_CAPABILITIES,
                 DAILY_RIGS,
                 DAILY_WEEKEND,
+                DAY_EDITOR,
             )
             if (
                 existing
@@ -511,8 +517,18 @@ def initialize_database(path: Path) -> None:
                 record_migration(
                     connection, DAY_EDITOR, product_version="Rigarus 0.1.0"
                 )
-            elif history != (*weekend_history, DAY_EDITOR) or tables != (
-                weekend_tables | DAY_EDITOR_TABLES
+                history = (*weekend_history, DAY_EDITOR)
+                tables = weekend_tables | DAY_EDITOR_TABLES
+            editor_history = (*weekend_history, DAY_EDITOR)
+            editor_tables = weekend_tables | DAY_EDITOR_TABLES
+            if history == editor_history and tables == editor_tables:
+                for statement in CREATE_DRAFT_VERSIONS:
+                    connection.execute(statement)
+                record_migration(
+                    connection, DRAFT_VERSIONS, product_version="Rigarus 0.1.0"
+                )
+            elif history != (*editor_history, DRAFT_VERSIONS) or tables != (
+                editor_tables | DRAFT_VERSION_TABLES
             ):
                 raise UnsupportedDatabaseError(
                     "This Rigarus database has an unsupported schema. Open it with a compatible version."
