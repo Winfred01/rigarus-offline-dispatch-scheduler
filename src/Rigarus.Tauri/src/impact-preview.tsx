@@ -55,10 +55,14 @@ export function ImpactScope({
   records,
   replacements,
   onChange,
+  onReload,
+  busy,
 }: {
   records: SavedImpactRecord[];
   replacements: Replacement[];
   onChange: (rows: Replacement[]) => void;
+  onReload: () => void;
+  busy: boolean;
 }) {
   return (
     <fieldset>
@@ -66,6 +70,14 @@ export function ImpactScope({
       <p>
         No selection means additional work. Saved visits are never cancelled.
       </p>
+      <button
+        type="button"
+        className="secondary-button"
+        disabled={busy}
+        onClick={onReload}
+      >
+        Reload saved visits — clear selection
+      </button>
       {records.length === 0 && <p>No active saved visits in this horizon.</p>}
       {records.map((r) => (
         <label

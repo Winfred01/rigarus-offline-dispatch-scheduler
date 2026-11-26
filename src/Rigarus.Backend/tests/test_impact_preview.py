@@ -165,6 +165,18 @@ class ImpactTests(unittest.TestCase):
         self.assertEqual(
             self.fingerprint(data, replacements=self.scope).json()["status"], "Stale"
         )
+        self.assertEqual(self.post(replacements=self.scope).status_code, 409)
+        reload = self.post(replacements=[]).json()
+        revised_scope = [
+            dict(
+                record_kind=r["record_kind"],
+                record_id=r["record_id"],
+                expected_revision=r["revision"],
+            )
+            for r in reload["before"]["records"]
+            if r["record_kind"] == "FullDayDraft"
+        ]
+        self.assertEqual(self.post(replacements=revised_scope).status_code, 200)
 
     def test_read_failure_never_certifies_success_or_leaks_path(self):
         with patch(

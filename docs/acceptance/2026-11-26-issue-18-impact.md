@@ -24,7 +24,9 @@ Protected visits remain occupied; IDs and skipped-date reasons explain gaps.
 Locks are Not recorded/Unsupported. Complete downstream calculation is Needs
 Review/Unsupported Dependency, never inferred from date order. No B/C movement.
 Current is observed at read, not reservation/safety. Stale stays retired until
-recompute; errors cannot return a Current/empty-safe result. Cancel/Escape writes
+recompute; changed selected revisions require explicit Reload saved visits (clear
+selection) and deliberate reselection, never automatic rebinding. Errors cannot
+return a Current/empty-safe result. Cancel/Escape writes
 nothing. Every root Pending / Apply=false / Publish=false; production daily
 writers remain closed. No new migration, confirmation/lock/audit/version table.
 
@@ -118,8 +120,20 @@ normal app exit. Before/after full SQLite logical digest equality, integrity=ok,
 zero foreign-key errors and zero editor receipts verified after cancellation and
 again after exit. Original IDs/notes/workers/legacy data remain unchanged.
 
-Native Current→Stale after external edit, switching between multiple Crews, native
-fault injection, three viewport sizes, screen-reader audit, installer execution,
+Additional latest-client native check: EXE SHA256
+0cfaf02cf4c1331abea33f7a2b15b37882a2f6a0f9bc04591555a6784f582e08.
+Independent consistent synthetic copy, confirmed1 day and selected FullDayDraft4
+revision1. Verified unchanged initial digest; deliberately changed only its saved
+note through the internal synthetic Store to revision2 (separate source mutation).
+Actual Recheck showed Current→Stale. Recompute with old scope rejected, displaying
+recovery guidance; Reload saved visits cleared selection and visibly showed
+revision2. Deliberate reselection/recompute returned new Current. Escape/normal
+exit; digest equals the baseline captured after the deliberate source edit,
+zero added receipts, integrity=ok/FK0. Thus preview/reload/reselection made no
+additional SQLite changes. Native scope/error/Stale/reload screenshots inspected.
+
+Switching between multiple Crews, native storage/response fault injection, three
+viewport sizes, screen-reader audit, installer execution,
 upgrade/reboot and disconnected first launch NOT RUN in this slice. API/state
 tests cover the corresponding implemented source/stale behaviors; do not replace
 native/offline acceptance with them. No customer database or license/security

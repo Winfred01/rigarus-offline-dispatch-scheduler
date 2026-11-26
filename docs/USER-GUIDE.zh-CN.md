@@ -321,6 +321,8 @@ Bulk Add 不会创建每日排班、推断工作项或自动核对历史实际�
 显示 **Needs Review / Unsupported**，不能理解为没有影响。
 
 用 **Recheck inputs** 核对 Current / Stale。Stale 必须重新计算；读取错误不代表安全。
+选中记录的修订变化后，使用 **Reload saved visits — clear selection** 清空旧选择并
+重新读取，核对新 revision 后再次明确勾选；不会将旧意图静默绑定到新修订。
 **Cancel / close preview** 或 Escape 关闭时不修改 SQLite，焦点回到入口按钮。
 Apply、Publish 和生产每日写入继续关闭；此功能不能用于正式派工。
 参见[合成示例](../samples/synthetic-only/impact-preview.md)。

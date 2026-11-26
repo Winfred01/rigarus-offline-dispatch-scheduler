@@ -112,3 +112,13 @@ actions; allow64KiB only for the two fixed read-only impact actions. This covers
 bounded safe-ID/revision/nominee lists including freshness wrapping; every other
 action/path remains rejected. Add real Rust white-list/size tests and repeat
 locked Rust/build/CI; no UI/schema/writer or business-policy change.
+
+### Explicit stale-scope reload (before affected UI edit)
+
+Existing regression proves a saved note/revision change makes the proof Stale.
+Recompute with the old explicitly selected revision correctly returns409; the UI
+must offer a direct recovery instead of making operators clear many checkboxes.
+Add a read-only Reload saved visits action that visibly clears selection and reads
+current scope, requiring deliberate reselection of new revisions. Never silently
+rebind old intent to changed records. Keep query confirmation, epochs, false gates
+and Cancel behavior; add the409→explicit reload→reselection API regression.

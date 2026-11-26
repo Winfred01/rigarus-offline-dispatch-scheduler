@@ -371,7 +371,10 @@ exists; five saved dates never prove five remaining days. Protected other work i
 not moved. Unsupported locks/dependencies mean **Needs Review**, not no impact.
 
 **Recheck inputs** observes Current/Stale. Stale requires recomputation; a read
-error certifies nothing. **Cancel / close preview** or Escape discards the view
+error certifies nothing. When a selected saved revision changed, use **Reload
+saved visits — clear selection**, review the new revisions and explicitly select
+the replacement visits again; old intent is never silently rebound.
+**Cancel / close preview** or Escape discards the view
 without changing SQLite and returns focus to its trigger. No Apply or Publish is
 enabled; production daily writes remain closed. This is not formal dispatch.
 See [synthetic example](../samples/synthetic-only/impact-preview.md).

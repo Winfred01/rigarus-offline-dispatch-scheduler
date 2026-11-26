@@ -148,6 +148,7 @@ export function DayRecommendationPreview({
   async function preview(
     nextOrder: PreviewOrder = order,
     useImpact = impactMode,
+    replacementScope = replacements,
   ) {
     const parsed = previewQuery(workItemId, projectId, fields, nextOrder);
     if (parsed.error) {
@@ -168,7 +169,7 @@ export function DayRecommendationPreview({
     setFreshness("Not checked");
     try {
       const query = useImpact
-        ? { ...parsed.query, replacements }
+        ? { ...parsed.query, replacements: replacementScope }
         : parsed.query;
       const data = await invoke<Result>("day_recommendations", {
         action: useImpact ? "impact_preview" : "preview",
@@ -187,7 +188,7 @@ export function DayRecommendationPreview({
         (!data.before ||
           !Array.isArray(data.before.records) ||
           !Array.isArray(data.protected_records) ||
-          !sameImpactScope(data.replacement_scope ?? [], replacements) ||
+          !sameImpactScope(data.replacement_scope ?? [], replacementScope) ||
           !/^[a-f0-9]{64}$/.test(data.proposal_fingerprint ?? ""))
       )
         throw new Error("Unexpected impact context");
@@ -199,7 +200,7 @@ export function DayRecommendationPreview({
       if (alive.current && epoch.current.current(ticket)) {
         setResult(undefined);
         setError(
-          "Unable to read this preview. Reload project data or retry; no alternative is certified.",
+          "Unable to read this preview. If saved visits changed, reload saved visits and reselect current revisions; otherwise reload project data or retry. No alternative is certified.",
         );
       }
     } finally {
@@ -415,6 +416,11 @@ export function DayRecommendationPreview({
           <ImpactScope
             records={scope}
             replacements={replacements}
+            busy={busy}
+            onReload={() => {
+              setReplacements([]);
+              void preview(order, true, []);
+            }}
             onChange={(rows) => {
               epoch.current.next();
               freshEpoch.current.next();
