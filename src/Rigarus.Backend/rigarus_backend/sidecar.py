@@ -50,6 +50,8 @@ async def serve(
     *,
     editor_test=False,
     draft_transaction_test=False,
+    draft_restore_test=False,
+    draft_restore_test_root=None,
 ) -> bool:
     app = private_api(
         create_app(
@@ -57,6 +59,8 @@ async def serve(
             database_initialized=True,
             enable_day_editor_test_writes=editor_test,
             enable_draft_transaction_test_writes=draft_transaction_test,
+            enable_draft_restore_test_writes=draft_restore_test,
+            draft_restore_test_root=draft_restore_test_root,
         ),
         token,
     )
@@ -106,8 +110,13 @@ def main() -> int:
     parser.add_argument("--database", required=True, type=Path)
     parser.add_argument("--synthetic-day-editor", action="store_true")
     parser.add_argument("--synthetic-draft-transactions", action="store_true")
+    parser.add_argument("--synthetic-draft-restores", action="store_true")
     arguments = parser.parse_args()
-    if arguments.synthetic_day_editor or arguments.synthetic_draft_transactions:
+    if (
+        arguments.synthetic_day_editor
+        or arguments.synthetic_draft_transactions
+        or arguments.synthetic_draft_restores
+    ):
         root = os.environ.get("RIGARUS_SMOKE_DATA_ROOT", "")
         if (
             not root
@@ -151,6 +160,10 @@ def main() -> int:
                     token,
                     editor_test=arguments.synthetic_day_editor,
                     draft_transaction_test=arguments.synthetic_draft_transactions,
+                    draft_restore_test=arguments.synthetic_draft_restores,
+                    draft_restore_test_root=os.environ.get("RIGARUS_SMOKE_DATA_ROOT")
+                    if arguments.synthetic_draft_restores
+                    else None,
                 )
             ):
                 return 0

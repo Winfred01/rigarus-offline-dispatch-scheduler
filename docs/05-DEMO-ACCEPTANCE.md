@@ -1,5 +1,18 @@
 # M0 acceptance walkthrough
 
+## Single-version synthetic backend Restore (#20)
+
+Follow [reproduction](../samples/synthetic-only/draft-restore.md) and
+[actual acceptance matrix](acceptance/2026-11-27-issue-20-draft-restore.md).
+Prepare one original DraftVersion, inspect exact Before/After/inverse identities,
+each warning and current revision. Dry-run cancellation leaves persistent data
+unchanged. Confirm every warning ID for unconfirmed Draft only; verify5→8 and5→2
+inverse, stable original IDs/notes/actual members, protected unrelated/legacy
+records, typed Locate, hard conflict/Stale refusal, rollback/replay/reopen, and
+independent20 backup with prior20 binary. No native Restore UI exists in this
+slice. Offline install/upgrade/OS reboot, customer Demo/UAT and production are
+separate unapproved gates. Existing mixed weekly views are preserved, not replaced.
+
 ## Desktop exact Draft confirmation/reconciliation (#126)
 
 Use the [fresh checklist](design/2026-11-26-issue-126-desktop-confirmation.md)

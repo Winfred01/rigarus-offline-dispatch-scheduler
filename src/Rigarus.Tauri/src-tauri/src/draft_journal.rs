@@ -134,15 +134,17 @@ mod tests {
         fs::remove_dir_all(root).unwrap();
     }
     fn folder() -> PathBuf {
+        static SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let p = std::env::temp_dir().join(format!(
-            "rigarus-journal-{}-{}",
+            "rigarus-journal-{}-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
-                .as_nanos()
+                .as_nanos(),
+            SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
         ));
-        fs::create_dir_all(&p).unwrap();
+        fs::create_dir(&p).unwrap();
         p
     }
     const PROFILE: &str = "11111111-1111-4111-8111-111111111111";

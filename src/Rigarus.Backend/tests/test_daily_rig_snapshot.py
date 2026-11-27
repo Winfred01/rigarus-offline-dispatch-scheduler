@@ -743,7 +743,7 @@ class DailyRigMigrationTests(unittest.TestCase):
                 storage.initialize_database(self.database)
         self.assertEqual(self.digest(), before)
         storage.initialize_database(self.database)
-        self.assertEqual(len(self.snapshot().migrations), 20)
+        self.assertEqual(len(self.snapshot().migrations), 21)
 
     def test_readonly16_rejects_without_migration(self):
         self.old16()

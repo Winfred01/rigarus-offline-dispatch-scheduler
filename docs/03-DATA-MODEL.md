@@ -1,5 +1,31 @@
 # SQLite data model
 
+## Source-linked Draft Restore (schema twenty-one, #20)
+
+`20261127010000_AddDraftRestoreVersions` adds exactly two tables and immutable
+UPDATE/DELETE guards; no original table/version JSON/history is rewritten.
+
+| Table | Contract |
+| --- | --- |
+| DraftRestoreVersions | Independent positive recovery-version ID, original DraftVersion FK, lineage FK, unique request UUID, exact plan SHA, immutable before/proposed/after/resource/acknowledgement audit JSON and UTC time |
+| DraftRestoreReceipts | Separate UUID namespace/payload SHA, lineage FK, optional existing original-version FK, optional committed recovery-version FK, immutable Committed/Rejected JSON and UTC time |
+
+One transaction commits new DayDraft revisions/history/members, recovery audit/
+version and receipt. Original source versions remain immutable. New records from
+the old batch cancel rather than delete. Previously cancelled originals keep
+their IDs when reactivated, with higher revisions. The only inverse targets are
+`FullDayDraft+id`; `LegacyHalfDay+id` never aliases it. No past resource evidence is
+recreated. Recovery versions are not original DraftVersions or Published snapshots.
+
+Recognized20 receives an independently consistent, integrity/FK/digest-verified
+backup before DDL under the existing reservation. DDL/history/backup failures
+abort safely; retry/reopen is idempotent. Actual prior20 sidecar must reject21
+without changing it and reopen an independently restored verified20 backup.
+Never remove live migration history or overwrite21 to downgrade. Later writes
+must be reconciled separately if a prior backup is used. Current schema is21;
+older sections below are dated historical slice descriptions. See
+[migration/recovery evidence](acceptance/2026-11-27-issue-20-draft-restore.md).
+
 Issue126 desktop integration adds no SQLite migration: schema20 is unchanged.
 Native exact-request journals/acknowledged receipt archives are local recovery
 files, separate from immutable DraftVersions. Preserve unresolved recovery files

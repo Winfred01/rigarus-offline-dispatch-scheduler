@@ -491,7 +491,7 @@ class WeekendMigrationTests(unittest.TestCase):
         after = self.digest()
         storage.initialize_database(self.database)
         self.assertEqual(self.digest(), after)
-        self.assertEqual(len(self.snapshot().migrations), 20)
+        self.assertEqual(len(self.snapshot().migrations), 21)
 
     def test_migration_fault_backup_failure_rollback_retry_and_no_read_migration(self):
         self.old17()
@@ -517,7 +517,7 @@ class WeekendMigrationTests(unittest.TestCase):
                 storage.initialize_database(self.database)
         self.assertEqual(self.digest(), before)
         storage.initialize_database(self.database)
-        self.assertEqual(len(self.snapshot().migrations), 20)
+        self.assertEqual(len(self.snapshot().migrations), 21)
 
 
 class WeekendLegacyGuardTests(unittest.TestCase):

@@ -1,5 +1,49 @@
 # Architecture
 
+## Synthetic single-version Draft Restore (#20, schema21)
+
+The November27 [confirmed engineering scope](10-CLIENT-DECISIONS.md) permits only
+an isolated backend inverse of one original DraftVersion. `draft_restore.py` and
+`draft_restore_api.py` reuse `read_day`, `append_change`, all existing SQL guards
+and the complete saved weekly resource-validation chain. No scheduling algorithm,
+calendar UI, Rust Restore command or desktop Restore control is added.
+
+Preparation itself is gated: `BEGIN IMMEDIATE` plus an always-rolled-back
+SAVEPOINT tries the exact inverse, including new revisions and resource checks.
+It is a reserved synthetic dry run, **not query-only SQL**, and leaves no
+persistent business/audit/receipt changes. Do not expose this prepare route to
+production. Exact current business values/status/revisions must match the original
+After; no client After values are trusted. Only typed FullDayDraft IDs are written.
+
+Submit recomputes the dry-run proof in one write reservation, requires the exact
+plan SHA and each individual canonical warning ID, executes the inverse and
+rechecks actual final resources. Known blockers reject. Missing/unsupported items
+remain Pending, never Passed; no historical Rig/driver/consent proof is copied.
+Original additions append Cancelled history; originals cancelled by the batch
+reactivate only under current SQL/resource constraints. Every touched row receives
+a new revision/history, even if its business values remain unchanged.
+
+Schema21 adds independent immutable source-linked recovery versions/audit and
+committed/rejected request receipts. Known rejection rolls back the change
+savepoint and records a rejection receipt; any source/storage/SQL/audit failure
+rolls back the entire transaction and returns Unknown. Same exact request UUID
+and body returns its immutable original result; changed content cannot reuse it.
+Receipt NotFound is uncertainty, not permission for a fresh-key retry. Source
+DraftVersions JSON and the separate manual-editor/Apply namespaces are untouched.
+
+Strict prepare/submit requests are bounded; each reserved operation has a30s
+deadline and bounded resource reads,366 touched-row/4MB plan/8MB result limits.
+The CLI flag `--synthetic-draft-restores` additionally requires the exact dedicated
+`RIGARUS_SMOKE_DATA_ROOT/data/rigarus.db`; in-process test configuration requires
+the equivalent explicit root. Normal desktop startup never passes this flag.
+Read-only recovery receipt/version endpoints use existing local authentication.
+All results remain Validation Pending / Apply=false / Publish=false. Restore of
+a recovery version, Published revisions, whole-week/database overwrite, downstream
+rescheduling and production dispatch are outside this slice.
+
+See [design](design/2026-11-27-issue-20-draft-restore.md) and
+[acceptance](acceptance/2026-11-27-issue-20-draft-restore.md).
+
 ## Desktop exact Draft recording and recovery (#126)
 
 After human-merged125, the existing recommendation Dialog opens an independent

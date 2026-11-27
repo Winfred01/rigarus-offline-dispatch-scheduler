@@ -18,6 +18,133 @@ from rigarus_backend.storage import DRAFT_ASSIGNMENTS, initialize_database
 
 
 class SidecarTests(unittest.TestCase):
+    def test_restore_backend_separate_optin_auth_receipt_and_default_restart(self):
+        from uuid import uuid4
+        from rigarus_backend.project_store import ProjectStore
+        from rigarus_backend.projects import ProjectDraft, WorkItemDraft, WorkType
+        from rigarus_backend.roster_store import CrewStore
+        from rigarus_backend.roster import CrewDraft
+        from rigarus_backend.daily_calendar_store import DailyCalendarStore
+        from rigarus_backend.daily_calendars import DailyInput
+
+        initialize_database(self.database)
+        crew = CrewStore(self.database).save(
+            CrewDraft("Synthetic restore Crew", "Civil")
+        )
+        project = ProjectStore(self.database).save(
+            ProjectDraft(
+                "SYN-RESTORE-SIDECAR",
+                "20",
+                "Synthetic restore sidecar",
+                [WorkItemDraft(None, WorkType.CIVIL, 1, 2)],
+            )
+        )
+        for scope, identity in (("Crew", crew.id), ("Project", project.id)):
+            store = DailyCalendarStore(self.database)
+            old = store.read(scope, identity, "2026-11-23", "2026-11-24")
+            store.save(
+                scope,
+                identity,
+                DailyInput(
+                    "2026-11-23",
+                    "2026-11-24",
+                    "Working",
+                    True,
+                    True,
+                    "Synthetic restore calendar",
+                ),
+                old["revision"],
+                old["review_token"],
+            )
+        token = secrets.token_hex(32)
+        process = self.launch(
+            token, draft_transaction_test=True, draft_restore_test=True
+        )
+        port = self.read_port(process)
+        plan = dict(
+            query=dict(
+                work_item_id=project.work_items[0].id,
+                expected_project_id=project.id,
+                crew_ids=[crew.id],
+                remaining_days=2,
+                remaining_confirmed=True,
+                earliest_start_date="2026-11-23",
+                horizon_end_date="2026-11-24",
+            ),
+            selected_crew_id=crew.id,
+        )
+        code, proof = self.request(
+            port, "POST", "/draft-transactions/prepare", token, payload=plan
+        )
+        self.assertEqual(code, 200, proof)
+        code, original = self.request(
+            port,
+            "POST",
+            "/draft-transactions/submit",
+            token,
+            payload=dict(
+                plan=plan,
+                profile_id=proof["database_identity"],
+                request_id=str(uuid4()),
+                plan_fingerprint=proof["plan_fingerprint"],
+                confirmed=True,
+                pending_acknowledged=True,
+            ),
+        )
+        self.assertEqual(code, 200, original)
+        source = dict(
+            profile_id=original["database_identity"],
+            source_version_id=original["version_id"],
+        )
+        self.assertEqual(
+            self.request(port, "POST", "/draft-restores/prepare", payload=source)[0],
+            401,
+        )
+        code, preview = self.request(
+            port, "POST", "/draft-restores/prepare", token, payload=source
+        )
+        self.assertEqual(code, 200, preview)
+        body = source | dict(
+            request_id=str(uuid4()),
+            plan_fingerprint=preview["plan_fingerprint"],
+            confirmed=True,
+            acknowledged_warning_ids=[w["warning_id"] for w in preview["warnings"]],
+        )
+        code, result = self.request(
+            port, "POST", "/draft-restores/submit", token, payload=body
+        )
+        self.assertEqual(code, 200, result)
+        self.assertEqual(result["outcome"], "Committed", result)
+        self.assertFalse(result["applyable"] or result["publishable"])
+        self.assertTrue(all(r["status"] == "Cancelled" for r in result["after"]))
+        self.assertEqual(
+            self.request(port, "POST", "/draft-restores/submit", token, payload=body)[
+                1
+            ],
+            result,
+        )
+        process.stdin.close()
+        self.assertEqual(process.wait(timeout=10), 0)
+        restarted = self.launch(token)
+        port = self.read_port(restarted)
+        self.assertEqual(
+            self.request(
+                port,
+                "GET",
+                f"/draft-restores/receipt/{body['profile_id']}/{body['request_id']}",
+                token,
+            )[1],
+            result,
+        )
+        self.assertEqual(
+            self.request(port, "POST", "/draft-restores/submit", token, payload=body)[
+                0
+            ],
+            409,
+        )
+        restarted.stdin.close()
+        self.assertEqual(restarted.wait(timeout=10), 0)
+
     def test_draft_transaction_packaged_confirmation_replay_and_restart(self):
         from uuid import uuid4
         from rigarus_backend.project_store import ProjectStore
@@ -477,7 +604,13 @@ class SidecarTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.database = Path(temporary.name) / "data" / "rigarus.db"
 
-    def launch(self, token, editor_test=False, draft_transaction_test=False):
+    def launch(
+        self,
+        token,
+        editor_test=False,
+        draft_transaction_test=False,
+        draft_restore_test=False,
+    ):
         packaged = os.environ.get("RIGARUS_SIDECAR_TEST_EXE")
         command = (
             [packaged]
@@ -492,6 +625,9 @@ class SidecarTests(unittest.TestCase):
         if draft_transaction_test:
             environment["RIGARUS_SMOKE_DATA_ROOT"] = str(self.database.parent.parent)
             extra.append("--synthetic-draft-transactions")
+        if draft_restore_test:
+            environment["RIGARUS_SMOKE_DATA_ROOT"] = str(self.database.parent.parent)
+            extra.append("--synthetic-draft-restores")
         process = subprocess.Popen(
             [*command, "--database", str(self.database), *extra],
             env=environment,
@@ -874,7 +1010,13 @@ class SidecarTests(unittest.TestCase):
                 connection.execute(
                     "SELECT count(*) FROM __EFMigrationsHistory"
                 ).fetchone(),
-                (20,),
+                (21,),
+            )
+            self.assertEqual(
+                connection.execute(
+                    "SELECT MigrationId FROM __EFMigrationsHistory ORDER BY MigrationId DESC LIMIT 1"
+                ).fetchone(),
+                ("20261127010000_AddDraftRestoreVersions",),
             )
             self.assertEqual(
                 connection.execute("PRAGMA integrity_check").fetchone(), ("ok",)
