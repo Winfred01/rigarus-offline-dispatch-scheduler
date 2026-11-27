@@ -1,5 +1,25 @@
 # Decision register
 
+## #130 desktop Restore next-stage priority (November27,2026)
+
+Confirmed direction from the owner's next-task instruction after PR129 human
+merge: prioritize desktop single-version Draft Restore confirmation/recovery,
+including before/after differences, each Pending warning, cancellation and
+original-request recovery after an uncertain outcome. Track [Issue130](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/issues/130)
+and its [design contract](design/2026-11-27-issue-130-desktop-restore.md).
+This entry records priority and the design handoff, not a claim that desktop
+Restore is implemented, production writers are authorized or customer UAT passed.
+The proposed next implementation remains isolated-synthetic engineering with
+separate default-closed test opt-in; this documentation changes no runtime gate.
+
+The owner reaffirmed mixed FullDayDraft/LegacyHalfDay display and lossless old
+AM/PM preservation. Retain the existing workbench and typed Locate. Future
+Employee Week, search and company/Crew/employee PDF/Excel must explicitly review
+both types; no automatic conversion, half-day creation/editing or inherited
+legacy approval. Offline Windows VM acceptance remains BLOCKED; customer UAT,
+deployment, production Restore and Publish remain unapproved. Prior confirmed
+backend-only and historical Proposed records below retain their dated scope.
+
 ## #20 bounded Restore engineering confirmed; mixed display preserved (November27,2026)
 
 Confirmed for limited engineering development by the user's explicit instruction,

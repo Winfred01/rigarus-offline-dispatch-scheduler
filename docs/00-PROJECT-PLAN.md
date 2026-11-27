@@ -1,5 +1,14 @@
 # Project plan for repository use
 
+Next priority after human-merged129/maina1ea436 is [Issue130 desktop Draft Restore](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/issues/130):
+exact inverse differences, individual Pending warnings, safe cancellation and
+durable original-request reconciliation. The [Design-First contract](design/2026-11-27-issue-130-desktop-restore.md)
+records the next implementation slice; this documentation does not enable a
+desktop control, synthetic startup flag or production writer. Preserve the mixed
+FullDayDraft/LegacyHalfDay workbench; separately audit future Employee Week,
+search and PDF/Excel. Qualified offline VM acceptance remains BLOCKED and
+customer UAT/production remain unapproved.
+
 Current #20 slice follows human-merged128/main99c9741 and the November27 explicit
 five-condition confirmation: synthetic-backend-only single original DraftVersion
 restore, new audit/version/receipt and unchanged mixed full-day/legacy display.

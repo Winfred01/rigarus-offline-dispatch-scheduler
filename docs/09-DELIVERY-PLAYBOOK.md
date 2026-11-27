@@ -1,5 +1,14 @@
 # Delivery playbook for repository use
 
+Next desktop Restore work uses [Issue130's design and unexecuted acceptance cases](design/2026-11-27-issue-130-desktop-restore.md).
+Keep original-version comparison distinct from current/proposed inverse; require
+each exact warning acknowledgement. Cancel before dispatch differs from closing
+an uncertain dispatched request. Reconcile the same operation/profile/key/body;
+never discard an unknown journal or resubmit after a successful commit merely
+because board refresh failed. Preserve mixed day/legacy records and typed Locate.
+Design completion and merged backend129 are not desktop/native/offline passes.
+Production writers, Publish, customer UAT and production gates remain closed.
+
 Issue20 single-version Restore follows the November27 confirmed synthetic-backend
 scope. Verify exact After/revision match, per-item Pending acknowledgement, known
 blocker refusal, appended history/audit/recovery version, same-key reconciliation,
