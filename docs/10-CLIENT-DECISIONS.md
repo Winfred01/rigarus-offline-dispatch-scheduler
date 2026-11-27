@@ -1,5 +1,62 @@
 # Decision register
 
+## #20 single-version Draft Restore — owner decision pending (November27,2026)
+
+**Authority status: Proposed / awaiting authorized project-owner confirmation.**
+The November27 user-supplied technical review conditionally supports the scope
+below, explicitly disclaims authority to approve on behalf of the customer or
+project owner, and directs documentation first. This is not a recorded owner
+approval and does not remove the existing actual-Restore development gate.
+Only this decision record and its [Design-First checklist](design/2026-11-27-issue-20-restore-decision.md)
+are authorized for this slice. No Restore product coding, migration, execution or
+deployment begins under this entry while owner confirmation remains pending.
+
+Proposed wording for the authorized owner to confirm:
+
+> 允许开发基于合成数据的单个历史 Draft 版本恢复。恢复必须校验当前记录及修订未发生后续变化，追加新历史和审计记录，不覆盖其他安排。Pending 警告逐项确认后仅允许保存为未确认 Draft；已知硬冲突拒绝。生产写入、桌面 Restore、Publish 和真实客户数据操作均不在批准范围内。
+
+The proposed scope includes all five review conditions:
+
+1. **Exact scope / Stale refusal.** Only FullDayDraft records touched by one
+   explicitly selected historical version are eligible. Current values and
+   revisions must exactly match that version's After. Any subsequent mismatch
+   rejects as Stale; no forced overwrite of later edits or other arrangements.
+2. **Append-only recovery.** Restore original Before business content through
+   new revisions, history, audit and a new recovery version. Records created by
+   the original batch receive appended Cancelled events. Never physically delete
+   records, rewind revisions or rewrite an old version/history.
+3. **Specific Pending acknowledgement.** Expose every missing-evidence or
+   unsupported-rule warning and require explicit acknowledgement of each item.
+   Only an unconfirmed Draft / Validation pending may be recorded. Pending never
+   becomes Passed; a known hard conflict rejects.
+4. **Atomic revalidation and reconciliation.** Reread current resources and
+   occupancy evidence inside the transaction, revalidate and roll back the whole
+   operation on any failure. Use an independent idempotent request and reliable
+   receipt. Timeout is not permission for a blind repeated restore or a new key.
+   Historical resource evidence is not fresh driver/Rig/consent certification.
+5. **Isolated backend only.** Synthetic test databases only. Desktop Restore,
+   production writers, Publish, real customer databases and automatic deployment
+   are excluded. UI, native/offline rollout and customer acceptance need their
+   own subsequent review and evidence.
+
+| Required decision evidence | Current record |
+| --- | --- |
+| Technical review | November27 conditional support in the current task instruction; reviewer explicitly does not assert owner/customer authority |
+| Authorized project-owner confirmation of the exact scope and limits | **Not recorded — pending** |
+| Owner's stated identity/role and confirmation date | Not recorded |
+| Traceable confirmation source | Pending; record the explicit owner instruction or Issue/PR review/comment reference |
+| Restore product development gate | **BLOCKED pending owner confirmation** |
+| Existing production / desktop Restore / Publish gates | Remain closed |
+| Offline Windows VM acceptance | Remains BLOCKED; no qualified install/upgrade/OS-reboot pass claimed |
+| Customer Demo/UAT / production authorization | Separate and not approved |
+
+An authorized owner may provide the explicit scope confirmation in the same
+human review. Merely merging this documentation PR is not, by itself, that
+confirmation. Once recorded, refresh the Design-First implementation plan and
+deliver the permitted backend slice through the Issue branch and a Draft PR.
+Keep this proposed entry and its technical-review provenance distinguishable
+from the historical confirmed decisions below.
+
 November26 owner Continue after human merge125 advances desktop integration of
 the already-approved unconfirmed-Draft contract (#126). No new business default,
 dispatch authority, actual restore or production gate is approved. Native durable
