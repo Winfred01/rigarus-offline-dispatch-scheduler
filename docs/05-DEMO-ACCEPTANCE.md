@@ -1,5 +1,23 @@
 # M0 acceptance walkthrough
 
+## Isolated synthetic desktop Restore (#130)
+
+Use the [desktop procedure](../samples/synthetic-only/desktop-draft-restore.md)
+and [fresh18-case matrix](acceptance/2026-11-27-issue-130-desktop-restore.md).
+Inspect one original DraftVersion, four complete row views and every warning;
+Blocked/Stale must prevent submission. Confirming only records a new unconfirmed
+Draft. Cancel before send differs from closing a possibly committed request.
+Reopen must retain the exact key/review; Resolve only reads, and retirement
+requires complete receipt verification followed by durable archive. Committed
+plus failed board refresh never justifies another Restore.
+
+This engineering candidate adds a desktop control behind a separate synthetic
+opt-in, not a production Restore writer. New native submission/reconciliation
+checks are explicitly BLOCKED by action approval where recorded; earlier backend
+passes and CI cannot substitute. Qualified disconnected VM install/upgrade/reboot
+remain BLOCKED. Customer Demo/UAT and deployment/production are not approved.
+Earlier acceptance walkthroughs below retain their historical slice boundaries.
+
 ## Single-version synthetic backend Restore (#20)
 
 Follow [reproduction](../samples/synthetic-only/draft-restore.md) and

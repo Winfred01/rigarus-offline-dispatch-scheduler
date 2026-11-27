@@ -5,7 +5,7 @@ use serde::de::DeserializeOwned;
 use serde_json::Value;
 use std::{
     fmt::Write as _,
-    io::{BufRead, BufReader, Write},
+    io::{BufRead, BufReader, Read, Write},
     os::windows::process::CommandExt,
     path::PathBuf,
     process::{Child, Command, Stdio},
@@ -72,6 +72,15 @@ impl Sidecar {
                 return Err("Synthetic Draft database does not match its root.".into());
             }
             command.arg("--synthetic-draft-transactions");
+        }
+        if std::env::var("RIGARUS_DRAFT_RESTORE_TEST").as_deref() == Ok("1") {
+            let root = std::env::var_os("RIGARUS_SMOKE_DATA_ROOT")
+                .filter(|r| !r.is_empty())
+                .ok_or("Synthetic Restore requires a separate root.")?;
+            if database != PathBuf::from(root).join("data/rigarus.db") {
+                return Err("Synthetic Restore database does not match its root.".into());
+            }
+            command.arg("--synthetic-draft-restores");
         }
         let child = command
             .stdin(Stdio::piped())
@@ -276,7 +285,11 @@ impl Sidecar {
         let journal = crate::draft_journal::Journal::open(&self.database, &profile)?;
         if action == "status" {
             status["pending"] = journal.pending()?.unwrap_or(Value::Null);
+            status["other_operation_pending"] = Value::Bool(journal.restore_pending()?.is_some());
             return Ok(status);
+        }
+        if action == "prepare" && journal.restore_pending()?.is_some() {
+            return Err("Resolve the original Restore before preparing Draft Apply.".into());
         }
         if matches!(action, "prepare" | "receipt" | "version" | "recovery") {
             if action != "prepare" && input["profile_id"] != profile {
@@ -335,6 +348,116 @@ impl Sidecar {
             return Ok(serde_json::json!({"acknowledged":true}));
         }
         Err("Unsupported Draft transaction action.".into())
+    }
+
+    fn restore_wire(&self, action: &str, input: &Value) -> Result<Value, String> {
+        let path = restore_path(action, input)?;
+        let request = if matches!(action, "prepare" | "submit") {
+            self.client.post(self.url(&path)).json(input)
+        } else {
+            self.client.get(self.url(&path))
+        };
+        let response = request
+            .timeout(Duration::from_secs(60))
+            .bearer_auth(&self.token)
+            .send()
+            .map_err(|_| crate::draft_restore::ERROR)?;
+        let status = response.status();
+        let mut bytes = Vec::new();
+        response
+            .take((crate::draft_restore::LIMIT + 1) as u64)
+            .read_to_end(&mut bytes)
+            .map_err(|_| crate::draft_restore::ERROR)?;
+        crate::draft_restore::check(bytes.len() <= crate::draft_restore::LIMIT)?;
+        let value: Value =
+            serde_json::from_slice(&bytes).map_err(|_| crate::draft_restore::ERROR)?;
+        if !status.is_success() {
+            return Err(match value["detail"].as_str() {
+                Some("Stale" | "STALE_RESTORE_PLAN") => {
+                    "Stale: records or evidence changed. Prepare again and review every warning."
+                }
+                Some("RESTORE_PRODUCTION_WRITES_CLOSED") => "Production Restore writes are closed.",
+                _ => crate::draft_restore::ERROR,
+            }
+            .into());
+        }
+        Ok(value)
+    }
+
+    pub fn draft_restores(&self, action: &str, input: &Value) -> Result<Value, String> {
+        use crate::draft_restore as proof;
+        proof::check(input.to_string().len() <= proof::LIMIT)?;
+        let mut status = self.restore_wire("status", &serde_json::json!({}))?;
+        proof::check(
+            proof::flags(&status)
+                && status["production_writes_enabled"] == false
+                && status["test_writes_enabled"].is_boolean(),
+        )?;
+        let profile = proof::uuid(&status["database_identity"])?.to_owned();
+        let journal = crate::draft_journal::Journal::open(&self.database, &profile)?;
+        let pending = journal.restore_pending()?;
+        if let Some(ref p) = pending {
+            proof::envelope(p, &profile)?;
+        }
+        let other = journal.pending()?.is_some();
+        if action == "status" {
+            status["pending"] = pending.unwrap_or(Value::Null);
+            status["other_operation_pending"] = Value::Bool(other);
+            return Ok(status);
+        }
+        if action == "original" {
+            proof::check(input["profile_id"] == profile)?;
+            let source = self.restore_wire("original", input)?;
+            proof::original(&source, &profile, proof::id(&input["source_version_id"])?)?;
+            return Ok(source);
+        }
+        if action == "prepare" {
+            proof::check(
+                status["test_writes_enabled"] == true
+                    && !other
+                    && pending.is_none()
+                    && input["profile_id"] == profile,
+            )?;
+            let source = self.restore_wire("original", input)?;
+            let plan = self.restore_wire("prepare", input)?;
+            proof::bundle(
+                &source,
+                &plan,
+                &profile,
+                proof::id(&input["source_version_id"])?,
+            )?;
+            return Ok(serde_json::json!({"source":source,"reviewed":plan}));
+        }
+        if action == "submit" {
+            proof::check(status["test_writes_enabled"] == true && !other)?;
+            proof::envelope(input, &profile)?;
+            journal.remember_restore(input)?;
+            let result = self.restore_wire("submit", &input["request"])?;
+            proof::receipt(input, &result, &profile)?;
+            return Ok(result);
+        }
+        if matches!(action, "resolve" | "acknowledge") {
+            let original = pending.ok_or("No original Restore request retained.")?;
+            let request = &original["request"];
+            let result = self.restore_wire("receipt", request)?;
+            if action == "resolve" && result["outcome"] == "NotFound" {
+                proof::check(proof::flags(&result))?;
+                return Ok(result);
+            }
+            proof::receipt(&original, &result, &profile)?;
+            if action == "resolve" {
+                return Ok(result);
+            }
+            proof::check(
+                input["profile_id"] == profile
+                    && input["request_id"] == request["request_id"]
+                    && input["outcome"] == result["outcome"]
+                    && input["version_id"] == result["version_id"],
+            )?;
+            journal.acknowledge_restore(&original, &result)?;
+            return Ok(serde_json::json!({"acknowledged":true,"request_id":request["request_id"]}));
+        }
+        Err("Unsupported Restore action.".into())
     }
 
     pub fn search_crews(&self, term: &str) -> Result<Value, String> {
@@ -562,6 +685,25 @@ impl Sidecar {
     }
 }
 
+fn restore_path(action: &str, input: &Value) -> Result<String, String> {
+    use crate::draft_restore as proof;
+    proof::check(input.to_string().len() <= 2_000_000)?;
+    match action {
+        "status" | "prepare" | "submit" => Ok(format!("/draft-restores/{action}")),
+        "original" => Ok(format!(
+            "/draft-transactions/version/{}/{}",
+            proof::uuid(&input["profile_id"])?,
+            proof::id(&input["source_version_id"])?
+        )),
+        "receipt" => Ok(format!(
+            "/draft-restores/receipt/{}/{}",
+            proof::uuid(&input["profile_id"])?,
+            proof::uuid(&input["request_id"])?
+        )),
+        _ => Err("Unsupported Restore path.".into()),
+    }
+}
+
 fn draft_path(action: &str, input: &Value) -> Result<String, String> {
     if input.to_string().len() > 65_536 {
         return Err("Draft request exceeds 64KiB.".into());
@@ -596,6 +738,40 @@ fn draft_path(action: &str, input: &Value) -> Result<String, String> {
 #[cfg(test)]
 mod draft_transport_tests {
     use super::*;
+    #[test]
+    fn restore_routes_are_fixed_and_separate_from_apply() {
+        let p = "11111111-1111-4111-8111-111111111111";
+        assert_eq!(
+            restore_path(
+                "receipt",
+                &serde_json::json!({"profile_id":p,"request_id":p})
+            )
+            .unwrap(),
+            format!("/draft-restores/receipt/{p}/{p}")
+        );
+        assert_eq!(
+            restore_path(
+                "original",
+                &serde_json::json!({"profile_id":p,"source_version_id":1})
+            )
+            .unwrap(),
+            format!("/draft-transactions/version/{p}/1")
+        );
+        for value in [
+            serde_json::json!({"profile_id":"../x","source_version_id":1}),
+            serde_json::json!({"profile_id":p,"source_version_id":0}),
+        ] {
+            assert!(restore_path("original", &value).is_err());
+        }
+        assert!(restore_path("publish", &serde_json::json!({})).is_err());
+        assert!(
+            restore_path(
+                "submit",
+                &serde_json::json!({"notes":"x".repeat(2_000_000)})
+            )
+            .is_err()
+        );
+    }
     #[test]
     fn fixed_draft_paths_bound_uuid_id_and_payload() {
         let p = "11111111-1111-4111-8111-111111111111";

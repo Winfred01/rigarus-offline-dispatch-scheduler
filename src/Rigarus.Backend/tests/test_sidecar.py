@@ -61,6 +61,11 @@ class SidecarTests(unittest.TestCase):
             token, draft_transaction_test=True, draft_restore_test=True
         )
         port = self.read_port(process)
+        code, status = self.request(port, "GET", "/draft-restores/status", token)
+        self.assertEqual(code, 200, status)
+        self.assertTrue(status["test_writes_enabled"])
+        self.assertFalse(status["production_writes_enabled"])
+        self.assertEqual(self.request(port, "GET", "/draft-restores/status")[0], 401)
         plan = dict(
             query=dict(
                 work_item_id=project.work_items[0].id,
@@ -127,6 +132,11 @@ class SidecarTests(unittest.TestCase):
         self.assertEqual(process.wait(timeout=10), 0)
         restarted = self.launch(token)
         port = self.read_port(restarted)
+        self.assertFalse(
+            self.request(port, "GET", "/draft-restores/status", token)[1][
+                "test_writes_enabled"
+            ]
+        )
         self.assertEqual(
             self.request(
                 port,

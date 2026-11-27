@@ -1,5 +1,16 @@
 # Project plan for repository use
 
+Current #130 implementation follows human-merged131/maind4f97ad8: independent
+synthetic desktop Restore review, per-warning confirmation, retained original
+request and isolated native journals. See [implementation](design/2026-11-27-issue-130-implementation.md)
+and [new evidence/gaps](acceptance/2026-11-27-issue-130-desktop-restore.md).
+Production Restore/Publish remain closed. Finish native request/reconciliation
+qualification and human review before considering any separately authorized
+controlled rollout. Offline VM, customer UAT and production remain independent
+blocked/unapproved gates. Mixed FullDay/legacy boards and typed Locate are kept.
+The following entries are historical delivery descriptions, not current missing-
+feature assertions or new authorizations.
+
 Next priority after human-merged129/maina1ea436 is [Issue130 desktop Draft Restore](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/issues/130):
 exact inverse differences, individual Pending warnings, safe cancellation and
 durable original-request reconciliation. The [Design-First contract](design/2026-11-27-issue-130-desktop-restore.md)

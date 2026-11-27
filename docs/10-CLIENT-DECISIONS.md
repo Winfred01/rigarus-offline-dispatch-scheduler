@@ -1,5 +1,20 @@
 # Decision register
 
+## #130 isolated synthetic desktop implementation confirmed (November27,2026)
+
+The owner's explicit continuation after human-merged131/main d4f97ad8 authorizes
+the next product slice: desktop exact original/current/inverse confirmation,
+individual Pending acknowledgements, original-key recovery, and operation-isolated
+Restore/Apply journals with database-profile mutual exclusion. Use an independent
+test opt-in and only isolated synthetic profiles. This supersedes the earlier
+design-only delivery status for this bounded implementation, not its production
+limits. See [implementation checklist](design/2026-11-27-issue-130-implementation.md).
+The18 new acceptance cases require new evidence; backend129's results cannot
+stand in for desktop execution. Mixed FullDayDraft/LegacyHalfDay display/Locate
+is preserved; Employee Week/search/exports retain separately scoped validation.
+No new half-day creation, conversion or merging. Production Restore/Publish,
+customer UAT/deployment remain unapproved; disconnected VM acceptance BLOCKED.
+
 ## #130 desktop Restore next-stage priority (November27,2026)
 
 Confirmed direction from the owner's next-task instruction after PR129 human

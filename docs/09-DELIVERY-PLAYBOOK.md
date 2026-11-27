@@ -1,5 +1,16 @@
 # Delivery playbook for repository use
 
+For the #130 product candidate, follow the [synthetic desktop sequence](../samples/synthetic-only/desktop-draft-restore.md)
+and [new18-case results](acceptance/2026-11-27-issue-130-desktop-restore.md), not
+backend129's outcome. Native write/recovery actions blocked by action approval
+remain BLOCKED until actually executed. Never bypass the approval rejection or
+use API execution as a native pass. Preserve original pending files; Resolve is
+GET-only, Replay requires the identical request, Archive rereads/verifies/flushes
+before exact retirement. Record build/executable hashes separately from installed
+VM evidence. No raw journal/database/diagnostics upload. Human Draft PR review,
+qualified disconnected VM, customer acceptance and production remain separate.
+The earlier entries below describe their own historical slice boundaries.
+
 Next desktop Restore work uses [Issue130's design and unexecuted acceptance cases](design/2026-11-27-issue-130-desktop-restore.md).
 Keep original-version comparison distinct from current/proposed inverse; require
 each exact warning acknowledgement. Cancel before dispatch differs from closing
