@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod draft_journal;
+mod draft_restore;
 mod sidecar;
 
 use serde::{Deserialize, Serialize};
@@ -94,6 +95,15 @@ async fn draft_transactions(
         service.draft_transactions(&action, &input)
     })
     .await
+}
+
+#[tauri::command]
+async fn draft_restores(
+    app: tauri::AppHandle,
+    action: String,
+    input: Value,
+) -> Result<Value, String> {
+    with_sidecar(app, move |service| service.draft_restores(&action, &input)).await
 }
 
 #[tauri::command]
@@ -353,6 +363,7 @@ fn main() {
             schedule_workbench,
             day_editor,
             draft_transactions,
+            draft_restores,
             list_assignments,
             read_availability,
             read_working_calendar,

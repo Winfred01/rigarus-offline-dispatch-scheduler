@@ -95,6 +95,23 @@ class RestoreTests(unittest.TestCase):
                 )
             ]
 
+    def test_desktop_status_is_read_only_separate_gate_and_exact_profile(self):
+        before = self.digest()
+        closed = self.client.get("/draft-restores/status")
+        opened = self.writer.get("/draft-restores/status")
+        self.assertEqual(closed.status_code, 200)
+        self.assertEqual(opened.status_code, 200)
+        self.assertFalse(closed.json()["test_writes_enabled"])
+        self.assertTrue(opened.json()["test_writes_enabled"])
+        self.assertEqual(
+            closed.json()["database_identity"], opened.json()["database_identity"]
+        )
+        for result in (closed.json(), opened.json()):
+            self.assertFalse(result["production_writes_enabled"])
+            self.assertFalse(result["applyable"] or result["publishable"])
+            self.assertEqual(result["validation_status"], "Pending")
+        self.assertEqual(before, self.digest())
+
     def test_extension_inverse_preserves_ids_and_cancels_only_additions(self):
         source = self.source()
         before = self.digest()

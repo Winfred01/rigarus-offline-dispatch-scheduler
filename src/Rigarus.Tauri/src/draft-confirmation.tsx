@@ -57,17 +57,23 @@ export function DraftConfirmation({
           test_writes_enabled: boolean;
           production_writes_enabled: false;
           pending: Envelope | null;
+          other_operation_pending: boolean;
         }>("status");
         if (!alive.current) return;
         setProfile(s.database_identity);
         setEnabled(
           s.test_writes_enabled === true &&
+            s.other_operation_pending !== true &&
             s.production_writes_enabled === false,
         );
         if (s.pending) {
           setPending(envelope(s.pending, s.database_identity));
           setMessage(
             "An original request is retained. Resolve its receipt before another Save. No request was retried.",
+          );
+        } else if (s.other_operation_pending) {
+          setMessage(
+            "An unresolved Restore request blocks new Draft Apply. Open Draft Restore recovery first; no request was retried.",
           );
         } else if (initial) {
           const p = prepared(await call<Prepared>("prepare", initial), initial);
@@ -460,7 +466,9 @@ export function DraftConfirmation({
             <Warnings value={comparison.warnings} />
           </>
         )}
-        <button disabled>Restore — not implemented</button>
+        <button disabled>
+          Restore uses the separate Draft Restore / Recovery review
+        </button>
       </section>
       <div className="day-preview-toolbar">
         <button
@@ -478,7 +486,7 @@ export function DraftConfirmation({
     </Dialog>
   );
 }
-function Rows({
+export function Rows({
   caption,
   rows,
 }: {
@@ -533,7 +541,7 @@ function Rows({
     </div>
   );
 }
-function Warnings({ value }: { value: unknown }) {
+export function Warnings({ value }: { value: unknown }) {
   if (Array.isArray(value))
     return (
       <ul>

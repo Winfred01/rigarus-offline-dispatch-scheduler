@@ -1,5 +1,23 @@
 # SQLite data model
 
+## Desktop Restore integration (#130): schema21 unchanged
+
+Reuse the existing immutable original DraftVersions, source-linked
+DraftRestoreVersions and independent sealed DraftRestoreReceipts without DDL,
+history-JSON rewrite or database downgrade. The new status projection is
+read-only; existing inverse reservation, SQL/resource guards and atomic commits
+are unchanged. Native pending/receipt archives are recovery files, not a second
+database or migration. Keep matching database lineage and unresolved files
+together. Separate operation filenames plus one profile OS guard prevent
+Apply/Restore journal replacement, even when request UUIDs coincide.
+
+All inverse targets remain `FullDayDraft+id`; equal LegacyHalfDay integers never
+alias them. Original notes, actual staff, revisions, audit and cancelled history
+remain intact. No original AM/PM record is converted, merged, edited or implicitly
+released. The fresh full regression suite includes schema20→21 backup/retry,
+rollback, reopen and prior-schema recovery guards; no new migration is claimed.
+See [new desktop evidence](acceptance/2026-11-27-issue-130-desktop-restore.md).
+
 ## Source-linked Draft Restore (schema twenty-one, #20)
 
 `20261127010000_AddDraftRestoreVersions` adds exactly two tables and immutable

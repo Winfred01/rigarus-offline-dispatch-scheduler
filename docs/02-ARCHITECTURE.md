@@ -1,5 +1,42 @@
 # Architecture
 
+## Synthetic desktop Restore confirmation and reconciliation (#130)
+
+The separate Schedule Restore dialog now bridges the schema21 backend through
+the fixed `draft_restores` Tauri command. The renderer supplies no arbitrary URL,
+SQL or file path. Native reads are authenticated and bounded (2MB input,8MB
+response,60s HTTP; existing150s renderer deadline). Status reads the actual
+profile and gate. `RIGARUS_DRAFT_RESTORE_TEST=1` additionally requires the exact
+dedicated synthetic root before passing `--synthetic-draft-restores`; it is
+independent of the Apply test flag. Production Restore/Publish remain closed.
+
+The dialog shows immutable original Before/After and separately reviewed
+current/inverse rows, every Pending warning and exact-scope confirmation.
+Reopened pending reviews are explicitly retained snapshots, never live Current
+claims; their recorded acknowledgements are immutable. A prepare dry run is
+reserved and rolled back; Cancel before dispatch writes no business/audit/receipt.
+
+Native validates canonical source/plan/warning SHA256, exact typed IDs, revisions,
+staff, all resource-check categories, request identity and Pending/false flags.
+Before dispatch it flushes the exact operation-tagged source/review/request to
+`restore-pending.json`. Apply keeps `pending.json`; both use the same profile
+`guard.lock` OS exclusive handle and refuse another write while either pending
+namespace is unresolved. Restore archives use `restore-receipt-<UUID>.json`;
+Apply archives retain their existing names. The existing manual-editor
+localStorage coordinator remains separate and is not newly qualified here.
+
+Resolve is GET-only, never replay/archive/clear. Explicit identical replay uses
+the retained key/body. Explicit acknowledgement rereads the authoritative sealed
+receipt, verifies its complete identity/content, flushes its archive, then removes
+only its exact pending journal. Missing/unknown/malformed results retain it.
+Existing archive retries also flush again before retirement. A committed result
+survives board refresh failure; the retry performs reads only. No schema change,
+legacy conversion, new half-day editing or production writing is introduced.
+
+See [implementation plan](design/2026-11-27-issue-130-implementation.md) and
+[separate new acceptance evidence](acceptance/2026-11-27-issue-130-desktop-restore.md).
+Earlier sections below describe their own historical delivery boundaries.
+
 ## Synthetic single-version Draft Restore (#20, schema21)
 
 The November27 [confirmed engineering scope](10-CLIENT-DECISIONS.md) permits only

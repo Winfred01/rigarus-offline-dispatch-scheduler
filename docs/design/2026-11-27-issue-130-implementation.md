@@ -41,7 +41,8 @@ entry points checked; no database migration needed.
    while either unresolved; never reinterpret old Apply envelopes.
 3. Add strict native and TypeScript envelope/plan/receipt validation: exact source,
    profile/UUID, plan/warning set, typed rows/revisions/staff, observations and
-   Pending/false flags. Verified immutable Rejected receipt differs from Apply's
+   Pending/false flags. Bind source/plan/warning digests using already-locked
+   sha2 0.10.9 (add a direct Rust dependency, no new version). Verified immutable Rejected receipt differs from Apply's
    synthesized rejection. Archive flush precedes exact journal retirement.
 4. React Restore Dialog independent of recommendation success: enter explicit
    original DraftVersion ID; four complete row views (original Before/After,
@@ -65,3 +66,15 @@ localStorage coordination remains separate; no claim that it is fixed. No old
 half conversion, new half editor, downstream propagation, legal/resource-policy
 invention, customer DB, Publish, auto merge/Issue closure/Release/deployment.
 All new execution outcomes remain NOT RUN until actual evidence is recorded.
+
+## Native inspection follow-up
+
+Initial synthetic native inspection found that a reopened retained review was
+misleadingly labeled Current and showed zero acknowledgements despite the exact
+retained request. Before changing this presentation, preserve the design rule:
+prepared values are not a live database read. Label reopened/verified snapshots
+Retained review and show recorded acknowledgements read-only. Add pure-state
+regressions, including committed-plus-failed-read refresh, then rebuild and
+reinspect. This changes no restore scope, backend proof or business rule.
+Actual execution and remaining gates are recorded separately in the
+[new acceptance matrix](../acceptance/2026-11-27-issue-130-desktop-restore.md).

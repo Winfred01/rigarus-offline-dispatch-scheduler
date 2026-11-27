@@ -5,6 +5,7 @@ import { Dialog } from "./dialog";
 import { DayRecommendationPreview } from "./day-recommendation-preview";
 import { DayEditor } from "./day-editor";
 import { DraftConfirmation } from "./draft-confirmation";
+import { DraftRestore } from "./draft-restore";
 import type { DraftReceipt } from "./draft-confirmation-state";
 import type { DraftRecord } from "./day-editor-state";
 import { PreviewEpoch, reasonLabel } from "./day-preview-state";
@@ -93,6 +94,7 @@ export function DayWorkbench({
     [identity, setIdentity] = useState("");
   const [editor, setEditor] = useState<{ id?: number }>();
   const [transaction, setTransaction] = useState(false);
+  const [restore, setRestore] = useState(false);
   const [focusKey, setFocusKey] = useState<string>(),
     [highlight, setHighlight] = useState<string>();
   const epoch = useRef(new PreviewEpoch()),
@@ -257,7 +259,15 @@ export function DayWorkbench({
     }
   }, [target]);
   useEffect(() => {
-    if (!focusKey || busy || !data || editor || recommend || transaction)
+    if (
+      !focusKey ||
+      busy ||
+      !data ||
+      editor ||
+      recommend ||
+      transaction ||
+      restore
+    )
       return;
     const card = document.getElementById(`saved-${focusKey}`),
       scroll = card?.closest<HTMLElement>(".week-scroll");
@@ -287,7 +297,7 @@ export function DayWorkbench({
     card.focus({ preventScroll: true });
     cue.start(focusKey);
     setFocusKey(undefined);
-  }, [focusKey, busy, data, view, editor, recommend, transaction]);
+  }, [focusKey, busy, data, view, editor, recommend, transaction, restore]);
   const shown =
     data?.start_date === range.start && data.end_date === range.end
       ? data
@@ -355,9 +365,9 @@ export function DayWorkbench({
         <strong>Full Day workbench · Draft / Validation pending</strong> —
         saved-record views. Legacy AM/PM is retained for review. The independent
         daily editor is gated for synthetic testing; production daily writes,
-        dispatch Apply, locks and actual version restore remain unavailable.
-        Exact plan recording/reconciliation is synthetic-only. No dispatch or
-        publication approval.
+        dispatch Apply, locks and production version restore remain unavailable.
+        Exact plan recording and single-version Restore are synthetic-only. No
+        dispatch or publication approval.
       </p>
       <div className="week-toolbar">
         <button
@@ -369,6 +379,16 @@ export function DayWorkbench({
           }}
         >
           Draft plan recovery / Versions
+        </button>
+        <button
+          id="open-draft-restore"
+          disabled={busy}
+          onClick={() => {
+            setDetail(undefined);
+            setRestore(true);
+          }}
+        >
+          Draft Restore / Recovery
         </button>
         <button
           disabled={busy}
@@ -785,6 +805,12 @@ export function DayWorkbench({
           people={data?.people ?? []}
           onSaved={refreshSaved}
           onClose={() => setEditor(undefined)}
+        />
+      )}
+      {restore && (
+        <DraftRestore
+          onClose={() => setRestore(false)}
+          onSaved={refreshSaved}
         />
       )}
     </main>

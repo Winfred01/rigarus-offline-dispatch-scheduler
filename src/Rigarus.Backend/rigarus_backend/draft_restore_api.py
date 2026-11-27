@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
 from .assignment_api import SafeId
 from .roster_api import RosterId
 from . import draft_restore as restore
+from .draft_apply import read_status
 from .daily_calendar_store import DailySourceError, DailyNotFound
 from .recommendation_adapter import (
     SnapshotReadError,
@@ -80,6 +81,10 @@ def draft_restore_router(path, *, enable_test_writes=False, test_root=None):
                 503,
                 "Restore result is UNKNOWN. Keep and reconcile the original request; do not replace its key.",
             ) from None
+
+    @router.get("/status")
+    def status():
+        return execute(lambda: read_status(path, enabled))
 
     @router.post("/prepare")
     def prepare(request: PrepareRestore):
