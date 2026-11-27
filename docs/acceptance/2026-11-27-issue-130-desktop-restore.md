@@ -1,5 +1,10 @@
 # Issue130 desktop Restore — new engineering evidence, November27,2026
 
+Later same-day [native follow-up](2026-11-27-issue-130-native-followup.md) records
+separately authorized real Confirm/Resolve/Archive and process-reopen persistence.
+It supersedes the normal-path action-approval blocker below; unexecuted fault,
+VM and customer gates remain separate. This earlier record retains its history.
+
 This is a new product slice after human-merged design131/maind4f97ad8, not a
 relabeling of backend129's tests. Design/authorization was committed first as
 3be3cd4 on `codex/issue-130-desktop-restore-ui`. Human review, customer Demo/UAT,
