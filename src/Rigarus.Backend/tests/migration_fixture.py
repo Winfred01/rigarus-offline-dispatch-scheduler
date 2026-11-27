@@ -157,10 +157,22 @@ def remove_day_editor_schema(connection):
 
 
 def remove_draft_version_schema(connection):
+    remove_draft_restore_schema(connection)
     # Synthetic schema19 reconstruction only. Never an operational downgrade.
     from rigarus_backend.draft_version_migration import DRAFT_VERSIONS
 
     connection.execute("DROP TABLE IF EXISTS DraftVersions")
     connection.execute(
         "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?", (DRAFT_VERSIONS,)
+    )
+
+
+def remove_draft_restore_schema(connection):
+    # Synthetic20 fixture reconstruction only. Never operational downgrade.
+    from rigarus_backend.draft_restore_migration import DRAFT_RESTORE
+
+    connection.execute("DROP TABLE IF EXISTS DraftRestoreReceipts")
+    connection.execute("DROP TABLE IF EXISTS DraftRestoreVersions")
+    connection.execute(
+        "DELETE FROM __EFMigrationsHistory WHERE MigrationId=?", (DRAFT_RESTORE,)
     )

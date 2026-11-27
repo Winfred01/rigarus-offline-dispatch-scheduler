@@ -11,6 +11,7 @@ from .day_editor_api import day_editor_router
 from .day_recommendation_api import day_recommendation_router
 from .impact_preview_api import impact_router
 from .draft_apply_api import draft_apply_router
+from .draft_restore_api import draft_restore_router
 from .schedule_workbench import workbench_router
 from .daily_calendar_api import daily_calendar_router
 from .assignment_api import assignment_router
@@ -37,6 +38,8 @@ def create_app(
     enable_daily_calendar_writes: bool = False,
     enable_day_editor_test_writes: bool = False,
     enable_draft_transaction_test_writes: bool = False,
+    enable_draft_restore_test_writes: bool = False,
+    draft_restore_test_root: Path | None = None,
 ) -> FastAPI:
     store = DemoStore(database_path)
 
@@ -57,6 +60,13 @@ def create_app(
         )
     )
     app.include_router(workbench_router(database_path))
+    app.include_router(
+        draft_restore_router(
+            database_path,
+            enable_test_writes=enable_draft_restore_test_writes,
+            test_root=draft_restore_test_root,
+        )
+    )
     app.include_router(
         day_editor_router(
             database_path, enable_test_writes=enable_day_editor_test_writes

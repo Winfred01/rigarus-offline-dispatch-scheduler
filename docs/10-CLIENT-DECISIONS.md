@@ -1,5 +1,37 @@
 # Decision register
 
+## #20 bounded Restore engineering confirmed; mixed display preserved (November27,2026)
+
+Confirmed for limited engineering development by the user's explicit instruction,
+recorded in [Issue20 confirmation](https://github.com/Winfred01/rigarus-offline-dispatch-scheduler/issues/20#issuecomment-7227116880)
+and reaffirmed in the current implementation request. This records development
+scope, not independent authentication of a legal identity, customer UAT, dispatch
+qualification, production operation or deployment authority.
+
+The five conditions in the historical Proposed entry below are now confirmed
+**only for one isolated synthetic-backend slice**: exact touched FullDayDraft
+After/value/revision match or Stale refusal; appended revisions/history/audit/new
+recovery version without deletion; explicit acknowledgement of each Pending or
+Unsupported item, never converting it to Passed; transaction-time resource and
+occupancy revalidation/atomic rollback with independent idempotent receipts; no
+desktop Restore, production writer, Publish, real customer database or deployment.
+Known hard conflicts reject. Unknown/Timeout requires the original request key.
+No whole-week/database overwrite, downstream rescheduling or inferred resource
+approval. The older Proposed entry remains historical and is not current gate
+status. See the [pre-code plan](design/2026-11-27-issue-20-draft-restore.md).
+
+Additional confirmed compatibility requirement: planning views must show existing
+FullDayDraft and LegacyHalfDay together, retaining record_kind+id, AM/PM/full-day
+labels, separate projects, actual recorded workers/Rig, notes, status and history.
+Preserve existing mixed weekly views and typed Locate; extend appropriate typed
+support to future Employee Week/search/PDF/Excel slices. No automatic conversion,
+merging, loss of old occupancy, or promotion of half-day evidence to full-day
+permission. This is display/history compatibility, **not authorization to create
+or edit new half-day schedules**. Minimum units for new scheduling remain a
+separate decision. Mixed-view defects, if found, require a separate Issue/slice.
+Offline VM acceptance remains BLOCKED; customer Demo/UAT and production remain
+unapproved. No Foreman/category/legal/dependency rules are invented by this scope.
+
 ## #20 single-version Draft Restore — owner decision pending (November27,2026)
 
 **Authority status: Proposed / awaiting authorized project-owner confirmation.**

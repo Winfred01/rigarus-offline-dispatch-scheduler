@@ -1,5 +1,15 @@
 # Project plan for repository use
 
+Current #20 slice follows human-merged128/main99c9741 and the November27 explicit
+five-condition confirmation: synthetic-backend-only single original DraftVersion
+restore, new audit/version/receipt and unchanged mixed full-day/legacy display.
+See [plan](design/2026-11-27-issue-20-draft-restore.md). Desktop Restore, production
+writers, Publish and downstream/locks policy remain excluded. Qualified offline
+VM, customer UAT and production approvals remain separate. After backend review,
+prioritize recovery workflow/fault qualification before any separately approved
+desktop/controlled-writer rollout, then dependency-aware delay propagation and
+formal PDF/Excel; do not infer those later gates from backend Restore tests.
+
 Issue126 connects human-merged125's exact unconfirmed-Draft transaction to desktop
 confirmation, native request reconciliation and read-only version comparison.
 Production writers, dispatch Apply/Publish and actual restore stay closed. Next

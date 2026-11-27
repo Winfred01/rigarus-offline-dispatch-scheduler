@@ -539,7 +539,7 @@ class DailyCapabilityMigrationTests(unittest.TestCase):
                 storage.initialize_database(self.database)
         self.assertEqual(self.digest(), before)
         storage.initialize_database(self.database)
-        self.assertEqual(len(self.snapshot().migrations), 20)
+        self.assertEqual(len(self.snapshot().migrations), 21)
 
     def test_readonly15_never_initializes_or_migrates(self):
         self.old15()

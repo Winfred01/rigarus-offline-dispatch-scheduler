@@ -1,5 +1,15 @@
 # Delivery playbook for repository use
 
+Issue20 single-version Restore follows the November27 confirmed synthetic-backend
+scope. Verify exact After/revision match, per-item Pending acknowledgement, known
+blocker refusal, appended history/audit/recovery version, same-key reconciliation,
+atomic SQL/audit failures,20→21 verified backup/old-binary recovery and mixed-kind
+preservation. Follow [synthetic steps](../samples/synthetic-only/draft-restore.md)
+and [actual results](acceptance/2026-11-27-issue-20-draft-restore.md). Preparation is
+a gated savepoint dry run, not production/query-only SQL. Desktop Restore and
+production writers/Publish stay closed. No VM install/upgrade/reboot or customer
+acceptance follows from CI, API tests or building an installer.
+
 Issue126 desktop confirmation/recovery must be verified with the exact candidate:
 Cancel before submit/no business writes; complete date/personnel/cancellation and
 warning acknowledgement; stale/block refusal; retained original key after Unknown
