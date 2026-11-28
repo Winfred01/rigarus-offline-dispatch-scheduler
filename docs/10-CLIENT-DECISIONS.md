@@ -1,5 +1,28 @@
 # Decision register
 
+## November28 continuation: bounded qualification and Issue19 design
+
+Confirmed **engineering priority**, from the user's current next-stage instruction:
+do not reimplement Restore's normal path. Group remaining130 work into native
+abnormal recovery/concurrency and usability/delivery qualification; preserve the
+original platform-blocked D10 request/pending without bypass. Begin planning
+delay/early-finish downstream proposals and operator selection at the same time,
+then separately deliver formal PDF/Excel. This is planning authorization, not
+approval of a new lock/dependency/completion rule, product writer, customer UAT,
+installation on a customer device, Release or production delivery.
+
+The [Issue19 plan](design/2026-11-28-issue-19-replanning-plan.md) distinguishes these
+unresolved rules, whose earlier Proposed/Open status remains unchanged:
+
+| State | Decision needed before affected implementation | Consequence while unresolved |
+| --- | --- | --- |
+| Open | Authoritative same-Crew ordering and cross-Crew dependency source, edge type/lag and who can change them | Date order or shared Project never creates an automatic dependency; incomplete closure is Unsupported/Needs Review |
+| Open | Meaning and precedence of Start Date, Crew and full-assignment locks, fixed successors and manual exceptions | Missing lock evidence is not Unlocked; no implicit movement or override |
+| Proposed / Open | Whether an earlier finish only offers earlier successors; explicit completion/zero Remaining Days and progress provenance | Retain earlier Proposed early-start suggestion; never infer completion from Drafts, estimates or restored records; current positive Remaining Days contract unchanged |
+
+Review these with the designated decision-maker before changing the affected
+business behavior. No authenticated legal identity or customer sign-off is claimed.
+
 ## Development and synthetic-test authorization (November27,2026)
 
 Source: the user's explicit current Rigarus development/testing tiered-authorization
