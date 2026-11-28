@@ -149,7 +149,7 @@ impl Journal {
     ) -> Result<(), String> {
         self.archive_pending_synced(name, prefix, expected, receipt, File::sync_all)
     }
-    fn archive_pending_synced(
+    pub(crate) fn archive_pending_synced(
         &self,
         name: &str,
         prefix: &str,
@@ -188,6 +188,61 @@ impl Journal {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn guard_is_exclusive_across_real_native_processes_and_released_on_close() {
+        use std::os::windows::process::CommandExt;
+        use std::process::{Command, Stdio};
+        use std::time::{Duration, Instant};
+        if let Some(path) = std::env::var_os("RIGARUS_GUARD_PROBE_ROOT") {
+            let root = PathBuf::from(path);
+            assert_eq!(root.parent().unwrap(), std::env::temp_dir().as_path());
+            assert!(
+                root.file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .starts_with("rigarus-journal-")
+            );
+            let held = std::env::var("RIGARUS_GUARD_PROBE_HELD").unwrap() == "1";
+            assert_eq!(
+                Journal::open(&root.join("rigarus.db"), PROFILE).is_err(),
+                held
+            );
+            return;
+        }
+        fn probe(root: &Path, held: bool) {
+            let mut child = Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", "draft_journal::tests::guard_is_exclusive_across_real_native_processes_and_released_on_close", "--test-threads=1"])
+                .env("RIGARUS_GUARD_PROBE_ROOT", root)
+                .env("RIGARUS_GUARD_PROBE_HELD", if held { "1" } else { "0" })
+                .stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null())
+                .creation_flags(0x08000000)
+                .spawn().unwrap();
+            let end = Instant::now() + Duration::from_secs(10);
+            loop {
+                if let Some(status) = child.try_wait().unwrap() {
+                    assert!(
+                        status.success(),
+                        "Native child failed the OS guard contract."
+                    );
+                    break;
+                }
+                if Instant::now() >= end {
+                    child.kill().unwrap();
+                    child.wait().unwrap();
+                    panic!("Bounded native guard probe exceeded10s.");
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+        }
+        let root = folder();
+        let journal = Journal::open(&root.join("rigarus.db"), PROFILE).unwrap();
+        probe(&root, true);
+        drop(journal);
+        probe(&root, false);
+        assert_eq!(root.parent().unwrap(), std::env::temp_dir().as_path());
+        fs::remove_dir_all(root).unwrap();
+    }
     fn restore_envelope() -> Value {
         let mut v = envelope();
         v["operation"] = serde_json::json!("DraftRestore");

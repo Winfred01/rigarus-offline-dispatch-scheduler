@@ -2,6 +2,7 @@
 
 mod draft_journal;
 mod draft_restore;
+mod restore_faults;
 mod sidecar;
 
 use serde::{Deserialize, Serialize};

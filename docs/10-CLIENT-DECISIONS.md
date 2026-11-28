@@ -1,5 +1,53 @@
 # Decision register
 
+## Development and synthetic-test authorization (November27,2026)
+
+Source: the user's explicit current Rigarus development/testing tiered-authorization
+instruction,following the second130 native fault round. This records engineering
+scope only;it does not assert legal identity,customer UAT or production authority.
+Preserve earlier action-specific records as history;apply this newer scope
+prospectively. No platform/OS/tool approval policy or application gate is changed.
+
+Class A is preauthorized after automatic verification: owned isolated development
+branch/profile and exact task smoke-root/data/rigarus.db plus database UUID;
+synthetic data only;no unrelated files;approved rule/test scope;recoverable by
+fixture reconstruction/backup/transaction;no system privilege/security change.
+Includes normal development/tests/build/privacy/docs/Draft PR,official Store/API
+synthetic edits and conflicts,logical snapshots,bounded temporary-file faults,
+native test open/close/reopen,Confirm/Resolve/identical-original Replay/Archive,
+cancel/rejection/idempotency and receipt checks. Keep production Restore/Apply/
+Publish closed and FullDayDraft/LegacyHalfDay namespaces/history independent.
+
+Class B related low-risk flows may proceed continuously under the verified scope,
+including Timeout/reopen/Resolve,NotFound/original Replay,Stale/refusal and
+two-process guard tests. Avoid repeated small-step questions;request a concrete
+batch only when needed. Mandatory platform action-time confirmation still wins.
+
+Class C requires separate explicit approval: actual customer/database/personnel/
+vehicle data;production Restore/Apply/Publish/deployment;merge,force push/shared
+history;Release/external distribution;irreversible non-temporary data/file deletion;
+host component/driver/software installation or removal;Windows security,license,
+permission,network/firewall changes;destructive faults outside isolation;external
+sensitive-data/messages;core confirmed business-rule changes or scope expansion.
+Keep no auto-merge,Issue closure,Release,customer data upload or production action.
+
+If refused,stop that specific operation immediately,retain evidence and report
+BLOCKED/reason. Do not change approval configuration or substitute tool/API/path.
+Continue unaffected safe work;retry only with new valid authorization. Broad
+low-risk preauthorization cannot override an explicit platform refusal. Before
+requesting forced approval,identify the exact target,operation,effect/reversibility
+and independent work available. Report actual approval outcomes separately from
+test results;never manufacture PASS or customer/production acceptance.
+
+Latest owner clarification: ordinary independent development/synthetic tests run
+under Class A; actual native Confirm/Resolve/Replay/Archive still obey current
+platform action-time gates after root/identity checks. Once refused, do not
+repeatedly rephrase, split or ask for the same operation. Preserve original
+request/pending/verified receipt/archive and stop only that action. A formal
+platform grouped/session flow may be used if actually offered; this document
+does not create one or modify platform permissions. New specific user approval
+may allow the exact blocked request to be reconsidered, subject to the same gate.
+
 ## #130 isolated synthetic desktop implementation confirmed (November27,2026)
 
 The owner's explicit continuation after human-merged131/main d4f97ad8 authorizes

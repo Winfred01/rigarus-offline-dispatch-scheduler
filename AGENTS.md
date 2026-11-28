@@ -7,6 +7,26 @@
 - Run locked restore, format, Windows build, tests and the staged privacy scan. State the GUI and offline test conditions precisely. Record migration and regression evidence for data changes.
 - Record unsettled business defaults in the decisions register or an ADR. Record client acceptance separately from engineering verification and production readiness.
 
+## Development and synthetic-test authorization
+
+Apply the user's November27 A/B/C [authorization decision](docs/10-CLIENT-DECISIONS.md#development-and-synthetic-test-authorization-november272026).
+After verifying an owned isolated smoke root, exact database identity, synthetic
+data, closed production gates and recoverable scope, routine development and
+synthetic native Confirm/Resolve/original-key Replay/Archive, process reopen and
+bounded fault tests are preauthorized. Run related low-risk test steps together;
+do not repeatedly ask for ordinary fixture edits or receipt checks. This does
+not replace any platform/OS/tool mandatory approval. Stop the specific refused
+action, record BLOCKED and its reason, continue independent safe work, and retry
+only after new valid authorization. Never switch tools/APIs to bypass a refusal.
+Do not repeatedly reword or split the same refused operation into new approval
+requests. Preserve its original key, pending, receipt and archive; mark that
+subcase BLOCKED and continue independent work. Use grouped/session approval only
+when the platform formally offers it, never infer a platform permission change.
+Real customer data, production writes/deployment, merge/force-push/shared-history
+rewrite, Release/distribution, irreversible non-temporary deletion, host component
+installation, security/licensing/permission/network changes and core business-rule
+changes still require specific approval. No runtime gate or privacy rule is relaxed.
+
 ## Mandatory Design-First workflow
 
 These requirements apply at the start of every Issue implementation and every resumed implementation session. Use [the development checklist](docs/DEV-DESIGN-CHECKLIST.md) to record the evidence. Prior chats, memory, README claims and previous checklists do not replace current inspection.
