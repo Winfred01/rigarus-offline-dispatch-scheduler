@@ -75,10 +75,12 @@ before pending removal. Mismatch/oversize/IO error cannot release recovery.
 
 ## Execution and evidence
 
-Fault activation/owned-process operations and EACH Confirm, Resolve, Replay and
-Archive require their action-time approval. Declined action stops immediately;
-do not change tool/API path to bypass it. Preparation of a fixture does not
-authorize Restore. Never auto-replay or replace an uncertain UUID.
+Follow the current [A/B/C test authorization](../../docs/10-CLIENT-DECISIONS.md#development-and-synthetic-test-authorization-november272026):
+verified isolated synthetic flows are preauthorized,including original-key recovery
+and recoverable faults;do not interrupt the user for every low-risk step. Any
+platform/OS/tool action-time requirement remains mandatory. Declined action stops
+immediately;do not change tool/API path to bypass it. Record the exact scope and
+approval basis;never replace an uncertain UUID or infer production authority.
 
 Snapshot actual logical records in one read-only SQLite BEGIN before/after:
 profile, typed full/half IDs, revisions, original/restore versions, immutable

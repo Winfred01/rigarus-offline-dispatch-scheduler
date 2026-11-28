@@ -94,3 +94,19 @@ are native fault injection, not proof of real power-loss durability. Main source
 records remain untouched except separately approved synthetic fixture changes.
 Original DOCX/images/DBs/journals/backups/raw diagnostics remain local. Qualified
 offline VM and customer/production gates remain separate and BLOCKED/unapproved.
+
+## Follow-up within the same slice: two-process native guard evidence
+
+The two real GUI processes started,but cached/occluded UIA geometry prevented a
+reliable second-window interaction before the unchanged60s HTTP deadline. Do not
+claim this as a GUI contention pass or increase the timeout. Add a focused Rust
+contract test that launches the existing native test executable as an owned,
+hidden,bounded child and tries the SAME Journal OS guard while the parent holds
+it,and after release. Validate an owned temporary synthetic path;do not delete
+locks or pending to make contention succeed. This supplements,not substitutes
+for,the explicitly limited GUI evidence. No runtime product logic change.
+
+The user subsequently supplied A/B/C authorization for isolated synthetic native
+flows and recoverable fault injection. Apply it prospectively after automatic
+scope checks;do not treat it as permission to bypass any platform refusal. Prior
+refusals remain recorded;major customer/production/security actions remain closed.
