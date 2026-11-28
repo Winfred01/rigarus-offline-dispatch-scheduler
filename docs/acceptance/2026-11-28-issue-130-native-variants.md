@@ -138,8 +138,22 @@ revision1 and original synthetic legacy note; its typed Locate highlights that
 PM card, not FullDay1. Equal integer1 never aliases the other type.
 Flag-free read-only FullDay editor loads cancelled6, revision2 and original long
 note; immutable history shows revision2Cancelled and revision1Draft. Save disabled.
-All follow-up SQL tables/digests unchanged. No new AM native view in this build,
-Employee Week/search/export compatibility or new half-day editor is claimed.
+All follow-up SQL tables/digests unchanged.
+
+A supplementary **read-only** check then used the same final EXE/sidecar on the
+already restored/archived refresh profile `6b5f2619-0b10-4417-9ec6-82937f24dbf6`,
+with every write/fault flag absent. No Restore/Resolve/Replay/Archive occurred.
+Job Schedule shows independent FullDay3 and LegacyHalfDay1PM/2AM/3PM. Native
+LegacyHalfDay2 detail correctly shows November24AM, WorkItem/Project/Crew2,
+revision1, original synthetic AM note, no invented staff/Rig and disabled FullDay
+editing. Its native Locate highlights precisely that AM card; Crew Board preserves
+the PM/AM/PM cards in their own Crew row. Before/after every SQL table, archive and
+digest equal `bcb64db5d201770e8320807057bd81987394ec81328a992ff2a072db468bbdef`;
+integrity ok/FK0, no pending, history5/RestoreVersion1/receipt1 unchanged. This is
+fresh final-artifact display evidence on a previously restored fixture, not a new
+fault-injection or Restore submit. Combined with extension02's new actual Rig,
+staff, equal typed IDs and cancelled history, D13's mixed-display scope passes.
+Employee Week/search/export compatibility and a new half-day editor are not claimed.
 
 ## Fresh checks and commands
 
@@ -179,7 +193,7 @@ unexecuted native subcases stay NOT RUN even where individual parts passed.
 | D10 | BLOCKED | Prior specific wire Archive Retry remains platform-refused; pending retained, no retry/bypass; full new storage matrix not run |
 | D11 | NOT RUN | Fresh two complete Committed receipts/Archive PASS; sealed Rejected/flush passed on prior artifact only |
 | D12 | NOT RUN | Fresh normal weekly refresh PASS; deliberate read-failure follow-through passed on earlier artifact only |
-| D13 | NOT RUN | Fresh same-integer FullDay/Legacy PM, distinct projects, actual employee/Rig, two typed Locates and cancelled history PASS; fresh AM variant not run |
+| D13 | PASS | Final-artifact same-integer FullDay/Legacy PM, distinct projects, actual employee/Rig and cancelled history; supplementary flag-free AM/PM boards/detail/typed Locate and full SQL/archive equality |
 | D14 | NOT RUN | Long notes/visible warning scrolling/Escape focus PASS; complete keyboard/narrow/Narrator speech not run |
 | D15 | NOT RUN | Fresh flag-free valid source1/disabled Prepare/no pending/SQL equality PASS; full wrong-root flag matrix automated only |
 | D16 | NOT RUN |858 distinct+18 repeats/locked checks/build PASS; new evidence-head CI pending at record creation |
