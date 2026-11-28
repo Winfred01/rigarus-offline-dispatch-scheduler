@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 const url = (text) =>
   `data:text/javascript;base64,${Buffer.from(stripTypeScriptTypes(text)).toString("base64")}`;
 const applyUrl = url(
@@ -20,6 +22,34 @@ const api = await import(
     ).replaceAll('"./draft-confirmation-state"', JSON.stringify(applyUrl)),
   )
 );
+
+test("real Python explicit-policy Restore proof passes unchanged renderer validation", () => {
+  const backend = new URL("../../Rigarus.Backend/", import.meta.url);
+  const fixture = JSON.parse(
+    execFileSync(
+      fileURLToPath(new URL(".venv/Scripts/python.exe", backend)),
+      ["tests/desktop_restore_fixture.py"],
+      {
+        cwd: fileURLToPath(backend),
+        timeout: 45000,
+        maxBuffer: 8000000,
+        windowsHide: true,
+      },
+    ).toString("utf8"),
+  );
+  const id = fixture.pending.request.profile_id;
+  api.envelope(fixture.pending, id);
+  api.receipt(fixture.pending, fixture.result);
+  for (const observation of fixture.pending.reviewed.observations) {
+    const summary = observation.checks.filter(
+      (c) => c.check === "Qualifications",
+    );
+    assert.equal(summary.length, 1);
+    assert.equal(summary[0].state, "Satisfied");
+    assert.equal(observation.validation_status, "Pending");
+    assert.equal(observation.publishable, false);
+  }
+});
 const flags = {
   validation_status: "Pending",
   applyable: false,

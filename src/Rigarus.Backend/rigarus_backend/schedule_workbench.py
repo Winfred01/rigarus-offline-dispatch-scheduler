@@ -22,6 +22,7 @@ from .day_recommendation_adapter import (
 )
 from .daily_driver_validation import validate_day_snapshot_drivers
 from .daily_capability_validation import validate_day_snapshot_capabilities
+from .day_capability_proposal import _groups as capability_groups
 from .daily_rig_validation import validate_day_snapshot_rigs
 from .daily_calendar_store import daily_assessment, DailySourceError
 
@@ -132,6 +133,22 @@ def _week(c, start, end, migrations):
                         dict(check=n.check, state=n.state, reasons=[n.reason])
                         for n in cap.counts
                     ],
+                    *(
+                        []
+                        if any(n.check == "Qualifications" for n in cap.counts)
+                        else [
+                            dict(
+                                check="Qualifications",
+                                state=capability_groups(cap)["Qualifications"],
+                                reasons=[
+                                    n.check + ":" + n.reason
+                                    for n in cap.counts
+                                    if n.check.startswith("Qualification:")
+                                ]
+                                or ["EXPLICIT_EMPTY_QUALIFICATION_REQUIREMENTS"],
+                            )
+                        ]
+                    ),
                     dict(
                         check="Foreman",
                         state="Pending",
