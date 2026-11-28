@@ -1,5 +1,24 @@
 # Decision register
 
+## Issue19 four-group rule confirmation gate (November28,2026)
+
+The current owner instruction explicitly says its dependency/lock/early-finish/
+completion suggestions are **not automatically approved**. A consolidated set of
+four questions is awaiting an explicit response. See the
+[concrete decision table and code audit](design/2026-11-28-issue-19-decision-gate.md).
+FS with calendar-day lag, combined independent locks without override, conditions
+for earlier successor suggestions, and this round's proposed zero/completion
+exclusion all remain Proposed/Awaiting confirmation. Human merge138 approved the
+planning document, not these new business semantics. No question is treated as
+answered by elapsed time or a preselected option.
+
+Keep the existing positive ConfirmedRemainingDays contract, immutable typed
+records, current resource checks and closed production gates. Affected chain
+product logic is BLOCKED until the necessary decisions arrive; independent
+source/contract/document/privacy checks may proceed. No completion, dependency
+editor, lock override, chain Apply or UI authorization is inferred. Preserve old
+Proposed/Open entries below and record the actual source/scope before later code.
+
 ## November28 continuation: bounded qualification and Issue19 design
 
 Confirmed **engineering priority**, from the user's current next-stage instruction:

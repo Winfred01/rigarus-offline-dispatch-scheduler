@@ -4,6 +4,12 @@
 Owner's November28 continuation starts planning while bounded130 qualification
 continues. Do not repeat normal Restore or treat all native fault checks as passed.
 
+Latest execution gate after human merge138/main dbfa40b: the owner explicitly
+requires four-group business confirmation before affected product code. See the
+[consolidated proposed choices, fresh code audit and independent-work contract](2026-11-28-issue-19-decision-gate.md).
+No answers have been recorded at this update; the proposal is not approval.
+No new19 engine, tests, UI or chain writer is claimed.
+
 ## Baseline, sources and authority
 
 - Fresh fetched main `739bfecdc67f0142305f45454392d5f6d629500f`, human-merged137.
@@ -161,16 +167,16 @@ These are future19 cases, not borrowed130 Restore passes or a customer Demo.
 
 | Case | Synthetic scenario / expected result | Actual |
 | --- | --- | --- |
-| C01 | Confirmed A5→8 plus explicit movable B→C; exact before/after/reasons, conserved work | NOT RUN |
-| C02 | A5→2 offers earlier B/C; choose none leaves all saved dates unchanged | NOT RUN |
-| C03 | Fixed B or each independent lock honored; incompatible chain explains conflict | NOT RUN |
-| C04 | Same Crew/date order without an authoritative relation remains Unsupported | NOT RUN |
-| C05 | Confirmed cross-Crew edge; cycle/missing edge/wrong parent and multi-Crew ambiguity fail closed | NOT RUN |
-| C06 | Gaps/closures/unknown/weekend consent and leap/cross-year horizon; no invented finish | NOT RUN |
-| C07 | Missing confirmed remaining/estimate/zero-completion distinction; preserve long remaining work | NOT RUN |
-| C08 | Crew, employee, driver, qualification, Rig/maintenance and legacy-half conflicts; source+target rechecks | NOT RUN |
-| C09 | Same integer FullDay/Legacy IDs, original notes/staff/Rig/history and unrelated projects preserved | NOT RUN |
-| C10 | Repeated same inputs/sort deterministic; scope/order/graph/lock/resource edits make Stale | NOT RUN |
+| C01 | Confirmed A5→8 plus explicit movable B→C; exact before/after/reasons, conserved work | BLOCKED: dependency/lock rules awaiting confirmation |
+| C02 | A5→2 offers earlier B/C; choose none leaves all saved dates unchanged | BLOCKED: earlier-candidate rules awaiting confirmation |
+| C03 | Fixed B or each independent lock honored; incompatible chain explains conflict | BLOCKED: lock semantics awaiting confirmation |
+| C04 | Same Crew/date order without an authoritative relation remains Unsupported | BLOCKED: new explicit-coverage contract awaiting confirmation |
+| C05 | Confirmed cross-Crew edge; cycle/missing edge/wrong parent and multi-Crew ambiguity fail closed | BLOCKED: edge/lag/scope rules awaiting confirmation |
+| C06 | Gaps/closures/unknown/weekend consent and leap/cross-year horizon; no invented finish | BLOCKED: chain edge/lag calculation unapproved |
+| C07 | Missing confirmed remaining/estimate/zero-completion distinction; preserve long remaining work | BLOCKED: completion exclusion awaiting confirmation; current positive contract unchanged |
+| C08 | Crew, employee, driver, qualification, Rig/maintenance and legacy-half conflicts; source+target rechecks | BLOCKED for new chain engine; existing resource rules unchanged |
+| C09 | Same integer FullDay/Legacy IDs, original notes/staff/Rig/history and unrelated projects preserved | BLOCKED for new chain engine; old compatibility passes not borrowed |
+| C10 | Repeated same inputs/sort deterministic; scope/order/graph/lock/resource edits make Stale | BLOCKED for new chain contract; existing dual sort unchanged |
 | C11 | Cancel/X/Escape/late response and comparison selection: coherent all-table no-write equality | NOT RUN |
 | C12 | Missing/malformed/timeout/oversized sources; no partial safe/Current result or unbounded work | NOT RUN |
 | C13 | Future exact human batch confirm, Pending acknowledgements, blocker/stale refusal | NOT RUN |
