@@ -8,11 +8,19 @@ from pathlib import Path
 def contract():
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from test_draft_restore import RestoreTests
+    from rigarus_backend.capability_validation import CapabilityRequirements
 
     case = RestoreTests()
     case.setUp()
     try:
         source = case.source()
+        case.save_policy(
+            "WorkItem",
+            case.work.id,
+            CapabilityRequirements(1, (0, 0, 0), "Exact", ()),
+            start="2026-11-23",
+            end="2026-12-04",
+        )
         plan = case.rprepare()
         request = case.rrequest(plan)
         request["source_record_kind"] = "DraftVersion"
