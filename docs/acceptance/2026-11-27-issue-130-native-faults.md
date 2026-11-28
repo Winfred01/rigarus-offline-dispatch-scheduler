@@ -291,6 +291,9 @@ matrix is retained as a dated initial snapshot, not current status.
   `87ff40c29a93b757f336efd2d5362e61f8980783a1c9ba87c84fdf5f567d1487`;
   archive SHA256
   `b97b6676e86eaa9c785ccfabab02df025d5a478b68f3038621a518f36fb343bc`.
+  Subsequently reopened this exact profile with the same tested EXE, no write
+  flags: native shows production closed and no retained request; archive hash
+  and coherent SQL digest above remain identical. Normal exit, no new writes.
 
 Every committed standard fixture has only day1/2 Cancelled rev2, history3→5,
 one RestoreVersion/receipt; source version JSON, all legacy rows/history and
@@ -368,7 +371,7 @@ NOT RUN even where some subcases passed.
 | D14 | NOT RUN |701px/native Tab/Escape/focus PASS; Narrator speech and full long-data flow incomplete |
 | D15 | PASS | Actual flag-free valid source1 Inspect/disabled Prepare/closed gates/coherent SQL equality |
 | D16 | PASS |851 distinct+18 repeats, locked checks/Windows build/privacy/docs and CI1573/3 |
-| D17 | NOT RUN | Multiple actual fault loops/receipt/archive pass; complete post-archive native reopen coverage incomplete |
+| D17 | PASS | Exact-artifact native fault/close/reopen/receipt/archive and post-archive same-profile flag-free reopen; integrity/history/hash unchanged. Host only, offline remainsD18 |
 | D18 | BLOCKED | No qualified licensed disconnected VM: offline install/upgrade/WebView2/OS reboot not run |
 
 Next: independent135 fix/matched native regression, then unblocked matrix gaps.
