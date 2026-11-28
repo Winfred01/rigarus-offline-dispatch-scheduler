@@ -1,5 +1,25 @@
 # Project plan for repository use
 
+## November28 priority: bounded Restore qualification and downstream planning
+
+Human-merged PR137/main739bfec records actual native5→8/5→2 Restore,
+original-request recovery/archive and mixed FullDay/legacy display. Do not rebuild
+the completed normal loop. Keep remaining130 malformed-receipt/concurrency/storage/
+Rejected/refresh composite checks and accessibility as bounded independent work;
+preserve the specifically refused D10 request/pending without retry or bypass.
+Qualified disconnected install/upgrade/OS restart still needs a legally usable VM.
+
+In parallel with that qualification backlog, begin **design-only Issue19** for
+delay/early-finish downstream effects and operator choice. Follow the
+[current checklist and staged plan](design/2026-11-28-issue-19-replanning-plan.md).
+Existing single-WorkItem impact, Draft recording and Restore are foundations, not
+an implemented dependency graph, lock model or multi-WorkItem atomic Apply.
+Missing business rules remain Open/Proposed; do not infer chains from date order,
+convert legacy halves or move successors automatically. Formal exports follow
+independently reviewed replanning; customer UAT/production/delivery remain separate.
+The dated implementation descriptions below retain their historical scope and
+do not override this priority or assert that all130 acceptance is complete.
+
 Current #130 implementation follows human-merged131/maind4f97ad8: independent
 synthetic desktop Restore review, per-warning confirmation, retained original
 request and isolated native journals. See [implementation](design/2026-11-27-issue-130-implementation.md)
