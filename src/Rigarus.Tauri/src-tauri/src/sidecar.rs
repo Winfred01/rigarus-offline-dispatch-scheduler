@@ -82,6 +82,12 @@ impl Sidecar {
             }
             command.arg("--synthetic-draft-restores");
         }
+        if std::env::var("RIGARUS_DRAFT_RESTORE_FAULT_TEST").as_deref() == Ok("1") {
+            if std::env::var("RIGARUS_DRAFT_RESTORE_TEST").as_deref() != Ok("1") {
+                return Err("Synthetic faults require the independent Restore test gate.".into());
+            }
+            command.arg("--synthetic-restore-faults");
+        }
         let child = command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -454,7 +460,21 @@ impl Sidecar {
                     && input["outcome"] == result["outcome"]
                     && input["version_id"] == result["version_id"],
             )?;
-            journal.acknowledge_restore(&original, &result)?;
+            match crate::restore_faults::archive_fault(&self.database, &original)?.as_deref() {
+                Some("write_once") => {
+                    return Err(
+                        "Synthetic archive write failure; original request retained.".into(),
+                    );
+                }
+                Some("flush_once") => journal.archive_pending_synced(
+                    "restore-pending.json",
+                    "restore-receipt",
+                    &original,
+                    &result,
+                    |_| Err(std::io::Error::other("synthetic archive flush failure")),
+                )?,
+                _ => journal.acknowledge_restore(&original, &result)?,
+            }
             return Ok(serde_json::json!({"acknowledged":true,"request_id":request["request_id"]}));
         }
         Err("Unsupported Restore action.".into())

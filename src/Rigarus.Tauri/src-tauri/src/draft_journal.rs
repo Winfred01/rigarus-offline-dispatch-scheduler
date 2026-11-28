@@ -149,7 +149,7 @@ impl Journal {
     ) -> Result<(), String> {
         self.archive_pending_synced(name, prefix, expected, receipt, File::sync_all)
     }
-    fn archive_pending_synced(
+    pub(crate) fn archive_pending_synced(
         &self,
         name: &str,
         prefix: &str,

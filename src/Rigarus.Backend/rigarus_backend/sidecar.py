@@ -17,6 +17,7 @@ from starlette.responses import JSONResponse
 from uvicorn.protocols.http.h11_impl import H11Protocol
 
 from rigarus_backend.api import create_app
+from rigarus_backend.restore_faults import RestoreFaults
 from rigarus_backend.storage import UnsupportedDatabaseError, initialize_database
 
 
@@ -52,18 +53,21 @@ async def serve(
     draft_transaction_test=False,
     draft_restore_test=False,
     draft_restore_test_root=None,
+    restore_fault_test=False,
 ) -> bool:
-    app = private_api(
-        create_app(
-            database,
-            database_initialized=True,
-            enable_day_editor_test_writes=editor_test,
-            enable_draft_transaction_test_writes=draft_transaction_test,
-            enable_draft_restore_test_writes=draft_restore_test,
-            draft_restore_test_root=draft_restore_test_root,
-        ),
-        token,
+    app = create_app(
+        database,
+        database_initialized=True,
+        enable_day_editor_test_writes=editor_test,
+        enable_draft_transaction_test_writes=draft_transaction_test,
+        enable_draft_restore_test_writes=draft_restore_test,
+        draft_restore_test_root=draft_restore_test_root,
     )
+    if restore_fault_test:
+        app = RestoreFaults(
+            app, database, draft_restore_test_root, restore_enabled=draft_restore_test
+        )
+    app = private_api(app, token)
     config = uvicorn.Config(
         app,
         loop="asyncio",
@@ -111,7 +115,10 @@ def main() -> int:
     parser.add_argument("--synthetic-day-editor", action="store_true")
     parser.add_argument("--synthetic-draft-transactions", action="store_true")
     parser.add_argument("--synthetic-draft-restores", action="store_true")
+    parser.add_argument("--synthetic-restore-faults", action="store_true")
     arguments = parser.parse_args()
+    if arguments.synthetic_restore_faults and not arguments.synthetic_draft_restores:
+        parser.error("Synthetic faults require the separate Restore test gate.")
     if (
         arguments.synthetic_day_editor
         or arguments.synthetic_draft_transactions
@@ -164,10 +171,11 @@ def main() -> int:
                     draft_restore_test_root=os.environ.get("RIGARUS_SMOKE_DATA_ROOT")
                     if arguments.synthetic_draft_restores
                     else None,
+                    restore_fault_test=arguments.synthetic_restore_faults,
                 )
             ):
                 return 0
-    except OSError:
+    except (OSError, ValueError, TypeError, KeyError):
         pass
     print(
         "Unable to start the local service. Reopen Rigarus to retry.", file=sys.stderr
