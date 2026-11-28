@@ -18,6 +18,10 @@ do not repeatedly ask for ordinary fixture edits or receipt checks. This does
 not replace any platform/OS/tool mandatory approval. Stop the specific refused
 action, record BLOCKED and its reason, continue independent safe work, and retry
 only after new valid authorization. Never switch tools/APIs to bypass a refusal.
+Do not repeatedly reword or split the same refused operation into new approval
+requests. Preserve its original key, pending, receipt and archive; mark that
+subcase BLOCKED and continue independent work. Use grouped/session approval only
+when the platform formally offers it, never infer a platform permission change.
 Real customer data, production writes/deployment, merge/force-push/shared-history
 rewrite, Release/distribution, irreversible non-temporary deletion, host component
 installation, security/licensing/permission/network changes and core business-rule

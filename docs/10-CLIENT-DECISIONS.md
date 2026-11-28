@@ -39,6 +39,15 @@ requesting forced approval,identify the exact target,operation,effect/reversibil
 and independent work available. Report actual approval outcomes separately from
 test results;never manufacture PASS or customer/production acceptance.
 
+Latest owner clarification: ordinary independent development/synthetic tests run
+under Class A; actual native Confirm/Resolve/Replay/Archive still obey current
+platform action-time gates after root/identity checks. Once refused, do not
+repeatedly rephrase, split or ask for the same operation. Preserve original
+request/pending/verified receipt/archive and stop only that action. A formal
+platform grouped/session flow may be used if actually offered; this document
+does not create one or modify platform permissions. New specific user approval
+may allow the exact blocked request to be reconsidered, subject to the same gate.
+
 ## #130 isolated synthetic desktop implementation confirmed (November27,2026)
 
 The owner's explicit continuation after human-merged131/main d4f97ad8 authorizes
