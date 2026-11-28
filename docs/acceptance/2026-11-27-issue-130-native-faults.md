@@ -366,7 +366,7 @@ NOT RUN even where some subcases passed.
 | D09 | BLOCKED | Native OS two-process guard/same-UUID namespaces PASS; GUI race blocked by targeting geometry |
 | D10 | BLOCKED | Actual flush failure/retry and write failure retention PASS; write-failure Archive Retry platform refused |
 | D11 | PASS | Real complete Committed and sealed Rejected receipts/Archive; Rejected flush failure retains both, retry succeeds |
-| D12 | NOT RUN | Actual Committed/503/read-only retry PASS; full both-board/Locate follow-through incomplete |
+| D12 | PASS | Actual Committed/503/read-only retry; subsequent same-profile Job Schedule/Crew Board and typed Locate follow-through; SQL/archive unchanged, no repeat Restore |
 | D13 | NOT RUN | Real mixed cards/typed IDs/SQL preservation; complete new Locate/recorded-Rig variant incomplete |
 | D14 | NOT RUN |701px/native Tab/Escape/focus PASS; Narrator speech and full long-data flow incomplete |
 | D15 | PASS | Actual flag-free valid source1 Inspect/disabled Prepare/closed gates/coherent SQL equality |
@@ -378,3 +378,22 @@ Next: independent135 fix/matched native regression, then unblocked matrix gaps.
 Preserve refused wire pending; do not enter repeated approval loops. All Issues
 remain open, Draft PRs await humans. No customer UAT, production Restore/Publish,
 deployment, delivery, merge or Release approval is implied.
+
+### Final D12 read-only follow-through
+
+Same original refresh profile6b5f2619-0b10-4417-9ec6-82937f24dbf6, same EXEa677/
+sidecaradba, reopened without test-write flags after verified Archive. Actual
+Job Schedule has unrelated FullDay3 and three legacy AM/PM cards, no active
+restored day1/2. Actual Crew Board retains separate Crew rows and recorded worker.
+Native typed Locate FullDayDraft1 correctly refuses cancelled target, retaining
+week/filters; same integer ID LegacyHalfDay1 succeeds, navigates Job Schedule
+and highlights correct2026-11-23PM/Synthetic Legacy C2 card. No cross-kind fallback.
+
+Every SQL table, parsed archived receipt and digest equal the prior after-Archive
+snapshot; integrity ok/FK0, RestoreVersion1/receipt1/history5 unchanged. Digest
+`bcb64db5d201770e8320807057bd81987394ec81328a992ff2a072db468bbdef`.
+No Restore/Resolve/Replay/Archive invoked here, no pending/new request. Normal
+close afterward. A pending-only local verifier first stopped on absent pending;
+the appropriate archived-receipt/all-table equality verifier passed. This is a
+local verifier scope mismatch, not a product failure or ignored SQL read error.
+All states/logs stay local. Complete D13 recorded-Rig/history UI remains NOT RUN.
